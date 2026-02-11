@@ -1,4 +1,4 @@
-export type LogoFormat = 'png' | 'jpeg' | 'svg' | 'pdf' | 'tiff' | 'avif' | 'unknown';
+export type LogoFormat = 'png' | 'jpeg' | 'svg' | 'tiff' | 'avif' | 'unknown';
 
 export interface LogoMetadata {
   format: LogoFormat;
@@ -44,7 +44,7 @@ export const DEFAULT_VALIDATION_CONFIG: LogoValidationConfig = {
   maxFileSize: 50 * 1024 * 1024, // 50MB
   minWidth: 100,
   minHeight: 100,
-  allowedFormats: ['png', 'jpeg', 'svg', 'pdf', 'tiff', 'avif'],
+  allowedFormats: ['png', 'jpeg', 'svg', 'tiff', 'avif'],
 };
 
 export interface BgRemovalConfig {

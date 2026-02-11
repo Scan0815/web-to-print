@@ -30,7 +30,7 @@ describe('wtp-logo-upload', () => {
 
     const input = page.root?.shadowRoot?.querySelector('input[type="file"]') as HTMLInputElement;
     expect(input).toBeTruthy();
-    expect(input.accept).toBe('image/png,image/jpeg,image/svg+xml,image/tiff,image/avif,application/pdf');
+    expect(input.accept).toBe('image/png,image/jpeg,image/svg+xml,image/tiff,image/avif');
   });
 
   it('reflects the disabled state', async () => {

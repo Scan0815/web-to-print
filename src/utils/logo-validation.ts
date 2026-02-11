@@ -56,10 +56,6 @@ async function extractImageDimensions(file: File, format: LogoFormat): Promise<{
     };
   }
 
-  if (format === 'pdf') {
-    return { width: 0, height: 0 };
-  }
-
   // For raster images, try to extract dimensions from EXIF/file header
   try {
     const buffer = await file.arrayBuffer();

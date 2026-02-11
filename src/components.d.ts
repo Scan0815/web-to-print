@@ -123,7 +123,7 @@ export namespace Components {
     interface WtpLogoUpload {
         /**
           * Accepted file MIME types for the file input.
-          * @default 'image/png,image/jpeg,image/svg+xml,image/tiff,image/avif,application/pdf'
+          * @default 'image/png,image/jpeg,image/svg+xml,image/tiff,image/avif'
          */
         "accept": string;
         /**
@@ -372,7 +372,7 @@ declare namespace LocalJSX {
     interface WtpLogoUpload {
         /**
           * Accepted file MIME types for the file input.
-          * @default 'image/png,image/jpeg,image/svg+xml,image/tiff,image/avif,application/pdf'
+          * @default 'image/png,image/jpeg,image/svg+xml,image/tiff,image/avif'
          */
         "accept"?: string;
         /**

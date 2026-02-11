@@ -24,7 +24,7 @@ export class WtpLogoUpload {
   /** Validation rules for uploaded logos. */
   @Prop() config: LogoValidationConfig = DEFAULT_VALIDATION_CONFIG;
   /** Accepted file MIME types for the file input. */
-  @Prop() accept: string = 'image/png,image/jpeg,image/svg+xml,image/tiff,image/avif,application/pdf';
+  @Prop() accept: string = 'image/png,image/jpeg,image/svg+xml,image/tiff,image/avif';
   /** Whether multiple files can be uploaded at once. */
   @Prop() multiple: boolean = false;
   /** Disables the upload component. */
@@ -184,7 +184,8 @@ export class WtpLogoUpload {
     try {
       const response = await fetch(url, { mode: 'cors' });
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        this.urlError = `HTTP ${response.status}: ${response.statusText}`;
+        return;
       }
 
       const blob = await response.blob();
@@ -371,7 +372,7 @@ export class WtpLogoUpload {
                 <line x1="12" y1="3" x2="12" y2="15" />
               </svg>
               <p class="prompt-text">Drag & drop your logo here or click to browse</p>
-              <p class="prompt-hint">PNG, JPEG, SVG, TIFF, AVIF, or PDF</p>
+              <p class="prompt-hint">PNG, JPEG, SVG, TIFF, or AVIF</p>
             </div>
           </slot>
           {this.isProcessing && <div class="processing-overlay"><span class="spinner" /></div>}

@@ -19,7 +19,7 @@ function createMockPng(name = 'test.png'): File {
 }
 
 function createMockSvg(content?: string): File {
-  const svg = content ?? '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200"><rect/></svg>';
+  const svg = content ?? '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200"><rect width="200" height="200"/></svg>';
   return new File([svg], 'test.svg', { type: 'image/svg+xml' });
 }
 
@@ -28,7 +28,7 @@ const testConfig: LogoValidationConfig = {
   maxFileSize: 50 * 1024 * 1024,
   minWidth: 100,
   minHeight: 100,
-  allowedFormats: ['png', 'jpeg', 'svg', 'pdf', 'tiff', 'avif'],
+  allowedFormats: ['png', 'jpeg', 'svg', 'tiff', 'avif'],
 };
 
 describe('validateLogo', () => {
@@ -70,7 +70,7 @@ describe('validateLogo', () => {
   });
 
   it('rejects SVG with invalid content', async () => {
-    const file = new File(['<html>not svg</html>'], 'fake.svg', { type: 'image/svg+xml' });
+    const file = new File(['<html lang="en">not svg</html>'], 'fake.svg', { type: 'image/svg+xml' });
     const result = await validateLogo(file, testConfig);
     expect(result.issues.some(i => i.code === 'INVALID_SVG')).toBe(true);
   });
@@ -90,12 +90,6 @@ describe('validateLogo', () => {
     expect(result.valid).toBe(true);
     expect(result.issues.some(i => i.code === 'WIDTH_TOO_SMALL')).toBe(false);
     expect(result.issues.some(i => i.code === 'HEIGHT_TOO_SMALL')).toBe(false);
-  });
-
-  it('detects PDF format', async () => {
-    const file = new File(['%PDF-1.7 fake content'], 'test.pdf', { type: 'application/pdf' });
-    const result = await validateLogo(file, testConfig);
-    expect(result.metadata.format).toBe('pdf');
   });
 
   it('returns correct metadata structure', async () => {

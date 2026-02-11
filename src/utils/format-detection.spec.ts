@@ -1,4 +1,4 @@
-import { detectFileFormat, mimeToFormat, isSvgContent, isPdfContent } from './format-detection';
+import { detectFileFormat, mimeToFormat, isSvgContent } from './format-detection';
 
 function createFileFromBytes(bytes: number[], name: string, type: string): File {
   return new File([new Uint8Array(bytes)], name, { type });
@@ -15,7 +15,6 @@ describe('mimeToFormat', () => {
     expect(mimeToFormat('image/svg+xml')).toBe('svg');
     expect(mimeToFormat('image/tiff')).toBe('tiff');
     expect(mimeToFormat('image/avif')).toBe('avif');
-    expect(mimeToFormat('application/pdf')).toBe('pdf');
   });
 
   it('returns unknown for unrecognized types', () => {
@@ -38,24 +37,8 @@ describe('isSvgContent', () => {
   });
 
   it('rejects non-SVG content', () => {
-    expect(isSvgContent('<html></html>')).toBe(false);
+    expect(isSvgContent('<html lang="en"></html>')).toBe(false);
     expect(isSvgContent('hello world')).toBe(false);
-  });
-});
-
-describe('isPdfContent', () => {
-  it('detects PDF magic bytes', () => {
-    const bytes = new TextEncoder().encode('%PDF-1.4');
-    expect(isPdfContent(bytes)).toBe(true);
-  });
-
-  it('rejects non-PDF content', () => {
-    const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
-    expect(isPdfContent(bytes)).toBe(false);
-  });
-
-  it('rejects empty content', () => {
-    expect(isPdfContent(new Uint8Array(0))).toBe(false);
   });
 });
 
@@ -80,13 +63,8 @@ describe('detectFileFormat', () => {
     expect(await detectFileFormat(file)).toBe('tiff');
   });
 
-  it('detects PDF by magic bytes', async () => {
-    const file = createFileFromString('%PDF-1.7 content', 'test.pdf', 'application/pdf');
-    expect(await detectFileFormat(file)).toBe('pdf');
-  });
-
   it('detects SVG by content', async () => {
-    const file = createFileFromString('<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>', 'test.svg', 'image/svg+xml');
+    const file = createFileFromString('<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10"/></svg>', 'test.svg', 'image/svg+xml');
     expect(await detectFileFormat(file)).toBe('svg');
   });
 

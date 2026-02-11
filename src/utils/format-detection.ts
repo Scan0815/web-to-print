@@ -8,8 +8,6 @@ const MAGIC_BYTES: { format: LogoFormat; bytes: number[]; offset?: number }[] = 
   { format: 'avif', bytes: [0x66, 0x74, 0x79, 0x70, 0x61, 0x76, 0x69, 0x66], offset: 4 }, // ISO BMFF "ftypavif"
 ];
 
-const PDF_MAGIC = '%PDF-';
-
 export function mimeToFormat(mime: string): LogoFormat {
   const map: Record<string, LogoFormat> = {
     'image/png': 'png',
@@ -17,7 +15,6 @@ export function mimeToFormat(mime: string): LogoFormat {
     'image/svg+xml': 'svg',
     'image/tiff': 'tiff',
     'image/avif': 'avif',
-    'application/pdf': 'pdf',
   };
   return map[mime] ?? 'unknown';
 }
@@ -25,12 +22,6 @@ export function mimeToFormat(mime: string): LogoFormat {
 export function isSvgContent(text: string): boolean {
   const trimmed = text.trim();
   return trimmed.startsWith('<?xml') || trimmed.startsWith('<svg');
-}
-
-export function isPdfContent(bytes: Uint8Array): boolean {
-  if (bytes.length < PDF_MAGIC.length) return false;
-  const header = String.fromCharCode(...bytes.slice(0, PDF_MAGIC.length));
-  return header === PDF_MAGIC;
 }
 
 function matchMagicBytes(bytes: Uint8Array): LogoFormat | null {
@@ -50,9 +41,6 @@ export async function detectFileFormat(file: File): Promise<LogoFormat> {
 
   const magicFormat = matchMagicBytes(bytes);
   if (magicFormat !== null) return magicFormat;
-
-  // Check for PDF
-  if (isPdfContent(bytes)) return 'pdf';
 
   // Check for SVG by reading text content
   if (file.type === 'image/svg+xml' || file.name.endsWith('.svg')) {
