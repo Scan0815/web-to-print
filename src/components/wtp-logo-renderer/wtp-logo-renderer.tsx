@@ -123,10 +123,6 @@ export class WtpLogoRenderer {
       this.containerWidth = cw;
       this.containerHeight = ch;
 
-      // Offset between the bounding box (this.width x this.height) and the fitted container
-      const offsetX = (this.width - cw) / 2;
-      const offsetY = (this.height - ch) / 2;
-
       const newLayers: RenderedLayer[] = [];
 
       for (const logo of this.logos) {
@@ -170,11 +166,9 @@ export class WtpLogoRenderer {
             logoW = warpSrc.naturalWidth;
             logoH = warpSrc.naturalHeight;
 
-            const transform = fitLogoToPrintArea(logoW, logoH, this.printArea, this.width, this.height);
-            transform.x -= offsetX;
-            transform.y -= offsetY;
+            const transform = fitLogoToPrintArea(logoW, logoH, this.printArea, cw, ch);
 
-            const [tl, tr, br, bl] = printAreaToPixelCorners(this.printArea, this.width, this.height);
+            const [tl, tr, br, bl] = printAreaToPixelCorners(this.printArea, cw, ch);
             const leftH = Math.hypot(bl.x - tl.x, bl.y - tl.y);
             const rightH = Math.hypot(br.x - tr.x, br.y - tr.y);
             const avgHeight = (leftH + rightH) / 2;
@@ -216,9 +210,7 @@ export class WtpLogoRenderer {
               logoH = tempImg.naturalHeight;
             }
 
-            const transform = fitLogoToPrintArea(logoW, logoH, this.printArea, this.width, this.height);
-            transform.x -= offsetX;
-            transform.y -= offsetY;
+            const transform = fitLogoToPrintArea(logoW, logoH, this.printArea, cw, ch);
 
             const exportImg = await loadImage(displaySrc);
             const { left, top } = centerOriginToTopLeft(transform, logoW, logoH);

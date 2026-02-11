@@ -25,4 +25,7 @@ export type {
 } from './types';
 export { DEFAULT_VALIDATION_CONFIG, DEFAULT_BG_REMOVAL_CONFIG } from './types';
 
+export type { PdfExportConfig } from './utils/pdf-export';
+export { exportProductPdf } from './utils/pdf-export';
+
 export type * from './components.d.ts';

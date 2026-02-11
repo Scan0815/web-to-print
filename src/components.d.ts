@@ -22,9 +22,18 @@ export namespace Components {
          */
         "addText": (text: string, options?: { fontFamily?: string; fontSize?: number; fill?: string; }) => Promise<string>;
         /**
+          * Show print area overlay and bounding box for debugging.
+          * @default false
+         */
+        "debug": boolean;
+        /**
           * Export the canvas as a data URL image.
          */
         "exportImage": (format?: "png" | "jpeg", quality?: number) => Promise<string>;
+        /**
+          * Export the canvas as a high-resolution data URL image (for PDF/print). Returns the data URL plus the actual canvas dimensions (which may differ from the width/height props after setCanvasBackground resizes the canvas).
+         */
+        "exportImageHighRes": (format?: "png" | "jpeg", quality?: number, multiplier?: number) => Promise<{ dataUrl: string; width: number; height: number; }>;
         /**
           * Export the current editor state as a serializable object.
          */
@@ -274,6 +283,11 @@ declare global {
 declare namespace LocalJSX {
     interface WtpEditor {
         /**
+          * Show print area overlay and bounding box for debugging.
+          * @default false
+         */
+        "debug"?: boolean;
+        /**
           * Available font families for the text tool.
           * @default ['Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Verdana']
          */
@@ -433,6 +447,7 @@ declare namespace LocalJSX {
         "height": number;
         "productImage": string | undefined;
         "initialState": string | undefined;
+        "debug": boolean;
     }
     interface WtpLogoRendererAttributes {
         "productImage": string | undefined;

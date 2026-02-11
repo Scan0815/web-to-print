@@ -23,6 +23,8 @@ export class WtpEditor {
   @Prop() fonts: string[] = ['Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Verdana'];
   /** Print area definition (0-1 relative coordinates) to constrain objects. */
   @Prop() printArea: PrintArea | undefined;
+  /** Show print area overlay and bounding box for debugging. */
+  @Prop() debug: boolean = false;
 
   @State() selectedObjectId: string | null = null;
   @State() selectedObjectType: string | null = null;
@@ -74,6 +76,11 @@ export class WtpEditor {
     }
   }
 
+  @Watch('debug')
+  onDebugChange() {
+    this.canvas?.renderAll();
+  }
+
   @Watch('printArea')
   async onPrintAreaChange() {
     // Wait for background to finish loading so canvas dimensions are final
@@ -102,13 +109,11 @@ export class WtpEditor {
     const canvasHeight = this.canvas.getHeight();
 
     if (this.printArea !== undefined) {
-      // Fit logo into the print area (matching renderer behavior):
-      // 0-1 coords map to bounding box, then offset to actual canvas coords
-      const offset = this.getContainOffset();
-      const transform = fitLogoToPrintArea(img.width ?? 100, img.height ?? 100, this.printArea, this.width, this.height);
+      // Fit logo into the print area: 0-1 coords map directly to canvas pixels
+      const transform = fitLogoToPrintArea(img.width ?? 100, img.height ?? 100, this.printArea, canvasWidth, canvasHeight);
       img.set({
-        left: transform.x - offset.x,
-        top: transform.y - offset.y,
+        left: transform.x,
+        top: transform.y,
         originX: 'center',
         originY: 'center',
         scaleX: transform.scaleX,
@@ -159,10 +164,9 @@ export class WtpEditor {
     let centerY = this.canvas.getHeight() / 2;
 
     if (this.printArea !== undefined) {
-      const offset = this.getContainOffset();
-      const corners = printAreaToPixelCorners(this.printArea, this.width, this.height);
-      centerX = (corners[0].x + corners[1].x + corners[2].x + corners[3].x) / 4 - offset.x;
-      centerY = (corners[0].y + corners[1].y + corners[2].y + corners[3].y) / 4 - offset.y;
+      const corners = printAreaToPixelCorners(this.printArea, this.canvas.getWidth(), this.canvas.getHeight());
+      centerX = (corners[0].x + corners[1].x + corners[2].x + corners[3].x) / 4;
+      centerY = (corners[0].y + corners[1].y + corners[2].y + corners[3].y) / 4;
     }
 
     const iText = new IText(text, {
@@ -269,6 +273,32 @@ export class WtpEditor {
     return this.canvas.toDataURL({ multiplier: 1, format, quality });
   }
 
+  /** Export the canvas as a high-resolution data URL image (for PDF/print).
+   *  Returns the data URL plus the actual canvas dimensions (which may differ
+   *  from the width/height props after setCanvasBackground resizes the canvas). */
+  @Method()
+  async exportImageHighRes(format: 'png' | 'jpeg' = 'png', quality: number = 1, multiplier: number = 3): Promise<{ dataUrl: string; width: number; height: number }> {
+    if (this.canvas === undefined) throw new Error('Canvas not initialized');
+
+    // Hide selection handles
+    this.canvas.discardActiveObject();
+
+    // Temporarily disable debug overlay during export
+    const wasDebug = this.debug;
+    this.debug = false;
+    this.canvas.renderAll();
+
+    const dataUrl = this.canvas.toDataURL({ multiplier, format, quality });
+    const width = this.canvas.getWidth();
+    const height = this.canvas.getHeight();
+
+    // Restore debug state
+    this.debug = wasDebug;
+    this.canvas.renderAll();
+
+    return { dataUrl, width, height };
+  }
+
   /** Get a list of all objects on the canvas with their IDs and types. */
   @Method()
   async getObjects(): Promise<{ id: string; type: string }[]> {
@@ -330,6 +360,8 @@ export class WtpEditor {
       if (e.target !== undefined) this.clampObjectToPrintArea(e.target);
     });
 
+    this.canvas.on('after:render', () => this.drawDebugOverlay());
+
     // Load initial state if provided
     if (this.initialState !== undefined && this.initialState !== '') {
       try {
@@ -345,71 +377,153 @@ export class WtpEditor {
     this.wtpEditorReady.emit();
   }
 
-  /**
-   * Compute the centering offset between the bounding box (this.width/height)
-   * and the actual canvas dimensions after contain-fit.
-   * Print area 0-1 coords are defined relative to the bounding box, so we need
-   * this offset to translate them to canvas pixel coordinates.
-   */
-  private getContainOffset(): { x: number; y: number } {
-    if (this.canvas === undefined) return { x: 0, y: 0 };
-    return {
-      x: (this.width - this.canvas.getWidth()) / 2,
-      y: (this.height - this.canvas.getHeight()) / 2,
-    };
+
+  /** Draw print area outline and bounding box on the canvas when debug mode is active. */
+  private drawDebugOverlay() {
+    if (!this.debug || this.canvas === undefined || this.printArea === undefined) return;
+
+    const ctx = this.canvas.getContext() as CanvasRenderingContext2D;
+    const corners = printAreaToPixelCorners(this.printArea, this.canvas.getWidth(), this.canvas.getHeight());
+
+    ctx.save();
+
+    // Draw the quad outline (actual print area shape)
+    ctx.beginPath();
+    ctx.moveTo(corners[0].x, corners[0].y);
+    ctx.lineTo(corners[1].x, corners[1].y);
+    ctx.lineTo(corners[2].x, corners[2].y);
+    ctx.lineTo(corners[3].x, corners[3].y);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(37, 99, 235, 0.08)';
+    ctx.fill();
+    ctx.strokeStyle = '#2563eb';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Draw corner dots
+    for (const c of corners) {
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, 4, 0, Math.PI * 2);
+      ctx.fillStyle = '#2563eb';
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+
+    // Draw axis-aligned bounding box (used for clamping)
+    const xs = corners.map(c => c.x);
+    const ys = corners.map(c => c.y);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    ctx.strokeStyle = 'rgba(220, 38, 38, 0.5)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
+    ctx.setLineDash([]);
+
+    // Corner labels
+    ctx.font = '10px monospace';
+    ctx.fillStyle = '#2563eb';
+    const labels = ['TL', 'TR', 'BR', 'BL'];
+    for (let i = 0; i < 4; i++) {
+      ctx.fillText(labels[i], corners[i].x + 6, corners[i].y - 6);
+    }
+
+    ctx.restore();
   }
 
-  private getPrintAreaBounds(): { minX: number; maxX: number; minY: number; maxY: number } | null {
+  /**
+   * Get the print area's rotated frame: center, local axes, and dimensions
+   * along those axes. This lets us clamp in the print area's own coordinate
+   * system instead of using an axis-aligned bounding box.
+   */
+  private getPrintAreaFrame(): { cx: number; cy: number; halfW: number; halfH: number; cos: number; sin: number } | null {
     if (this.printArea === undefined || this.canvas === undefined) return null;
-    // Map 0-1 coords to bounding box pixels, then offset to canvas pixels
-    const offset = this.getContainOffset();
-    const corners = printAreaToPixelCorners(this.printArea, this.width, this.height);
-    const xs = corners.map(c => c.x - offset.x);
-    const ys = corners.map(c => c.y - offset.y);
-    return {
-      minX: Math.min(...xs),
-      maxX: Math.max(...xs),
-      minY: Math.min(...ys),
-      maxY: Math.max(...ys),
-    };
+    const corners = printAreaToPixelCorners(this.printArea, this.canvas.getWidth(), this.canvas.getHeight());
+    const [tl, tr, br, bl] = corners;
+
+    const cx = (tl.x + tr.x + br.x + bl.x) / 4;
+    const cy = (tl.y + tr.y + br.y + bl.y) / 4;
+
+    const topLen = Math.hypot(tr.x - tl.x, tr.y - tl.y);
+    const botLen = Math.hypot(br.x - bl.x, br.y - bl.y);
+    const leftLen = Math.hypot(bl.x - tl.x, bl.y - tl.y);
+    const rightLen = Math.hypot(br.x - tr.x, br.y - tr.y);
+
+    const halfW = (topLen + botLen) / 4;
+    const halfH = (leftLen + rightLen) / 4;
+
+    // Angle from bottom edge (same as fitLogoToPrintArea)
+    const angle = Math.atan2(br.y - bl.y, br.x - bl.x);
+    return { cx, cy, halfW, halfH, cos: Math.cos(angle), sin: Math.sin(angle) };
   }
 
   private clampObjectToPrintArea(obj: FabricObject) {
-    const bounds = this.getPrintAreaBounds();
-    if (bounds === null) return;
+    const frame = this.getPrintAreaFrame();
+    if (frame === null) return;
 
     // Skip background objects
     if ((obj as FabricObject & { _isBackground?: boolean })._isBackground === true) return;
 
-    // Ensure coordinates reflect the current transform state
-    obj.setCoords();
-    let rect = obj.getBoundingRect();
+    const { cx, cy, halfW, halfH, cos, sin } = frame;
 
-    const boundsWidth = bounds.maxX - bounds.minX;
-    const boundsHeight = bounds.maxY - bounds.minY;
+    // Use the actual visual size of the object (not getBoundingRect which includes control handles)
+    const objW = (obj.width ?? 0) * (obj.scaleX ?? 1);
+    const objH = (obj.height ?? 0) * (obj.scaleY ?? 1);
 
-    // Cap scale if the object's bounding rect exceeds the print area
-    if (rect.width > boundsWidth || rect.height > boundsHeight) {
-      const scaleRatio = Math.min(boundsWidth / rect.width, boundsHeight / rect.height);
+    // Relative angle between object and print area frame
+    const objAngleRad = ((obj.angle ?? 0) * Math.PI) / 180;
+    const frameAngle = Math.atan2(sin, cos);
+    const relAngle = objAngleRad - frameAngle;
+    const relCos = Math.abs(Math.cos(relAngle));
+    const relSin = Math.abs(Math.sin(relAngle));
+
+    // Object's half-size projected onto the print area's local axes
+    let projHalfW = (objW * relCos + objH * relSin) / 2;
+    let projHalfH = (objW * relSin + objH * relCos) / 2;
+
+    // Cap scale if the object exceeds the print area in its local frame
+    if (projHalfW > halfW || projHalfH > halfH) {
+      const scaleRatio = Math.min(halfW / Math.max(projHalfW, 1), halfH / Math.max(projHalfH, 1));
       obj.set({
         scaleX: (obj.scaleX ?? 1) * scaleRatio,
         scaleY: (obj.scaleY ?? 1) * scaleRatio,
       });
       obj.setCoords();
-      rect = obj.getBoundingRect();
+
+      // Recompute projected sizes after scaling
+      const newObjW = (obj.width ?? 0) * (obj.scaleX ?? 1);
+      const newObjH = (obj.height ?? 0) * (obj.scaleY ?? 1);
+      projHalfW = (newObjW * relCos + newObjH * relSin) / 2;
+      projHalfH = (newObjW * relSin + newObjH * relCos) / 2;
     }
 
-    // Clamp position so the bounding rect stays within bounds
-    let dx = 0;
-    let dy = 0;
+    // Object center in world coords (use getCenterPoint for accuracy with all origins)
+    obj.setCoords();
+    const objCenter = obj.getCenterPoint();
 
-    if (rect.left < bounds.minX) dx = bounds.minX - rect.left;
-    else if (rect.left + rect.width > bounds.maxX) dx = bounds.maxX - (rect.left + rect.width);
+    // Transform object center into the print area's local frame
+    const relX = objCenter.x - cx;
+    const relY = objCenter.y - cy;
+    const localX = relX * cos + relY * sin;
+    const localY = -relX * sin + relY * cos;
 
-    if (rect.top < bounds.minY) dy = bounds.minY - rect.top;
-    else if (rect.top + rect.height > bounds.maxY) dy = bounds.maxY - (rect.top + rect.height);
+    // Clamp in local frame so the visual object stays within the print area
+    const clampedX = Math.max(-halfW + projHalfW, Math.min(halfW - projHalfW, localX));
+    const clampedY = Math.max(-halfH + projHalfH, Math.min(halfH - projHalfH, localY));
 
-    if (dx !== 0 || dy !== 0) {
+    if (clampedX !== localX || clampedY !== localY) {
+      // Transform back to world coordinates
+      const newCx = cx + clampedX * cos - clampedY * sin;
+      const newCy = cy + clampedX * sin + clampedY * cos;
+      const dx = newCx - objCenter.x;
+      const dy = newCy - objCenter.y;
+
       obj.set({
         left: (obj.left ?? 0) + dx,
         top: (obj.top ?? 0) + dy,
@@ -523,14 +637,6 @@ export class WtpEditor {
     }
   };
 
-  private handleExport = async () => {
-    const dataUrl = await this.exportImage();
-    const link = document.createElement('a');
-    link.download = 'export.png';
-    link.href = dataUrl;
-    link.click();
-  };
-
   render() {
     return (
       <div class="wtp-editor">
@@ -568,19 +674,8 @@ export class WtpEditor {
               <polyline points="3 6 5 6 21 6" />
               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
             </svg>
-            <span>Delete</span>
           </button>
 
-          <div class="toolbar-spacer" />
-
-          <button class="toolbar-btn" onClick={this.handleExport} title="Export image">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-            <span>Export</span>
-          </button>
         </div>
 
         <div class="canvas-container">

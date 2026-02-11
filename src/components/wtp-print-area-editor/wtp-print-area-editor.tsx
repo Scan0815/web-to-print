@@ -339,12 +339,10 @@ export class WtpPrintAreaEditor {
     if (this.canvas === undefined) return;
 
     const pa = this.printArea ?? defaultPrintArea();
-    // Convert relative coords to bounding-box pixels, then offset to canvas pixels
-    const offsetX = (this.width - this.canvas!.getWidth()) / 2;
-    const offsetY = (this.height - this.canvas!.getHeight()) / 2;
-    const rawCorners = printAreaToPixelCorners(pa, this.width, this.height);
-    const [tl, tr, br, bl] = rawCorners
-      .map(p => ({ x: p.x - offsetX, y: p.y - offsetY })) as [RelativePoint, RelativePoint, RelativePoint, RelativePoint];
+    // Convert relative coords directly to canvas pixels (image-relative coordinates)
+    const cw = this.canvas!.getWidth();
+    const ch = this.canvas!.getHeight();
+    const [tl, tr, br, bl] = printAreaToPixelCorners(pa, cw, ch);
 
     // Compute centroid and bounding box
     const cx = (tl.x + tr.x + br.x + bl.x) / 4;
@@ -397,11 +395,10 @@ export class WtpPrintAreaEditor {
     if (this.areaQuad === undefined || this.canvas === undefined) return;
 
     const pa = this.printArea ?? defaultPrintArea();
-    // Convert relative coords to bounding-box pixels, then offset to canvas pixels
-    const offsetX = (this.width - this.canvas!.getWidth()) / 2;
-    const offsetY = (this.height - this.canvas!.getHeight()) / 2;
-    const [tl, tr, br, bl] = printAreaToPixelCorners(pa, this.width, this.height)
-      .map(p => ({ x: p.x - offsetX, y: p.y - offsetY })) as [RelativePoint, RelativePoint, RelativePoint, RelativePoint];
+    // Convert relative coords directly to canvas pixels (image-relative coordinates)
+    const cw = this.canvas!.getWidth();
+    const ch = this.canvas!.getHeight();
+    const [tl, tr, br, bl] = printAreaToPixelCorners(pa, cw, ch);
 
     const cx = (tl.x + tr.x + br.x + bl.x) / 4;
     const cy = (tl.y + tr.y + br.y + bl.y) / 4;
@@ -467,11 +464,10 @@ export class WtpPrintAreaEditor {
       { x: center.x + this.areaQuad.cornerOffsets[2].x, y: center.y + this.areaQuad.cornerOffsets[2].y },
       { x: center.x + this.areaQuad.cornerOffsets[3].x, y: center.y + this.areaQuad.cornerOffsets[3].y },
     ];
-    // Offset canvas pixels back to bounding-box pixels before converting to relative coords
-    const offsetX = (this.width - this.canvas!.getWidth()) / 2;
-    const offsetY = (this.height - this.canvas!.getHeight()) / 2;
-    const bboxCorners = corners.map(c => ({ x: c.x + offsetX, y: c.y + offsetY })) as [RelativePoint, RelativePoint, RelativePoint, RelativePoint];
-    return pixelCornersToPrintArea(bboxCorners, this.width, this.height, this.areaQuad.bulge);
+    // Convert canvas pixels directly to 0-1 image-relative coordinates
+    const cw = this.canvas!.getWidth();
+    const ch = this.canvas!.getHeight();
+    return pixelCornersToPrintArea(corners as [RelativePoint, RelativePoint, RelativePoint, RelativePoint], cw, ch, this.areaQuad.bulge);
   }
 
   private emitPrintArea() {

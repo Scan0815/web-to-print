@@ -55,18 +55,18 @@ describe('wtp-editor', () => {
     expect(options?.length).toBe(5); // 5 default fonts
   });
 
-  it('renders Delete button', async () => {
+  it('renders Delete button with trash icon', async () => {
     const page = await newSpecPage({
       components: [WtpEditor],
       html: '<wtp-editor></wtp-editor>',
     });
 
-    const buttons = page.root?.querySelectorAll('.toolbar-btn');
-    const deleteBtn = Array.from(buttons ?? []).find(b => b.textContent?.includes('Delete'));
+    const deleteBtn = page.root?.querySelector('.toolbar-btn.danger');
     expect(deleteBtn).toBeTruthy();
+    expect(deleteBtn?.querySelector('svg')).toBeTruthy();
   });
 
-  it('renders Export button', async () => {
+  it('does not render Export button in toolbar', async () => {
     const page = await newSpecPage({
       components: [WtpEditor],
       html: '<wtp-editor></wtp-editor>',
@@ -74,7 +74,7 @@ describe('wtp-editor', () => {
 
     const buttons = page.root?.querySelectorAll('.toolbar-btn');
     const exportBtn = Array.from(buttons ?? []).find(b => b.textContent?.includes('Export'));
-    expect(exportBtn).toBeTruthy();
+    expect(exportBtn).toBeUndefined();
   });
 
   it('accepts width and height props', async () => {

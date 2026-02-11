@@ -50,6 +50,7 @@
     "fabric": "^7.1.0"
   },
   "devDependencies": {
+    "jspdf": "^4.1.0",
     "@stencil/core": "^4.27.1",
     "@stencil/eslint-plugin": "^1.1.0",
     "@stencil/sass": "^3.0.12",

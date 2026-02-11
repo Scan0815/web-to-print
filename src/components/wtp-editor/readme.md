@@ -9,6 +9,7 @@
 
 | Property       | Attribute       | Description                                                            | Type        | Default                                                           |
 | -------------- | --------------- | ---------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------- |
+| `debug`        | `debug`         | Show print area overlay and bounding box for debugging.                | `boolean`   | `false`                                                           |
 | `fonts`        | --              | Available font families for the text tool.                             | `string[]`  | `['Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Verdana']` |
 | `height`       | `height`        | Canvas height in pixels.                                               | `number`    | `600`                                                             |
 | `initialState` | `initial-state` | JSON-serialized initial editor state.                                  | `string`    | `undefined`                                                       |
@@ -76,6 +77,26 @@ Export the canvas as a data URL image.
 #### Returns
 
 Type: `Promise<string>`
+
+
+
+### `exportImageHighRes(format?: "png" | "jpeg", quality?: number, multiplier?: number) => Promise<{ dataUrl: string; width: number; height: number; }>`
+
+Export the canvas as a high-resolution data URL image (for PDF/print).
+Returns the data URL plus the actual canvas dimensions (which may differ
+from the width/height props after setCanvasBackground resizes the canvas).
+
+#### Parameters
+
+| Name         | Type              | Description |
+| ------------ | ----------------- | ----------- |
+| `format`     | `"png" \| "jpeg"` |             |
+| `quality`    | `number`          |             |
+| `multiplier` | `number`          |             |
+
+#### Returns
+
+Type: `Promise<{ dataUrl: string; width: number; height: number; }>`
 
 
 
