@@ -1,12 +1,28 @@
 /**
- * @fileoverview entry point for your component library
+ * @fileoverview Entry point for the web-to-print component library.
  *
- * This is the entry point for your component library. Use this file to export utilities,
- * constants or data structure that accompany your components.
- *
- * DO NOT use this file to export your components. Instead, use the recommended approaches
- * to consume components of this package as outlined in the `README.md`.
+ * Use this file to export utilities, types, and constants.
+ * Components are consumed via the approaches outlined in the README.
  */
 
-export { format } from './utils/utils';
+export type {
+  LogoFormat,
+  LogoMetadata,
+  LogoValidationIssue,
+  LogoValidationConfig,
+  LogoValidationResult,
+  LogoData,
+  BgRemovalConfig,
+  CanvasTransform,
+  PlacedLogo,
+  PlacedText,
+  EditorState,
+  PrintArea,
+  RelativePoint,
+  LegacyPrintArea,
+  ArticleView,
+  Article,
+} from './types';
+export { DEFAULT_VALIDATION_CONFIG, DEFAULT_BG_REMOVAL_CONFIG } from './types';
+
 export type * from './components.d.ts';

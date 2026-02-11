@@ -1,0 +1,89 @@
+@use 'variables' as *;
+@use 'mixins' as *;
+@use 'reset';
+
+.wtp-editor {
+  @include wtp-flex-column;
+  border: 1px solid $wtp-color-border;
+  border-radius: $wtp-radius-lg;
+  overflow: hidden;
+  background: $wtp-color-bg;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: $wtp-spacing-sm;
+  padding: $wtp-spacing-sm $wtp-spacing-md;
+  border-bottom: 1px solid $wtp-color-border;
+  background: $wtp-color-bg-muted;
+  flex-wrap: wrap;
+}
+
+.toolbar-btn {
+  @include wtp-button-base;
+  padding: $wtp-spacing-xs $wtp-spacing-sm;
+  font-size: $wtp-font-size-xs;
+
+  svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+
+  &.danger {
+    &:hover:not(:disabled) {
+      background: $wtp-color-error-light;
+      color: $wtp-color-error;
+      border-color: $wtp-color-error;
+    }
+  }
+}
+
+.font-select {
+  padding: $wtp-spacing-xs $wtp-spacing-sm;
+  font-family: $wtp-font-family;
+  font-size: $wtp-font-size-xs;
+  border: 1px solid $wtp-color-border;
+  border-radius: $wtp-radius-md;
+  background: $wtp-color-bg;
+  color: $wtp-color-text;
+  cursor: pointer;
+  @include wtp-transition;
+
+  &:focus-visible {
+    @include wtp-focus-ring;
+  }
+}
+
+.color-input {
+  width: 32px;
+  height: 28px;
+  padding: 2px;
+  border: 1px solid $wtp-color-border;
+  border-radius: $wtp-radius-md;
+  background: $wtp-color-bg;
+  cursor: pointer;
+  @include wtp-transition;
+
+  &:focus-visible {
+    @include wtp-focus-ring;
+  }
+}
+
+.toolbar-separator {
+  width: 1px;
+  height: 24px;
+  background: $wtp-color-border;
+}
+
+.toolbar-spacer {
+  flex: 1;
+}
+
+.canvas-container {
+  line-height: 0;
+  overflow: auto;
+  background:
+    repeating-conic-gradient(#e5e7eb 0% 25%, transparent 0% 50%) 50% / 20px 20px;
+}

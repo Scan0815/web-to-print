@@ -1,0 +1,439 @@
+[
+  {
+    "id": "tasse",
+    "name": "Ceramic Mug",
+    "description": "Classic ceramic mug, 330 ml",
+    "views": [
+      {
+        "image": "tasse.webp",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 0.4045930030081586,
+            "y": 0.509108565671448
+          },
+          "topRight": {
+            "x": 0.5862947223871217,
+            "y": 0.506907614372851
+          },
+          "bottomRight": {
+            "x": 0.5902381107866679,
+            "y": 0.8324579583688188
+          },
+          "bottomLeft": {
+            "x": 0.40375,
+            "y": 0.83
+          },
+          "bulge": -0.05907819330176169
+        }
+      },
+      {
+        "image": "tasse-2.webp",
+        "label": "Side",
+        "printArea": {
+          "topLeft": {
+            "x": 0.3224048918050604,
+            "y": 0.41655959316401725
+          },
+          "topRight": {
+            "x": 0.5700543858413843,
+            "y": 0.41655959316401725
+          },
+          "bottomRight": {
+            "x": 0.575,
+            "y": 0.8
+          },
+          "bottomLeft": {
+            "x": 0.325,
+            "y": 0.8066666666666666
+          },
+          "bulge": -0.07183877296236847
+        }
+      },
+      {
+        "image": "tasse-3.webp",
+        "label": "Back",
+        "printArea": {
+          "topLeft": {
+            "x": 0.3025,
+            "y": 0.2916666666666667
+          },
+          "topRight": {
+            "x": 0.545,
+            "y": 0.29
+          },
+          "bottomRight": {
+            "x": 0.545,
+            "y": 0.6866666666666666
+          },
+          "bottomLeft": {
+            "x": 0.30375,
+            "y": 0.6883333333333334
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "panorama-emaille-tasse",
+    "name": "Panorama Enamel Mug",
+    "description": "Enamel mug with panorama print area",
+    "views": [
+      {
+        "image": "panorama-emaille-tasse.webp",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 0.32864070704274395,
+            "y": 0.4376948609224208
+          },
+          "topRight": {
+            "x": 0.5820432978653123,
+            "y": 0.43262906057279127
+          },
+          "bottomRight": {
+            "x": 0.5887006795439684,
+            "y": 0.7656460863206648
+          },
+          "bottomLeft": {
+            "x": 0.33529808872140016,
+            "y": 0.7707118866702943
+          },
+          "bulge": -0.08315499392877722
+        }
+      }
+    ]
+  },
+  {
+    "id": "thermobecher-mit-tragegriff",
+    "name": "Travel Mug",
+    "description": "Insulated travel mug with carry handle",
+    "views": [
+      {
+        "image": "thermobecher-mit-tragegriff.webp",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 0.35234928541288774,
+            "y": 0.28428770701650236
+          },
+          "topRight": {
+            "x": 0.59,
+            "y": 0.2783333333333333
+          },
+          "bottomRight": {
+            "x": 0.5880688934958753,
+            "y": 0.581544272791328
+          },
+          "bottomLeft": {
+            "x": 0.3525,
+            "y": 0.5866666666666667
+          },
+          "bulge": -0.08315499392877722
+        }
+      },
+      {
+        "image": "thermobecher-mit-tragegriff-2.webp",
+        "label": "Back",
+        "printArea": {
+          "topLeft": {
+            "x": 0.42331853640901884,
+            "y": 0.4043019581938709
+          },
+          "topRight": {
+            "x": 0.56875,
+            "y": 0.4066666666666667
+          },
+          "bottomRight": {
+            "x": 0.575,
+            "y": 0.6233333333333333
+          },
+          "bottomLeft": {
+            "x": 0.42625,
+            "y": 0.6233333333333333
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "maenner-premium-bio-t-shirt",
+    "name": "Men's Premium T-Shirt",
+    "description": "Organic cotton premium t-shirt",
+    "views": [
+      {
+        "image": "maenner-premium-bio-t-shirt.webp",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 0.4284986213182011,
+            "y": 0.35406969763283913
+          },
+          "topRight": {
+            "x": 0.5761052546001819,
+            "y": 0.35406969763283913
+          },
+          "bottomRight": {
+            "x": 0.5761052546001819,
+            "y": 0.5721800724011507
+          },
+          "bottomLeft": {
+            "x": 0.4284986213182011,
+            "y": 0.5721800724011507
+          },
+          "bulge": -0.07917833800186741
+        }
+      },
+      {
+        "image": "maenner-premium-bio-t-shirt-2.webp",
+        "label": "Back",
+        "printArea": {
+          "topLeft": {
+            "x": 0.418237885462555,
+            "y": 0.3043171806167396
+          },
+          "topRight": {
+            "x": 0.595330396475771,
+            "y": 0.3043171806167396
+          },
+          "bottomRight": {
+            "x": 0.595330396475771,
+            "y": 0.5109251101321584
+          },
+          "bottomLeft": {
+            "x": 0.418237885462555,
+            "y": 0.5109251101321584
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "stoffbeutel",
+    "name": "Tote Bag",
+    "description": "Cotton canvas tote bag",
+    "views": [
+      {
+        "image": "stoffbeutel.webp",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 0.42039943904359056,
+            "y": 0.4714312151951403
+          },
+          "topRight": {
+            "x": 0.5721356461644085,
+            "y": 0.4733358557822791
+          },
+          "bottomRight": {
+            "x": 0.5699135654794132,
+            "y": 0.6503614307565668
+          },
+          "bottomLeft": {
+            "x": 0.4181773583585952,
+            "y": 0.648456790169428
+          }
+        }
+      },
+      {
+        "image": "stoffbeutel-2.webp",
+        "label": "Back",
+        "printArea": {
+          "topLeft": {
+            "x": 0.3600426612046098,
+            "y": 0.577025985632627
+          },
+          "topRight": {
+            "x": 0.5375,
+            "y": 0.5066666666666667
+          },
+          "bottomRight": {
+            "x": 0.585,
+            "y": 0.7466666666666667
+          },
+          "bottomLeft": {
+            "x": 0.405,
+            "y": 0.8116666666666666
+          }
+        }
+      },
+      {
+        "image": "stoffbeutel-3.webp",
+        "label": "Detail",
+        "printArea": {
+          "topLeft": {
+            "x": 0.3921255506607929,
+            "y": 0.5161674008810573
+          },
+          "topRight": {
+            "x": 0.6022577092511013,
+            "y": 0.5161674008810573
+          },
+          "bottomRight": {
+            "x": 0.6022577092511013,
+            "y": 0.7613215859030837
+          },
+          "bottomLeft": {
+            "x": 0.3921255506607929,
+            "y": 0.7613215859030837
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "midweight-recycelter-stoffbeutel-von-stanleystella",
+    "name": "Stanley/Stella Recycled Tote",
+    "description": "Midweight recycled tote bag by Stanley/Stella",
+    "views": [
+      {
+        "image": "midweight-recycelter-stoffbeutel-von-stanleystella.webp",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 0.37,
+            "y": 0.47833333333333333
+          },
+          "topRight": {
+            "x": 0.6125,
+            "y": 0.4683333333333333
+          },
+          "bottomRight": {
+            "x": 0.6220642093257559,
+            "y": 0.690414121763146
+          },
+          "bottomLeft": {
+            "x": 0.37875,
+            "y": 0.7033333333333334
+          },
+          "bulge": -0.04167208135500843
+        }
+      },
+      {
+        "image": "midweight-recycelter-stoffbeutel-von-stanleystella-2.webp",
+        "label": "Back",
+        "printArea": {
+          "topLeft": {
+            "x": 0.4008838105726873,
+            "y": 0.5345117474302497
+          },
+          "topRight": {
+            "x": 0.6129983480176212,
+            "y": 0.5345117474302497
+          },
+          "bottomRight": {
+            "x": 0.6129983480176212,
+            "y": 0.7819787077826725
+          },
+          "bottomLeft": {
+            "x": 0.4008838105726873,
+            "y": 0.7819787077826725
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "minimal-matte-pu-schluesselanhaenger",
+    "name": "PU Keychain",
+    "description": "Minimal matte PU leather keychain",
+    "views": [
+      {
+        "image": "minimal-matte-pu-schluesselanhaenger.webp",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 0.4925,
+            "y": 0.47833333333333333
+          },
+          "topRight": {
+            "x": 0.63375,
+            "y": 0.21666666666666667
+          },
+          "bottomRight": {
+            "x": 0.67625,
+            "y": 0.255
+          },
+          "bottomLeft": {
+            "x": 0.53375,
+            "y": 0.5133333333333333
+          },
+          "bulge": -0.01977401129943503
+        }
+      },
+      {
+        "image": "minimal-matte-pu-schluesselanhaenger-2.webp",
+        "label": "Back",
+        "printArea": {
+          "topLeft": {
+            "x": 0.46122067393700905,
+            "y": 0.4697990812602969
+          },
+          "topRight": {
+            "x": 0.7133030044770878,
+            "y": 0.4697990812602969
+          },
+          "bottomRight": {
+            "x": 0.7133030044770878,
+            "y": 0.5262324899584988
+          },
+          "bottomLeft": {
+            "x": 0.46122067393700905,
+            "y": 0.5262324899584988
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "brotdose",
+    "name": "Lunch Box",
+    "description": "Stainless steel lunch box",
+    "views": [
+      {
+        "image": "brotdose.webp",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 0.33787197478322395,
+            "y": 0.46627451103467327
+          },
+          "topRight": {
+            "x": 0.6648336314340506,
+            "y": 0.46627451103467327
+          },
+          "bottomRight": {
+            "x": 0.6648336314340506,
+            "y": 0.6873488369829479
+          },
+          "bottomLeft": {
+            "x": 0.33787197478322395,
+            "y": 0.6873488369829479
+          }
+        }
+      },
+      {
+        "image": "brotdose-2.webp",
+        "label": "Open",
+        "printArea": {
+          "topLeft": {
+            "x": 0.32625,
+            "y": 0.385
+          },
+          "topRight": {
+            "x": 0.61125,
+            "y": 0.405
+          },
+          "bottomRight": {
+            "x": 0.61,
+            "y": 0.645
+          },
+          "bottomLeft": {
+            "x": 0.32698507267200094,
+            "y": 0.605819828011176
+          }
+        }
+      }
+    ]
+  }
+]

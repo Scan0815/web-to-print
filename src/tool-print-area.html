@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html dir="ltr" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Print Area Editor Tool</title>
+
+    <script type="module" src="/build/web-to-print.esm.js"></script>
+    <script nomodule src="/build/web-to-print.js"></script>
+
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #f1f5f9;
+        color: #1e293b;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .header {
+        background: #fff;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 16px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .header h1 { font-size: 18px; font-weight: 700; }
+      .header a { font-size: 13px; color: #2563eb; text-decoration: none; }
+      .header a:hover { text-decoration: underline; }
+
+      .layout {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+      }
+
+      /* Sidebar */
+      .sidebar {
+        width: 240px;
+        background: #fff;
+        border-right: 1px solid #e2e8f0;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+      }
+      .sidebar h2 {
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #64748b;
+        padding: 16px 16px 8px;
+      }
+      .article-list { list-style: none; }
+      .article-list li {
+        padding: 10px 16px;
+        font-size: 14px;
+        cursor: pointer;
+        border-left: 3px solid transparent;
+        transition: all 0.15s ease;
+      }
+      .article-list li:hover { background: #f8fafc; }
+      .article-list li.active {
+        background: #eff6ff;
+        border-left-color: #2563eb;
+        font-weight: 600;
+        color: #2563eb;
+      }
+      .article-list li .article-views {
+        font-size: 11px;
+        color: #94a3b8;
+        font-weight: 400;
+      }
+
+      .sidebar-footer {
+        margin-top: auto;
+        padding: 16px;
+        border-top: 1px solid #e2e8f0;
+      }
+      .btn-export {
+        display: block;
+        width: 100%;
+        padding: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        background: #2563eb;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      .btn-export:hover { background: #1d4ed8; }
+
+      /* Main area */
+      .main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: auto;
+        padding: 24px;
+      }
+      .main-empty {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #94a3b8;
+        font-size: 15px;
+      }
+
+      /* View tabs */
+      .view-tabs {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 16px;
+      }
+      .view-tab {
+        padding: 6px 16px;
+        font-size: 13px;
+        font-weight: 500;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .view-tab:hover { background: #f8fafc; }
+      .view-tab.active {
+        background: #2563eb;
+        color: #fff;
+        border-color: #2563eb;
+      }
+
+      /* Canvas container */
+      .editor-container {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 16px;
+      }
+
+      /* Coordinate readout */
+      .readout {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 12px 16px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-family: 'SF Mono', 'Fira Code', monospace;
+        font-size: 13px;
+      }
+      .readout .field {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .readout .label {
+        color: #64748b;
+        font-weight: 500;
+      }
+      .readout .value { color: #1e293b; }
+
+      .btn-reset {
+        margin-left: auto;
+        padding: 4px 12px;
+        font-size: 12px;
+        font-weight: 500;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .btn-reset:hover { background: #fee2e2; border-color: #dc2626; color: #dc2626; }
+    </style>
+  </head>
+  <body>
+
+    <div class="header">
+      <h1>Print Area Editor Tool</h1>
+      <a href="/">&larr; Back to demo</a>
+    </div>
+
+    <div class="layout">
+      <div class="sidebar">
+        <h2>Articles</h2>
+        <ul id="article-list" class="article-list"></ul>
+        <div class="sidebar-footer">
+          <button id="btn-export" class="btn-export">Export JSON</button>
+        </div>
+      </div>
+
+      <div class="main" id="main">
+        <div class="main-empty" id="main-empty">Select an article from the sidebar</div>
+
+        <div id="main-content" style="display:none;">
+          <div id="view-tabs" class="view-tabs"></div>
+          <div class="editor-container">
+            <wtp-print-area-editor id="editor" width="800" height="600"></wtp-print-area-editor>
+          </div>
+          <div id="readout" class="readout"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let articles = [];
+      let selectedArticleIdx = -1;
+      let selectedViewIdx = 0;
+
+      const articleListEl = document.getElementById('article-list');
+      const mainEmpty = document.getElementById('main-empty');
+      const mainContent = document.getElementById('main-content');
+      const viewTabsEl = document.getElementById('view-tabs');
+      const editorEl = document.getElementById('editor');
+      const readoutEl = document.getElementById('readout');
+
+      // Load articles
+      fetch('/demo-article/articles.json')
+        .then(r => r.json())
+        .then(data => {
+          articles = data;
+          renderArticleList();
+        });
+
+      function renderArticleList() {
+        articleListEl.innerHTML = '';
+        articles.forEach((article, idx) => {
+          const li = document.createElement('li');
+          li.className = idx === selectedArticleIdx ? 'active' : '';
+          li.innerHTML = `${article.name}<br><span class="article-views">${article.views.length} view${article.views.length > 1 ? 's' : ''}</span>`;
+          li.addEventListener('click', () => selectArticle(idx));
+          articleListEl.appendChild(li);
+        });
+      }
+
+      async function selectArticle(idx) {
+        // Save current view's print area before switching
+        await saveCurrentPrintArea();
+
+        selectedArticleIdx = idx;
+        selectedViewIdx = 0;
+        renderArticleList();
+        showArticle();
+      }
+
+      function showArticle() {
+        if (selectedArticleIdx < 0) return;
+        mainEmpty.style.display = 'none';
+        mainContent.style.display = 'block';
+
+        const article = articles[selectedArticleIdx];
+        renderViewTabs(article);
+        loadView(article, selectedViewIdx);
+      }
+
+      function renderViewTabs(article) {
+        viewTabsEl.innerHTML = '';
+        article.views.forEach((view, idx) => {
+          const btn = document.createElement('button');
+          btn.className = 'view-tab' + (idx === selectedViewIdx ? ' active' : '');
+          btn.textContent = view.label;
+          btn.addEventListener('click', async () => {
+            await saveCurrentPrintArea();
+            selectedViewIdx = idx;
+            renderViewTabs(article);
+            loadView(article, idx);
+          });
+          viewTabsEl.appendChild(btn);
+        });
+      }
+
+      const DEFAULT_AREA = {
+        topLeft: { x: 0.35, y: 0.325 },
+        topRight: { x: 0.65, y: 0.325 },
+        bottomRight: { x: 0.65, y: 0.675 },
+        bottomLeft: { x: 0.35, y: 0.675 },
+      };
+
+      function loadView(article, viewIdx) {
+        const view = article.views[viewIdx];
+        editorEl.productImage = '/demo-article/' + view.image;
+
+        if (view.printArea) {
+          editorEl.setPrintArea(view.printArea);
+        } else {
+          editorEl.setPrintArea(DEFAULT_AREA);
+        }
+
+        updateReadout(view.printArea || DEFAULT_AREA);
+      }
+
+      async function saveCurrentPrintArea() {
+        if (selectedArticleIdx < 0) return;
+        const articleIdx = selectedArticleIdx;
+        const viewIdx = selectedViewIdx;
+        const area = await editorEl.getPrintArea();
+        articles[articleIdx].views[viewIdx].printArea = area;
+      }
+
+      // Listen for print area changes
+      editorEl.addEventListener('wtpPrintAreaChange', (e) => {
+        const area = e.detail;
+        if (selectedArticleIdx >= 0) {
+          articles[selectedArticleIdx].views[selectedViewIdx].printArea = area;
+        }
+        updateReadout(area);
+      });
+
+      function updateReadout(area) {
+        if (!area) return;
+        const f = (v) => (v ?? 0).toFixed(4);
+        const pt = (p) => `(${f(p?.x)}, ${f(p?.y)})`;
+        readoutEl.innerHTML = `
+          <div class="field"><span class="label">TL:</span><span class="value">${pt(area.topLeft)}</span></div>
+          <div class="field"><span class="label">TR:</span><span class="value">${pt(area.topRight)}</span></div>
+          <div class="field"><span class="label">BR:</span><span class="value">${pt(area.bottomRight)}</span></div>
+          <div class="field"><span class="label">BL:</span><span class="value">${pt(area.bottomLeft)}</span></div>
+          <div class="field"><span class="label">bulge:</span><span class="value">${f(area.bulge)}</span></div>
+          <button class="btn-reset" id="btn-reset">Reset</button>
+        `;
+
+        document.getElementById('btn-reset').addEventListener('click', () => {
+          editorEl.setPrintArea(DEFAULT_AREA);
+          if (selectedArticleIdx >= 0) {
+            articles[selectedArticleIdx].views[selectedViewIdx].printArea = null;
+          }
+          updateReadout(DEFAULT_AREA);
+        });
+      }
+
+      // Export JSON
+      document.getElementById('btn-export').addEventListener('click', async () => {
+        // Save current view before export
+        saveCurrentPrintArea();
+        // Wait a tick for the promise to resolve
+        await new Promise(r => setTimeout(r, 50));
+
+        const json = JSON.stringify(articles, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = 'articles.json';
+        link.href = url;
+        link.click();
+        URL.revokeObjectURL(url);
+      });
+    </script>
+  </body>
+</html>

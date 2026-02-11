@@ -1,0 +1,62 @@
+@use 'variables' as *;
+
+@mixin wtp-flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin wtp-flex-column {
+  display: flex;
+  flex-direction: column;
+}
+
+@mixin wtp-transition($properties: all) {
+  transition-property: $properties;
+  transition-duration: 250ms;
+  transition-timing-function: ease;
+}
+
+@mixin wtp-focus-ring {
+  outline: 2px solid $wtp-color-primary;
+  outline-offset: 2px;
+}
+
+@mixin wtp-responsive($breakpoint) {
+  @if $breakpoint == sm {
+    @media (min-width: $wtp-breakpoint-sm) { @content; }
+  } @else if $breakpoint == md {
+    @media (min-width: $wtp-breakpoint-md) { @content; }
+  } @else if $breakpoint == lg {
+    @media (min-width: $wtp-breakpoint-lg) { @content; }
+  }
+}
+
+@mixin wtp-button-base {
+  display: inline-flex;
+  align-items: center;
+  gap: $wtp-spacing-sm;
+  padding: $wtp-spacing-sm $wtp-spacing-md;
+  font-family: $wtp-font-family;
+  font-size: $wtp-font-size-sm;
+  font-weight: $wtp-font-weight-medium;
+  border-radius: $wtp-radius-md;
+  border: 1px solid $wtp-color-border;
+  background: $wtp-color-bg;
+  color: $wtp-color-text;
+  cursor: pointer;
+  @include wtp-transition;
+
+  &:hover {
+    background: $wtp-color-bg-muted;
+  }
+
+  &:focus-visible {
+    @include wtp-focus-ring;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}

@@ -1,0 +1,13 @@
+@use 'variables' as *;
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:host {
+  font-family: $wtp-font-family;
+  color: $wtp-color-text;
+  line-height: 1.5;
+}

@@ -5,57 +5,468 @@
  * It contains typing information for all components that exist in this project.
  */
 import { HTMLStencilElement, JSXBase } from "@stencil/core/internal";
+import { BgRemovalConfig, EditorState, LogoData, LogoValidationConfig, LogoValidationIssue, PlacedLogo, PrintArea } from "./types";
+import { FabricObject, IText } from "fabric";
+import { RenderLayer } from "./utils/html-render-helpers";
+export { BgRemovalConfig, EditorState, LogoData, LogoValidationConfig, LogoValidationIssue, PlacedLogo, PrintArea } from "./types";
+export { FabricObject, IText } from "fabric";
+export { RenderLayer } from "./utils/html-render-helpers";
 export namespace Components {
-    interface MyComponent {
+    interface WtpEditor {
         /**
-          * The first name
+          * Add a logo image to the canvas and return its object ID.
          */
-        "first": string;
+        "addLogo": (logoData: LogoData) => Promise<string>;
         /**
-          * The last name
+          * Add a text object to the canvas and return its object ID.
          */
-        "last": string;
+        "addText": (text: string, options?: { fontFamily?: string; fontSize?: number; fill?: string; }) => Promise<string>;
         /**
-          * The middle name
+          * Export the canvas as a data URL image.
          */
-        "middle": string;
+        "exportImage": (format?: "png" | "jpeg", quality?: number) => Promise<string>;
+        /**
+          * Export the current editor state as a serializable object.
+         */
+        "exportState": () => Promise<EditorState>;
+        /**
+          * Available font families for the text tool.
+          * @default ['Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Verdana']
+         */
+        "fonts": string[];
+        /**
+          * Get a list of all objects on the canvas with their IDs and types.
+         */
+        "getObjects": () => Promise<{ id: string; type: string; }[]>;
+        /**
+          * Canvas height in pixels.
+          * @default 600
+         */
+        "height": number;
+        /**
+          * JSON-serialized initial editor state.
+         */
+        "initialState": string | undefined;
+        /**
+          * Load a previously exported editor state.
+         */
+        "loadState": (state: EditorState) => Promise<void>;
+        /**
+          * Print area definition (0-1 relative coordinates) to constrain objects.
+         */
+        "printArea": PrintArea | undefined;
+        /**
+          * Product background image URL.
+         */
+        "productImage": string | undefined;
+        /**
+          * Remove an object from the canvas by its ID.
+         */
+        "removeObject": (id: string) => Promise<void>;
+        /**
+          * Clear all user objects from the canvas, keeping the instance alive.
+         */
+        "resetCanvas": () => Promise<void>;
+        /**
+          * Update the text content of a text object by its ID.
+         */
+        "updateText": (id: string, text: string) => Promise<void>;
+        /**
+          * Canvas width in pixels.
+          * @default 800
+         */
+        "width": number;
+    }
+    interface WtpLogoRenderer {
+        /**
+          * Background color.
+          * @default '#ffffff'
+         */
+        "backgroundColor": string;
+        /**
+          * Export the rendered scene as a data URL image.
+         */
+        "exportImage": (format?: "png" | "jpeg", quality?: number) => Promise<string>;
+        /**
+          * Container height in pixels.
+          * @default 400
+         */
+        "height": number;
+        /**
+          * Array of logos to place on the renderer.
+          * @default []
+         */
+        "logos": PlacedLogo[];
+        /**
+          * Print area definition for auto-fitting logos (relative 0-1 coordinates).
+         */
+        "printArea": PrintArea | undefined;
+        /**
+          * Product background image URL.
+         */
+        "productImage": string | undefined;
+        /**
+          * Container width in pixels.
+          * @default 600
+         */
+        "width": number;
+    }
+    interface WtpLogoUpload {
+        /**
+          * Accepted file MIME types for the file input.
+          * @default 'image/png,image/jpeg,image/svg+xml,image/tiff,image/avif,application/pdf'
+         */
+        "accept": string;
+        /**
+          * Configuration for the color-based background removal algorithm.
+          * @default {}
+         */
+        "bgRemovalConfig": Partial<BgRemovalConfig>;
+        /**
+          * Validation rules for uploaded logos.
+          * @default DEFAULT_VALIDATION_CONFIG
+         */
+        "config": LogoValidationConfig;
+        /**
+          * Disables the upload component.
+          * @default false
+         */
+        "disabled": boolean;
+        /**
+          * Enables background removal for raster images after upload.
+          * @default false
+         */
+        "enableBackgroundRemoval": boolean;
+        /**
+          * Whether multiple files can be uploaded at once.
+          * @default false
+         */
+        "multiple": boolean;
+    }
+    interface WtpPrintAreaEditor {
+        /**
+          * Get the current print area as relative 0-1 coordinates.
+         */
+        "getPrintArea": () => Promise<PrintArea>;
+        /**
+          * Canvas height in pixels.
+          * @default 600
+         */
+        "height": number;
+        /**
+          * Current print area (relative 0-1 coordinates).
+         */
+        "printArea": PrintArea | undefined;
+        /**
+          * Product background image URL.
+         */
+        "productImage": string | undefined;
+        /**
+          * Set the print area and update the quad on canvas.
+         */
+        "setPrintArea": (printArea: PrintArea) => Promise<void>;
+        /**
+          * Canvas width in pixels.
+          * @default 800
+         */
+        "width": number;
     }
 }
+export interface WtpEditorCustomEvent<T> extends CustomEvent<T> {
+    detail: T;
+    target: HTMLWtpEditorElement;
+}
+export interface WtpLogoRendererCustomEvent<T> extends CustomEvent<T> {
+    detail: T;
+    target: HTMLWtpLogoRendererElement;
+}
+export interface WtpLogoUploadCustomEvent<T> extends CustomEvent<T> {
+    detail: T;
+    target: HTMLWtpLogoUploadElement;
+}
+export interface WtpPrintAreaEditorCustomEvent<T> extends CustomEvent<T> {
+    detail: T;
+    target: HTMLWtpPrintAreaEditorElement;
+}
 declare global {
-    interface HTMLMyComponentElement extends Components.MyComponent, HTMLStencilElement {
+    interface HTMLWtpEditorElementEventMap {
+        "wtpEditorReady": void;
+        "wtpEditorStateChanged": EditorState;
+        "wtpEditorObjectSelected": { id: string; type: string };
+        "wtpEditorObjectDeselected": void;
     }
-    var HTMLMyComponentElement: {
-        prototype: HTMLMyComponentElement;
-        new (): HTMLMyComponentElement;
+    interface HTMLWtpEditorElement extends Components.WtpEditor, HTMLStencilElement {
+        addEventListener<K extends keyof HTMLWtpEditorElementEventMap>(type: K, listener: (this: HTMLWtpEditorElement, ev: WtpEditorCustomEvent<HTMLWtpEditorElementEventMap[K]>) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLWtpEditorElementEventMap>(type: K, listener: (this: HTMLWtpEditorElement, ev: WtpEditorCustomEvent<HTMLWtpEditorElementEventMap[K]>) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
+    }
+    var HTMLWtpEditorElement: {
+        prototype: HTMLWtpEditorElement;
+        new (): HTMLWtpEditorElement;
+    };
+    interface HTMLWtpLogoRendererElementEventMap {
+        "wtpRenderComplete": { dataUrl: string };
+        "wtpRenderError": { message: string };
+    }
+    interface HTMLWtpLogoRendererElement extends Components.WtpLogoRenderer, HTMLStencilElement {
+        addEventListener<K extends keyof HTMLWtpLogoRendererElementEventMap>(type: K, listener: (this: HTMLWtpLogoRendererElement, ev: WtpLogoRendererCustomEvent<HTMLWtpLogoRendererElementEventMap[K]>) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLWtpLogoRendererElementEventMap>(type: K, listener: (this: HTMLWtpLogoRendererElement, ev: WtpLogoRendererCustomEvent<HTMLWtpLogoRendererElementEventMap[K]>) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
+    }
+    var HTMLWtpLogoRendererElement: {
+        prototype: HTMLWtpLogoRendererElement;
+        new (): HTMLWtpLogoRendererElement;
+    };
+    interface HTMLWtpLogoUploadElementEventMap {
+        "wtpLogoValidated": LogoData;
+        "wtpLogoRejected": { file: File; issues: LogoValidationIssue[] };
+        "wtpLogoProcessing": boolean;
+        "wtpLogoSelected": LogoData;
+    }
+    interface HTMLWtpLogoUploadElement extends Components.WtpLogoUpload, HTMLStencilElement {
+        addEventListener<K extends keyof HTMLWtpLogoUploadElementEventMap>(type: K, listener: (this: HTMLWtpLogoUploadElement, ev: WtpLogoUploadCustomEvent<HTMLWtpLogoUploadElementEventMap[K]>) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLWtpLogoUploadElementEventMap>(type: K, listener: (this: HTMLWtpLogoUploadElement, ev: WtpLogoUploadCustomEvent<HTMLWtpLogoUploadElementEventMap[K]>) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
+    }
+    var HTMLWtpLogoUploadElement: {
+        prototype: HTMLWtpLogoUploadElement;
+        new (): HTMLWtpLogoUploadElement;
+    };
+    interface HTMLWtpPrintAreaEditorElementEventMap {
+        "wtpPrintAreaChange": PrintArea;
+    }
+    interface HTMLWtpPrintAreaEditorElement extends Components.WtpPrintAreaEditor, HTMLStencilElement {
+        addEventListener<K extends keyof HTMLWtpPrintAreaEditorElementEventMap>(type: K, listener: (this: HTMLWtpPrintAreaEditorElement, ev: WtpPrintAreaEditorCustomEvent<HTMLWtpPrintAreaEditorElementEventMap[K]>) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLWtpPrintAreaEditorElementEventMap>(type: K, listener: (this: HTMLWtpPrintAreaEditorElement, ev: WtpPrintAreaEditorCustomEvent<HTMLWtpPrintAreaEditorElementEventMap[K]>) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
+    }
+    var HTMLWtpPrintAreaEditorElement: {
+        prototype: HTMLWtpPrintAreaEditorElement;
+        new (): HTMLWtpPrintAreaEditorElement;
     };
     interface HTMLElementTagNameMap {
-        "my-component": HTMLMyComponentElement;
+        "wtp-editor": HTMLWtpEditorElement;
+        "wtp-logo-renderer": HTMLWtpLogoRendererElement;
+        "wtp-logo-upload": HTMLWtpLogoUploadElement;
+        "wtp-print-area-editor": HTMLWtpPrintAreaEditorElement;
     }
 }
 declare namespace LocalJSX {
-    interface MyComponent {
+    interface WtpEditor {
         /**
-          * The first name
+          * Available font families for the text tool.
+          * @default ['Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Verdana']
          */
-        "first"?: string;
+        "fonts"?: string[];
         /**
-          * The last name
+          * Canvas height in pixels.
+          * @default 600
          */
-        "last"?: string;
+        "height"?: number;
         /**
-          * The middle name
+          * JSON-serialized initial editor state.
          */
-        "middle"?: string;
+        "initialState"?: string | undefined;
+        /**
+          * Fires when the current selection is cleared.
+         */
+        "onWtpEditorObjectDeselected"?: (event: WtpEditorCustomEvent<void>) => void;
+        /**
+          * Fires when an object is selected on the canvas.
+         */
+        "onWtpEditorObjectSelected"?: (event: WtpEditorCustomEvent<{ id: string; type: string }>) => void;
+        /**
+          * Fires when the canvas is initialized and ready.
+         */
+        "onWtpEditorReady"?: (event: WtpEditorCustomEvent<void>) => void;
+        /**
+          * Fires when the editor state changes (object add/move/remove).
+         */
+        "onWtpEditorStateChanged"?: (event: WtpEditorCustomEvent<EditorState>) => void;
+        /**
+          * Print area definition (0-1 relative coordinates) to constrain objects.
+         */
+        "printArea"?: PrintArea | undefined;
+        /**
+          * Product background image URL.
+         */
+        "productImage"?: string | undefined;
+        /**
+          * Canvas width in pixels.
+          * @default 800
+         */
+        "width"?: number;
     }
+    interface WtpLogoRenderer {
+        /**
+          * Background color.
+          * @default '#ffffff'
+         */
+        "backgroundColor"?: string;
+        /**
+          * Container height in pixels.
+          * @default 400
+         */
+        "height"?: number;
+        /**
+          * Array of logos to place on the renderer.
+          * @default []
+         */
+        "logos"?: PlacedLogo[];
+        /**
+          * Fires when the renderer has finished rendering all logos.
+         */
+        "onWtpRenderComplete"?: (event: WtpLogoRendererCustomEvent<{ dataUrl: string }>) => void;
+        /**
+          * Fires when a rendering error occurs.
+         */
+        "onWtpRenderError"?: (event: WtpLogoRendererCustomEvent<{ message: string }>) => void;
+        /**
+          * Print area definition for auto-fitting logos (relative 0-1 coordinates).
+         */
+        "printArea"?: PrintArea | undefined;
+        /**
+          * Product background image URL.
+         */
+        "productImage"?: string | undefined;
+        /**
+          * Container width in pixels.
+          * @default 600
+         */
+        "width"?: number;
+    }
+    interface WtpLogoUpload {
+        /**
+          * Accepted file MIME types for the file input.
+          * @default 'image/png,image/jpeg,image/svg+xml,image/tiff,image/avif,application/pdf'
+         */
+        "accept"?: string;
+        /**
+          * Configuration for the color-based background removal algorithm.
+          * @default {}
+         */
+        "bgRemovalConfig"?: Partial<BgRemovalConfig>;
+        /**
+          * Validation rules for uploaded logos.
+          * @default DEFAULT_VALIDATION_CONFIG
+         */
+        "config"?: LogoValidationConfig;
+        /**
+          * Disables the upload component.
+          * @default false
+         */
+        "disabled"?: boolean;
+        /**
+          * Enables background removal for raster images after upload.
+          * @default false
+         */
+        "enableBackgroundRemoval"?: boolean;
+        /**
+          * Whether multiple files can be uploaded at once.
+          * @default false
+         */
+        "multiple"?: boolean;
+        /**
+          * Fires when processing state changes (true = busy, false = idle).
+         */
+        "onWtpLogoProcessing"?: (event: WtpLogoUploadCustomEvent<boolean>) => void;
+        /**
+          * Fires when a logo fails validation.
+         */
+        "onWtpLogoRejected"?: (event: WtpLogoUploadCustomEvent<{ file: File; issues: LogoValidationIssue[] }>) => void;
+        /**
+          * Fires when a logo is selected from the preview gallery.
+         */
+        "onWtpLogoSelected"?: (event: WtpLogoUploadCustomEvent<LogoData>) => void;
+        /**
+          * Fires when a logo passes validation and is ready for use.
+         */
+        "onWtpLogoValidated"?: (event: WtpLogoUploadCustomEvent<LogoData>) => void;
+    }
+    interface WtpPrintAreaEditor {
+        /**
+          * Canvas height in pixels.
+          * @default 600
+         */
+        "height"?: number;
+        /**
+          * Fires when the print area rectangle is modified.
+         */
+        "onWtpPrintAreaChange"?: (event: WtpPrintAreaEditorCustomEvent<PrintArea>) => void;
+        /**
+          * Current print area (relative 0-1 coordinates).
+         */
+        "printArea"?: PrintArea | undefined;
+        /**
+          * Product background image URL.
+         */
+        "productImage"?: string | undefined;
+        /**
+          * Canvas width in pixels.
+          * @default 800
+         */
+        "width"?: number;
+    }
+
+    interface WtpEditorAttributes {
+        "width": number;
+        "height": number;
+        "productImage": string | undefined;
+        "initialState": string | undefined;
+    }
+    interface WtpLogoRendererAttributes {
+        "productImage": string | undefined;
+        "width": number;
+        "height": number;
+        "backgroundColor": string;
+    }
+    interface WtpLogoUploadAttributes {
+        "accept": string;
+        "multiple": boolean;
+        "disabled": boolean;
+        "enableBackgroundRemoval": boolean;
+    }
+    interface WtpPrintAreaEditorAttributes {
+        "productImage": string | undefined;
+        "width": number;
+        "height": number;
+    }
+
     interface IntrinsicElements {
-        "my-component": MyComponent;
+        "wtp-editor": Omit<WtpEditor, keyof WtpEditorAttributes> & { [K in keyof WtpEditor & keyof WtpEditorAttributes]?: WtpEditor[K] } & { [K in keyof WtpEditor & keyof WtpEditorAttributes as `attr:${K}`]?: WtpEditorAttributes[K] } & { [K in keyof WtpEditor & keyof WtpEditorAttributes as `prop:${K}`]?: WtpEditor[K] };
+        "wtp-logo-renderer": Omit<WtpLogoRenderer, keyof WtpLogoRendererAttributes> & { [K in keyof WtpLogoRenderer & keyof WtpLogoRendererAttributes]?: WtpLogoRenderer[K] } & { [K in keyof WtpLogoRenderer & keyof WtpLogoRendererAttributes as `attr:${K}`]?: WtpLogoRendererAttributes[K] } & { [K in keyof WtpLogoRenderer & keyof WtpLogoRendererAttributes as `prop:${K}`]?: WtpLogoRenderer[K] };
+        "wtp-logo-upload": Omit<WtpLogoUpload, keyof WtpLogoUploadAttributes> & { [K in keyof WtpLogoUpload & keyof WtpLogoUploadAttributes]?: WtpLogoUpload[K] } & { [K in keyof WtpLogoUpload & keyof WtpLogoUploadAttributes as `attr:${K}`]?: WtpLogoUploadAttributes[K] } & { [K in keyof WtpLogoUpload & keyof WtpLogoUploadAttributes as `prop:${K}`]?: WtpLogoUpload[K] };
+        "wtp-print-area-editor": Omit<WtpPrintAreaEditor, keyof WtpPrintAreaEditorAttributes> & { [K in keyof WtpPrintAreaEditor & keyof WtpPrintAreaEditorAttributes]?: WtpPrintAreaEditor[K] } & { [K in keyof WtpPrintAreaEditor & keyof WtpPrintAreaEditorAttributes as `attr:${K}`]?: WtpPrintAreaEditorAttributes[K] } & { [K in keyof WtpPrintAreaEditor & keyof WtpPrintAreaEditorAttributes as `prop:${K}`]?: WtpPrintAreaEditor[K] };
     }
 }
 export { LocalJSX as JSX };
 declare module "@stencil/core" {
     export namespace JSX {
         interface IntrinsicElements {
-            "my-component": LocalJSX.MyComponent & JSXBase.HTMLAttributes<HTMLMyComponentElement>;
+            "wtp-editor": LocalJSX.IntrinsicElements["wtp-editor"] & JSXBase.HTMLAttributes<HTMLWtpEditorElement>;
+            "wtp-logo-renderer": LocalJSX.IntrinsicElements["wtp-logo-renderer"] & JSXBase.HTMLAttributes<HTMLWtpLogoRendererElement>;
+            "wtp-logo-upload": LocalJSX.IntrinsicElements["wtp-logo-upload"] & JSXBase.HTMLAttributes<HTMLWtpLogoUploadElement>;
+            "wtp-print-area-editor": LocalJSX.IntrinsicElements["wtp-print-area-editor"] & JSXBase.HTMLAttributes<HTMLWtpPrintAreaEditorElement>;
         }
     }
 }

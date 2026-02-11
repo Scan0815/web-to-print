@@ -1,0 +1,11 @@
+@use 'variables' as *;
+@use 'reset';
+
+.wtp-print-area-editor {
+  display: inline-block;
+  line-height: 0;
+  border: 1px solid $wtp-color-border;
+  border-radius: $wtp-radius-md;
+  overflow: hidden;
+  background: repeating-conic-gradient(#e5e7eb 0% 25%, transparent 0% 50%) 50% / 20px 20px;
+}

@@ -3,12 +3,473 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0" />
-    <title>Stencil Component Starter</title>
+    <title>Web-to-Print — Promotional Materials</title>
 
     <script type="module" src="/build/web-to-print.esm.js"></script>
     <script nomodule src="/build/web-to-print.js"></script>
+
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #f1f5f9;
+        color: #1e293b;
+        min-height: 100vh;
+      }
+
+      /* Header */
+      .header {
+        background: #fff;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 20px 32px;
+      }
+      .header h1 { font-size: 22px; font-weight: 700; }
+      .header p { color: #64748b; font-size: 14px; margin-top: 4px; }
+
+      /* Layout */
+      .container { max-width: 1200px; margin: 0 auto; padding: 24px 32px; }
+
+      /* Upload section */
+      .upload-section {
+        background: #fff;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        margin-bottom: 32px;
+      }
+      .upload-section h2 {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+      .upload-section .hint {
+        font-size: 13px;
+        color: #64748b;
+        margin-bottom: 16px;
+      }
+
+      /* Product grid */
+      .products-section h2 {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 16px;
+      }
+      .products-empty {
+        text-align: center;
+        padding: 48px;
+        color: #94a3b8;
+        background: #fff;
+        border-radius: 12px;
+        border: 2px dashed #e2e8f0;
+      }
+      .products-empty svg { width: 48px; height: 48px; margin-bottom: 12px; opacity: 0.5; }
+      .products-empty p { font-size: 15px; }
+
+      .products-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+      }
+
+      .product-card {
+        background: #fff;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        cursor: pointer;
+        transition: box-shadow 0.2s ease, transform 0.2s ease;
+        border: 2px solid transparent;
+      }
+      .product-card:hover {
+        box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+      }
+      .product-card.active {
+        border-color: #2563eb;
+      }
+
+      .product-card .card-preview {
+        background: repeating-conic-gradient(#f1f5f9 0% 25%, #fff 0% 50%) 50% / 16px 16px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 380px;
+        position: relative;
+      }
+
+      .view-slider {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        padding: 8px 0;
+      }
+      .view-btn {
+        padding: 4px 12px;
+        border-radius: 9999px;
+        border: 1.5px solid #e2e8f0;
+        background: #fff;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .view-btn:hover {
+        border-color: #94a3b8;
+      }
+      .view-btn.active {
+        border-color: #2563eb;
+        color: #2563eb;
+        font-weight: 500;
+      }
+      .product-card .card-preview .no-logo-hint {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        color: #94a3b8;
+        pointer-events: none;
+      }
+
+      .product-card .card-info {
+        padding: 14px 16px;
+        border-top: 1px solid #f1f5f9;
+      }
+      .product-card .card-info h3 {
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .product-card .card-info .card-meta {
+        font-size: 12px;
+        color: #64748b;
+        margin-top: 2px;
+      }
+      .product-card .card-info .card-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        margin-top: 8px;
+        font-size: 12px;
+        font-weight: 500;
+        color: #2563eb;
+      }
+      .product-card .card-info .card-action svg {
+        width: 14px;
+        height: 14px;
+      }
+
+      /* Editor overlay */
+      .editor-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(4px);
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+      .editor-overlay.open { display: flex; }
+
+      .editor-panel {
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 24px 64px rgba(0,0,0,0.2);
+        max-width: 920px;
+        width: 100%;
+        max-height: 90vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .editor-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        border-bottom: 1px solid #e2e8f0;
+      }
+      .editor-header h3 { font-size: 16px; font-weight: 600; }
+      .editor-header .editor-actions { display: flex; gap: 8px; }
+      .editor-header button {
+        padding: 6px 14px;
+        font-size: 13px;
+        font-weight: 500;
+        border-radius: 6px;
+        cursor: pointer;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        color: #1e293b;
+        transition: all 0.15s ease;
+      }
+      .editor-header button:hover { background: #f8fafc; }
+      .editor-header .btn-primary {
+        background: #2563eb;
+        color: #fff;
+        border-color: #2563eb;
+      }
+      .editor-header .btn-primary:hover { background: #1d4ed8; }
+      .editor-header .btn-close {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+      }
+      .editor-header .btn-close svg { width: 18px; height: 18px; }
+
+      .editor-body {
+        overflow: auto;
+        padding: 16px 20px;
+        display: flex;
+        justify-content: center;
+      }
+    </style>
   </head>
   <body>
-    <my-component first="Stencil" middle="'Don't call me a framework'" last="JS"></my-component>
+
+    <div class="header">
+      <h1>Web-to-Print Configurator</h1>
+      <p>Upload your logo and preview it on promotional products. Click a product to customize.</p>
+      <p style="margin-top:4px;"><a href="/tool-print-area.html" style="color:#2563eb;font-size:13px;text-decoration:none;">Define print areas &rarr;</a></p>
+    </div>
+
+    <div class="container">
+
+      <!-- Step 1: Logo Upload -->
+      <div class="upload-section">
+        <h2>Your Logo</h2>
+        <p class="hint">Upload a print-ready logo (min 300 DPI for raster, SVG preferred). It will be placed on all products below.</p>
+        <wtp-logo-upload id="uploader" enable-background-removal></wtp-logo-upload>
+      </div>
+
+      <!-- Step 2: Product catalog with auto-rendered logos -->
+      <div class="products-section">
+        <h2>Products</h2>
+
+        <div id="products-empty" class="products-empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <p>Upload a logo above to see it on products</p>
+        </div>
+
+        <div id="products-grid" class="products-grid" style="display:none;"></div>
+      </div>
+
+    </div>
+
+    <!-- Editor Overlay -->
+    <div id="editor-overlay" class="editor-overlay">
+      <div class="editor-panel">
+        <div class="editor-header">
+          <h3 id="editor-title">Edit Product</h3>
+          <div class="editor-actions">
+            <button id="btn-export-img" class="btn-primary">Export Image</button>
+            <button id="btn-close" class="btn-close" title="Close editor">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="editor-body">
+          <wtp-editor id="editor" width="860" height="540"></wtp-editor>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // --- State ---
+      let articles = [];
+      let currentLogo = null;
+      let activeArticle = null;
+      const editorStates = {};  // articleId -> EditorState
+
+      // --- DOM refs ---
+      const uploader = document.getElementById('uploader');
+      const productsGrid = document.getElementById('products-grid');
+      const productsEmpty = document.getElementById('products-empty');
+      const editorOverlay = document.getElementById('editor-overlay');
+      const editorEl = document.getElementById('editor');
+      const editorTitle = document.getElementById('editor-title');
+
+      // --- Load articles catalog ---
+      fetch('/demo-article/articles.json')
+        .then(r => r.json())
+        .then(data => { articles = data; });
+
+      // --- Logo upload/selection handler ---
+      uploader.addEventListener('wtpLogoSelected', (e) => {
+        currentLogo = e.detail;
+        showProducts();
+      });
+
+      // --- Build product grid ---
+      function showProducts() {
+        productsEmpty.style.display = 'none';
+        productsGrid.style.display = 'grid';
+        productsGrid.innerHTML = '';
+
+        articles.forEach(article => {
+          const firstView = article.views[0];
+          const productImgUrl = '/demo-article/' + firstView.image;
+
+          const card = document.createElement('div');
+          card.className = 'product-card';
+          card.dataset.productId = article.id;
+
+          const viewButtons = article.views.map((view, i) =>
+            `<button class="view-btn${i === 0 ? ' active' : ''}" data-view-index="${i}">${view.label}</button>`
+          ).join('');
+
+          card.innerHTML = `
+            <div class="card-preview">
+              <wtp-logo-renderer
+                width="520"
+                height="380"
+                product-image="${productImgUrl}"
+                background-color="#f8fafc"
+              ></wtp-logo-renderer>
+              <div class="view-slider">${viewButtons}</div>
+            </div>
+            <div class="card-info">
+              <h3>${article.name}</h3>
+              <div class="card-meta">${article.description}</div>
+              <div class="card-action">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+                Customize
+              </div>
+            </div>
+          `;
+
+          // View slider buttons — stop propagation so card click doesn't fire
+          card.querySelectorAll('.view-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              const viewIndex = parseInt(btn.dataset.viewIndex, 10);
+              switchView(card, article, viewIndex);
+            });
+          });
+
+          card.addEventListener('click', () => openEditor(article));
+          productsGrid.appendChild(card);
+
+          // Set logos and printArea props after element is in DOM
+          requestAnimationFrame(() => {
+            const renderer = card.querySelector('wtp-logo-renderer');
+            if (renderer) {
+              if (firstView.printArea) {
+                renderer.printArea = firstView.printArea;
+              }
+              if (currentLogo) {
+                renderer.logos = [{
+                  id: 'logo-' + article.id,
+                  dataUrl: currentLogo.dataUrl,
+                  previewDataUrl: currentLogo.previewDataUrl,
+                }];
+              }
+            }
+          });
+        });
+      }
+
+      // --- Switch product view ---
+      function switchView(card, article, viewIndex) {
+        const view = article.views[viewIndex];
+        const renderer = card.querySelector('wtp-logo-renderer');
+        if (!renderer || !view) return;
+
+        renderer.productImage = '/demo-article/' + view.image;
+        renderer.printArea = view.printArea || null;
+
+        if (currentLogo) {
+          renderer.logos = [{
+            id: 'logo-' + article.id,
+            dataUrl: currentLogo.dataUrl,
+            previewDataUrl: currentLogo.previewDataUrl,
+          }];
+        }
+
+        // Update active button
+        card.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
+        const activeBtn = card.querySelector(`.view-btn[data-view-index="${viewIndex}"]`);
+        if (activeBtn) activeBtn.classList.add('active');
+      }
+
+      // --- Editor ---
+      async function openEditor(article) {
+        activeArticle = article;
+        editorTitle.textContent = `Edit — ${article.name}`;
+        editorOverlay.classList.add('open');
+
+        // Highlight active card
+        document.querySelectorAll('.product-card').forEach(c => c.classList.remove('active'));
+        const activeCard = document.querySelector(`[data-product-id="${article.id}"]`);
+        if (activeCard) activeCard.classList.add('active');
+
+        const firstView = article.views[0];
+        const productImgUrl = '/demo-article/' + firstView.image;
+
+        // If we have a saved state for this article, restore it
+        if (editorStates[article.id]) {
+          // Set print area before loading state so constraints are active
+          editorEl.printArea = firstView.printArea || undefined;
+          await editorEl.loadState(editorStates[article.id]);
+        } else {
+          // Fresh editor: clear leftover objects, then set product background and add logo
+          await editorEl.resetCanvas();
+          editorEl.productImage = productImgUrl;
+          // Set print area after productImage — addLogo awaits backgroundReady internally
+          editorEl.printArea = firstView.printArea || undefined;
+
+          if (currentLogo) {
+            await editorEl.addLogo(currentLogo);
+          }
+        }
+      }
+
+      async function closeEditor() {
+        if (activeArticle) {
+          // Save state before closing
+          editorStates[activeArticle.id] = await editorEl.exportState();
+        }
+
+        editorOverlay.classList.remove('open');
+        document.querySelectorAll('.product-card').forEach(c => c.classList.remove('active'));
+        activeArticle = null;
+      }
+
+      document.getElementById('btn-close').addEventListener('click', closeEditor);
+
+      // Close on overlay background click
+      editorOverlay.addEventListener('click', (e) => {
+        if (e.target === editorOverlay) closeEditor();
+      });
+
+      // Close on Escape
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && editorOverlay.classList.contains('open')) closeEditor();
+      });
+
+      // Export image
+      document.getElementById('btn-export-img').addEventListener('click', async () => {
+        const dataUrl = await editorEl.exportImage('png');
+        const link = document.createElement('a');
+        link.download = `${activeArticle ? activeArticle.id : 'export'}.png`;
+        link.href = dataUrl;
+        link.click();
+      });
+    </script>
   </body>
 </html>
