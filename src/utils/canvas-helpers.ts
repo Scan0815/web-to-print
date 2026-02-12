@@ -225,6 +225,41 @@ export function warpImageForBulge(
   return canvas;
 }
 
+/** Decode SVG text from a data URL. Returns null for non-SVG URLs. */
+function decodeSvgDataUrl(svgDataUrl: string): string | null {
+  if (!svgDataUrl.startsWith('data:image/svg+xml')) return null;
+
+  const base64Idx = svgDataUrl.indexOf(';base64,');
+  if (base64Idx !== -1) {
+    return atob(svgDataUrl.slice(base64Idx + 8));
+  }
+  const commaIdx = svgDataUrl.indexOf(',');
+  if (commaIdx === -1) return null;
+  return decodeURIComponent(svgDataUrl.slice(commaIdx + 1));
+}
+
+/**
+ * Extract width/height from an SVG data URL by parsing viewBox or width/height attributes.
+ * Returns null for non-SVG data URLs or when dimensions cannot be determined.
+ */
+export function parseSvgDimensions(svgDataUrl: string): { width: number; height: number } | null {
+  const svgText = decodeSvgDataUrl(svgDataUrl);
+  if (svgText === null) return null;
+
+  const widthMatch = svgText.match(/\bwidth=["']([.\d]+)/);
+  const heightMatch = svgText.match(/\bheight=["']([.\d]+)/);
+  if (widthMatch !== null && heightMatch !== null) {
+    return { width: Math.round(parseFloat(widthMatch[1])), height: Math.round(parseFloat(heightMatch[1])) };
+  }
+
+  const viewBoxMatch = svgText.match(/viewBox=["']\s*[\d.]+\s+[\d.]+\s+([\d.]+)\s+([\d.]+)/);
+  if (viewBoxMatch !== null) {
+    return { width: Math.round(parseFloat(viewBoxMatch[1])), height: Math.round(parseFloat(viewBoxMatch[2])) };
+  }
+
+  return null;
+}
+
 /**
  * Upscale an SVG data URL so the browser rasterizes it at high resolution.
  * SVGs loaded via `<img src>` are rasterized at their intrinsic dimensions
@@ -236,19 +271,9 @@ export function warpImageForBulge(
  * For non-SVG data URLs, returns the input unchanged with scaleApplied = 1.
  */
 export function upscaleSvgDataUrl(svgDataUrl: string, maxSize: number = 4000): { dataUrl: string; scaleApplied: number } {
-  if (!svgDataUrl.startsWith('data:image/svg+xml')) {
+  const svgText = decodeSvgDataUrl(svgDataUrl);
+  if (svgText === null) {
     return { dataUrl: svgDataUrl, scaleApplied: 1 };
-  }
-
-  // Decode SVG content from data URL
-  let svgText: string;
-  const base64Idx = svgDataUrl.indexOf(';base64,');
-  if (base64Idx !== -1) {
-    svgText = atob(svgDataUrl.slice(base64Idx + 8));
-  } else {
-    const commaIdx = svgDataUrl.indexOf(',');
-    if (commaIdx === -1) return { dataUrl: svgDataUrl, scaleApplied: 1 };
-    svgText = decodeURIComponent(svgDataUrl.slice(commaIdx + 1));
   }
 
   // Parse SVG document
@@ -304,19 +329,9 @@ export function upscaleSvgDataUrl(svgDataUrl: string, maxSize: number = 4000): {
  * Returns the input unchanged for non-SVG data URLs or when trimming is not possible.
  */
 export async function trimSvgWhitespace(svgDataUrl: string, padding: number = 1): Promise<string> {
-  if (!svgDataUrl.startsWith('data:image/svg+xml')) {
+  const svgText = decodeSvgDataUrl(svgDataUrl);
+  if (svgText === null) {
     return svgDataUrl;
-  }
-
-  // Decode SVG content from data URL
-  let svgText: string;
-  const base64Idx = svgDataUrl.indexOf(';base64,');
-  if (base64Idx !== -1) {
-    svgText = atob(svgDataUrl.slice(base64Idx + 8));
-  } else {
-    const commaIdx = svgDataUrl.indexOf(',');
-    if (commaIdx === -1) return svgDataUrl;
-    svgText = decodeURIComponent(svgDataUrl.slice(commaIdx + 1));
   }
 
   // Parse SVG document

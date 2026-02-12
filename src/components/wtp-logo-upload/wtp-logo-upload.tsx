@@ -3,7 +3,7 @@ import { LogoValidationConfig, LogoData, LogoValidationIssue, LogoMetadata, DEFA
 import { validateLogo } from '../../utils/logo-validation';
 import { removeBackground } from '../../utils/background-removal';
 import { generatePreviewDataUrl } from '../../utils/image-preview';
-import { trimSvgWhitespace } from '../../utils/canvas-helpers';
+import { trimSvgWhitespace, parseSvgDimensions } from '../../utils/canvas-helpers';
 
 interface BgRemovalChoice {
   originalDataUrl: string;
@@ -78,14 +78,24 @@ export class WtpLogoUpload {
 
       if (result.valid) {
         const rawDataUrl = await this.fileToDataUrl(file);
-        const dataUrl = result.metadata.format === 'svg'
-          ? await trimSvgWhitespace(rawDataUrl)
-          : rawDataUrl;
+        let dataUrl: string;
+        const metadata = result.metadata;
 
-        if (this.enableBackgroundRemoval && this.isRasterFormat(result.metadata.format)) {
-          this.addPendingChoice(dataUrl, result.metadata, file);
+        if (metadata.format === 'svg') {
+          dataUrl = await trimSvgWhitespace(rawDataUrl);
+          const trimmedDims = parseSvgDimensions(dataUrl);
+          if (trimmedDims !== null) {
+            metadata.width = trimmedDims.width;
+            metadata.height = trimmedDims.height;
+          }
         } else {
-          const logoData = await this.buildLogoData(dataUrl, result.metadata);
+          dataUrl = rawDataUrl;
+        }
+
+        if (this.enableBackgroundRemoval && this.isRasterFormat(metadata.format)) {
+          this.addPendingChoice(dataUrl, metadata, file);
+        } else {
+          const logoData = await this.buildLogoData(dataUrl, metadata);
           this.previews = [...this.previews, logoData];
           this.selectedIndex = this.previews.length - 1;
           this.wtpLogoValidated.emit(logoData);
