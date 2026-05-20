@@ -1,7 +1,8 @@
 // Mock jspdf since it requires browser globals (atob/btoa) unavailable in JSDOM
 jest.mock('jspdf', () => ({ jsPDF: class {} }));
 
-import { dataUrlToImageFormat, isSvgDataUrl, buildPdfConfig, PdfExportConfig } from './pdf-export';
+import { dataUrlToImageFormat, isSvgDataUrl, buildPdfConfig, PdfExportConfig, rasterizeDataUrl, exportProductPdf } from './pdf-export';
+import { LogoData, Article } from '../types';
 
 describe('pdf-export', () => {
   describe('dataUrlToImageFormat', () => {
@@ -81,6 +82,59 @@ describe('pdf-export', () => {
       const cfg = buildPdfConfig({});
       expect(cfg.pageFormat).toBe('a4');
       expect(cfg.title).toBe('Logo Print Specification');
+    });
+  });
+
+  describe('rasterizeDataUrl', () => {
+    it('returns PNG data URLs unchanged', async () => {
+      const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+      const result = await rasterizeDataUrl(png);
+      expect(result).toBe(png);
+    });
+
+    it('returns JPEG data URLs unchanged', async () => {
+      const jpeg = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAr=';
+      const result = await rasterizeDataUrl(jpeg);
+      expect(result).toBe(jpeg);
+    });
+
+    it('rejects when SVG cannot be rasterized', async () => {
+      // SVG without intrinsic dimensions skips the upscale branch (which would
+      // need XMLSerializer in production) and goes straight to new Image(),
+      // which throws in the spec env — exercising the SVG → image branch of
+      // rasterizeDataUrl in a way that's reliable under JSDOM/mock-doc.
+      const svg = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>');
+      await expect(rasterizeDataUrl(svg)).rejects.toThrow();
+    });
+  });
+
+  describe('exportProductPdf', () => {
+    it('throws a helpful error when jsPDF is not loaded globally', async () => {
+      const logo: LogoData = {
+        dataUrl: 'data:image/png;base64,iVBORw0KGgo=',
+        metadata: {
+          format: 'png',
+          width: 100,
+          height: 100,
+          dpiX: 300,
+          dpiY: 300,
+          fileSize: 1024,
+          hasTransparency: true,
+          fileName: 'logo.png',
+          mimeType: 'image/png',
+        },
+      };
+      const article: Article = {
+        id: 'A-1',
+        name: 'Test Article',
+        description: '',
+        views: [{ image: '', label: 'Front', printArea: null }],
+      };
+
+      // Window.jspdf is not set — getJsPDF() should throw
+      await expect(
+        exportProductPdf(logo, article, 0, logo.dataUrl, 800, 600),
+      ).rejects.toThrow(/jsPDF is required/);
     });
   });
 });

@@ -1,4 +1,4 @@
-import { generateObjectId, fitLogoToPrintArea, printAreaToPixelCorners, pixelCornersToPrintArea, legacyToPrintArea, defaultPrintArea, trimSvgWhitespace, isPixelPrintArea, normalizePrintArea } from './canvas-helpers';
+import { generateObjectId, fitLogoToPrintArea, printAreaToPixelCorners, pixelCornersToPrintArea, legacyToPrintArea, defaultPrintArea, trimSvgWhitespace, isPixelPrintArea, normalizePrintArea, parseSvgDimensions, upscaleSvgDataUrl } from './canvas-helpers';
 import { PrintArea, LegacyPrintArea } from '../types';
 
 // Canvas helpers rely on Fabric.js which requires a real canvas context.
@@ -165,25 +165,19 @@ describe('defaultPrintArea', () => {
 });
 
 describe('trimSvgWhitespace', () => {
+  // The trimming path needs XMLSerializer and a real getBBox() (browser-only);
+  // here we cover only the early-return cases that don't.
+
   it('returns non-SVG data URLs unchanged', async () => {
     const pngDataUrl = 'data:image/png;base64,iVBORw0KGgo=';
     const result = await trimSvgWhitespace(pngDataUrl);
     expect(result).toBe(pngDataUrl);
   });
 
-  it('returns SVG unchanged when getBBox returns zeros (JSDOM fallback)', async () => {
-    const svgContent = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="10" y="10" width="80" height="80"/></svg>';
-    const svgDataUrl = 'data:image/svg+xml;base64,' + btoa(svgContent);
-    // In JSDOM, getBBox() returns {x:0, y:0, width:0, height:0}, so the function should return the input unchanged
-    const result = await trimSvgWhitespace(svgDataUrl);
-    expect(result).toBe(svgDataUrl);
-  });
-
-  it('returns input unchanged for plain text (non-base64) SVG data URLs when getBBox returns zeros', async () => {
-    const svgContent = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><circle cx="100" cy="100" r="50"/></svg>';
-    const svgDataUrl = 'data:image/svg+xml,' + encodeURIComponent(svgContent);
-    const result = await trimSvgWhitespace(svgDataUrl);
-    expect(result).toBe(svgDataUrl);
+  it('returns plain HTTP URLs unchanged (decodeSvgDataUrl returns null)', async () => {
+    const url = 'https://example.com/logo.svg';
+    const result = await trimSvgWhitespace(url);
+    expect(result).toBe(url);
   });
 });
 
@@ -329,5 +323,84 @@ describe('fitLogoToPrintArea', () => {
     // width=160px, height=120px, logo=320x120 → scale=min(160/320,120/120)=0.5
     expect(result.scaleX).toBe(0.5);
     expect(result.scaleY).toBe(0.5);
+  });
+});
+
+describe('parseSvgDimensions', () => {
+  it('returns null for non-SVG data URLs', () => {
+    expect(parseSvgDimensions('data:image/png;base64,iVBORw0KGgo=')).toBeNull();
+    expect(parseSvgDimensions('https://example.com/logo.svg')).toBeNull();
+  });
+
+  it('extracts width and height from explicit attributes', () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80"><rect/></svg>';
+    const url = 'data:image/svg+xml;base64,' + btoa(svg);
+    expect(parseSvgDimensions(url)).toEqual({ width: 120, height: 80 });
+  });
+
+  it('extracts width and height from URI-encoded SVG (no base64)', () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"></svg>';
+    const url = 'data:image/svg+xml,' + encodeURIComponent(svg);
+    expect(parseSvgDimensions(url)).toEqual({ width: 64, height: 64 });
+  });
+
+  it('rounds fractional pixel dimensions', () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="100.7" height="50.4"/>';
+    const url = 'data:image/svg+xml;base64,' + btoa(svg);
+    expect(parseSvgDimensions(url)).toEqual({ width: 101, height: 50 });
+  });
+
+  it('falls back to viewBox when width/height are missing', () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 150"/>';
+    const url = 'data:image/svg+xml;base64,' + btoa(svg);
+    expect(parseSvgDimensions(url)).toEqual({ width: 200, height: 150 });
+  });
+
+  it('returns null when neither dimensions nor viewBox are present', () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>';
+    const url = 'data:image/svg+xml;base64,' + btoa(svg);
+    expect(parseSvgDimensions(url)).toBeNull();
+  });
+
+  it('prefers width/height over viewBox when both exist', () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 200 200"/>';
+    const url = 'data:image/svg+xml;base64,' + btoa(svg);
+    expect(parseSvgDimensions(url)).toEqual({ width: 50, height: 50 });
+  });
+});
+
+describe('upscaleSvgDataUrl', () => {
+  // The full upscale path needs a working XMLSerializer (browser-only).
+  // These tests cover the pure early-return paths that don't require it;
+  // the actual transformation is verified via e2e.
+
+  it('returns non-SVG data URLs unchanged with scale 1', () => {
+    const png = 'data:image/png;base64,iVBORw0KGgo=';
+    const result = upscaleSvgDataUrl(png);
+    expect(result.dataUrl).toBe(png);
+    expect(result.scaleApplied).toBe(1);
+  });
+
+  it('returns SVG unchanged when intrinsic dimensions cannot be determined', () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>';
+    const url = 'data:image/svg+xml;base64,' + btoa(svg);
+    const result = upscaleSvgDataUrl(url);
+    expect(result.dataUrl).toBe(url);
+    expect(result.scaleApplied).toBe(1);
+  });
+
+  it('skips upscaling when SVG already exceeds maxSize', () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="5000" height="5000"/>';
+    const url = 'data:image/svg+xml;base64,' + btoa(svg);
+    const result = upscaleSvgDataUrl(url, 4000);
+    expect(result.dataUrl).toBe(url);
+    expect(result.scaleApplied).toBe(1);
+  });
+
+  it('returns unchanged for completely unparseable input', () => {
+    const url = 'data:image/svg+xml;base64,' + btoa('not actually svg');
+    const result = upscaleSvgDataUrl(url);
+    expect(result.scaleApplied).toBe(1);
+    expect(result.dataUrl).toBe(url);
   });
 });

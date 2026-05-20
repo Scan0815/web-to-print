@@ -313,13 +313,17 @@ export function upscaleSvgDataUrl(svgDataUrl: string, maxSize: number = 4000): {
     return { dataUrl: svgDataUrl, scaleApplied: 1 };
   }
 
-  // Parse SVG document
+  // Parse SVG document. Real browsers return the SVG as documentElement when
+  // parsing image/svg+xml; some environments (mock-doc, fallback parsers) wrap
+  // it in <html><body>, so probe both.
   const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
-  const svgEl = doc.documentElement;
-  if (svgEl.tagName !== 'svg') return { dataUrl: svgDataUrl, scaleApplied: 1 };
+  const svgEl = doc.documentElement.tagName.toLowerCase() === 'svg'
+    ? doc.documentElement
+    : doc.querySelector('svg');
+  if (svgEl === null) return { dataUrl: svgDataUrl, scaleApplied: 1 };
 
   // Determine intrinsic dimensions from viewBox or width/height attributes
-  const viewBox = svgEl.getAttribute('viewBox');
+  const viewBox = svgEl.getAttribute('viewBox') ?? svgEl.getAttribute('viewbox');
   let intrinsicW: number;
   let intrinsicH: number;
 
@@ -348,6 +352,9 @@ export function upscaleSvgDataUrl(svgDataUrl: string, maxSize: number = 4000): {
   svgEl.setAttribute('height', String(targetH));
   if (viewBox === null) {
     svgEl.setAttribute('viewBox', `0 0 ${intrinsicW} ${intrinsicH}`);
+  } else if (svgEl.getAttribute('viewBox') === null) {
+    // mock-doc lowercases attribute names; re-set with canonical case for serialization
+    svgEl.setAttribute('viewBox', viewBox);
   }
 
   // Serialize and re-encode as base64 data URL
@@ -371,10 +378,13 @@ export async function trimSvgWhitespace(svgDataUrl: string, padding: number = 1)
     return svgDataUrl;
   }
 
-  // Parse SVG document
+  // Parse SVG document. See upscaleSvgDataUrl for the documentElement vs
+  // querySelector('svg') rationale.
   const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
-  const svgEl = doc.documentElement;
-  if (svgEl.tagName !== 'svg') return svgDataUrl;
+  const svgEl = doc.documentElement.tagName.toLowerCase() === 'svg'
+    ? doc.documentElement
+    : doc.querySelector('svg');
+  if (svgEl === null) return svgDataUrl;
 
   // Insert SVG offscreen to enable getBBox()
   const container = document.createElement('div');
