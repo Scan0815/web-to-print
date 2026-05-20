@@ -35,6 +35,14 @@
     "dist/",
     "loader/"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Scan0815/web-to-print.git"
+  },
+  "homepage": "https://github.com/Scan0815/web-to-print#readme",
+  "bugs": {
+    "url": "https://github.com/Scan0815/web-to-print/issues"
+  },
   "scripts": {
     "build": "stencil build",
     "start": "node scripts/image-proxy.mjs & stencil build --dev --watch --serve",
