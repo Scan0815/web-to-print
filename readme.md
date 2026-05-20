@@ -416,6 +416,30 @@ npx stencil test --spec -- src/utils/format-detection.spec.ts
 npm run lint
 ```
 
+## Release
+
+Releases are published to npm via a GitHub Action (`.github/workflows/release.yml`). Two flows are supported:
+
+### Option A — local version bump (recommended)
+
+```bash
+npm run release:patch   # 0.1.0 → 0.1.1
+npm run release:minor   # 0.1.0 → 0.2.0
+npm run release:major   # 0.1.0 → 1.0.0
+```
+
+Each script bumps `package.json`, creates a `v<version>` git tag, and pushes both. The GitHub Action then runs tests, builds, publishes to npm (with [provenance attestation](https://docs.npmjs.com/generating-provenance-statements)), and creates a GitHub Release with auto-generated notes.
+
+### Option B — manual via GitHub UI
+
+Trigger the **Release** workflow from the Actions tab with a bump (`patch`/`minor`/`major`) or an explicit version like `1.2.3`. The workflow performs the bump, commit, tag, and push, then publishes.
+
+### Prerequisites
+
+1. **`NPM_TOKEN`** secret on the repo (Settings → Secrets and variables → Actions). Create an [automation token](https://docs.npmjs.com/creating-and-viewing-access-tokens) on npmjs.com that allows publish.
+2. The package name in `package.json` must be available on npm (or use a scoped name like `@your-org/web-to-print`). Provenance requires the workflow to run on a public repo, so make sure the repo is public when publishing.
+3. The workflow skips publish if the same `name@version` already exists on npm — no need to manually guard against accidental re-runs.
+
 ## Project Structure
 
 ```
