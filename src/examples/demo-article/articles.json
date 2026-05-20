@@ -1,438 +1,3519 @@
 [
   {
-    "id": "tasse",
-    "name": "Ceramic Mug",
-    "description": "Classic ceramic mug, 330 ml",
+    "id": "pascal-360-ml-keramikbecher",
+    "name": "Pascal 360 ml Keramikbecher",
+    "description": "Keramikbecher mit unglasiertem Boden. Spülmaschinenfest EN12875-1 konform (bei bis zu 125 Waschvorgängen) für alle Werbeanbringungsmethoden. Das Fassungsvermögen beträgt 360 ml. Präsentiert in einer weißen Geschenkschachtel.",
     "views": [
       {
-        "image": "tasse.webp",
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10054000_1_4804_1041.png",
         "label": "Front",
         "printArea": {
           "topLeft": {
-            "x": 0.2775,
-            "y": 0.505
+            "x": 447,
+            "y": 255
           },
           "topRight": {
-            "x": 0.7175,
-            "y": 0.5
+            "x": 1338,
+            "y": 255
           },
           "bottomRight": {
-            "x": 0.7125,
-            "y": 0.8283333333333334
+            "x": 1338,
+            "y": 1245
           },
           "bottomLeft": {
-            "x": 0.2775,
-            "y": 0.8283333333333334
-          },
-          "bulge": -0.05907819330176169
-        }
-      },
+            "x": 447,
+            "y": 1245
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Tampondruck",
+        "impLocation": "Vorderseite",
+        "maxColours": 4,
+        "impWidthMm": 45,
+        "impHeightMm": 50,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "standard-300-ml-kunststoffbecher",
+    "name": "Standard 300 ml Kunststoffbecher",
+    "description": "Strapazierfähiger, einwandiger Kunststoffbecher. Das Fassungsvermögen beträgt 300 ml. Hergestellt in Großbritannien.",
+    "views": [
       {
-        "image": "tasse-2.webp",
-        "label": "Side",
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/21001400_3_1171_441_uk.png",
+        "label": "Wrap",
         "printArea": {
           "topLeft": {
-            "x": 0.13740489180506038,
-            "y": 0.39822625983068394
+            "x": 20,
+            "y": 110
           },
           "topRight": {
-            "x": 0.635,
-            "y": 0.40166666666666667
+            "x": 1924,
+            "y": 110
           },
           "bottomRight": {
-            "x": 0.65,
-            "y": 0.79
+            "x": 1924,
+            "y": 850
           },
           "bottomLeft": {
-            "x": 0.14000000000000004,
-            "y": 0.7883333333333333
+            "x": 20,
+            "y": 850
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Rundum-Siebdruck",
+        "impLocation": "rundum",
+        "maxColours": 4,
+        "impWidthMm": 173,
+        "impHeightMm": 67,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "riviera-340-ml-keramikbecher",
+    "name": "Riviera 340 ml Keramikbecher",
+    "description": "Der Riviera Becher ist mit seiner matten Außenfläche und dem Farbakzent auf der Innenseite ein echter Blickfang in jeder Wohnung oder im Büro. Der robuste und dennoch fröhliche Becher fasst bis zu 340 ml Heißgetränke und ist aus Keramik gefertigt. Der Keramikbecher Riviera (einschließlich Aufdruck) ist gemäß EN12875-1 für mindestens 125 Spülgänge spülmaschinenfest. ",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10047600_1_4804_552.png",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 516,
+            "y": 441
           },
-          "bulge": -0.07183877296236847
-        }
+          "topRight": {
+            "x": 1317,
+            "y": 441
+          },
+          "bottomRight": {
+            "x": 1317,
+            "y": 1441
+          },
+          "bottomLeft": {
+            "x": 516,
+            "y": 1441
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Tampondruck",
+        "impLocation": "Vorderseite",
+        "maxColours": 4,
+        "impWidthMm": 40,
+        "impHeightMm": 50,
+        "impDiameterMm": 0
       },
       {
-        "image": "tasse-3.webp",
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10047600_1_4805_575.png",
         "label": "Back",
         "printArea": {
           "topLeft": {
-            "x": 0.0875,
-            "y": 0.29
+            "x": 1094,
+            "y": 440
           },
           "topRight": {
-            "x": 0.595,
-            "y": 0.29
+            "x": 1878,
+            "y": 440
           },
           "bottomRight": {
-            "x": 0.6075,
-            "y": 0.6833333333333333
+            "x": 1878,
+            "y": 1420
           },
           "bottomLeft": {
-            "x": 0.0875,
-            "y": 0.6933333333333334
+            "x": 1094,
+            "y": 1420
           }
-        }
-      }
-    ]
-  },
-  {
-    "id": "panorama-emaille-tasse",
-    "name": "Panorama Enamel Mug",
-    "description": "Enamel mug with panorama print area",
-    "views": [
-      {
-        "image": "panorama-emaille-tasse.webp",
-        "label": "Front",
-        "printArea": {
-          "topLeft": {
-            "x": 0.1325,
-            "y": 0.43166666666666664
-          },
-          "topRight": {
-            "x": 0.68,
-            "y": 0.43
-          },
-          "bottomRight": {
-            "x": 0.6925,
-            "y": 0.7666666666666667
-          },
-          "bottomLeft": {
-            "x": 0.1375,
-            "y": 0.765
-          },
-          "bulge": -0.08315499392877722
-        }
-      }
-    ]
-  },
-  {
-    "id": "thermobecher-mit-tragegriff",
-    "name": "Travel Mug",
-    "description": "Insulated travel mug with carry handle",
-    "views": [
-      {
-        "image": "thermobecher-mit-tragegriff.webp",
-        "label": "Front",
-        "printArea": {
-          "topLeft": {
-            "x": 0.20234928541288774,
-            "y": 0.290954373683169
-          },
-          "topRight": {
-            "x": 0.665,
-            "y": 0.2816666666666667
-          },
-          "bottomRight": {
-            "x": 0.6675,
-            "y": 0.5933333333333334
-          },
-          "bottomLeft": {
-            "x": 0.2025,
-            "y": 0.5933333333333334
-          },
-          "bulge": -0.08315499392877722
-        }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Tampondruck",
+        "impLocation": "Rückseite",
+        "maxColours": 4,
+        "impWidthMm": 40,
+        "impHeightMm": 50,
+        "impDiameterMm": 0
       },
       {
-        "image": "thermobecher-mit-tragegriff-2.webp",
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10047600_3_1284_1377.png",
+        "label": "Wrap",
+        "printArea": {
+          "topLeft": {
+            "x": 20,
+            "y": 253
+          },
+          "topRight": {
+            "x": 2380,
+            "y": 253
+          },
+          "bottomRight": {
+            "x": 2380,
+            "y": 634
+          },
+          "bottomLeft": {
+            "x": 20,
+            "y": 634
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Rundum-Siebdruck",
+        "impLocation": "rundum",
+        "maxColours": 1,
+        "impWidthMm": 155,
+        "impHeightMm": 25,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "sanibel-400-ml-isolierbecher",
+    "name": "Sanibel 400 ml Isolierbecher",
+    "description": "Sanibel ist der perfekte Becher für Unterwegs. Der Becher hat eine doppelte Isolierwand, die Getränke lange warm hält. Mit dem aufdrehbaren Schiebedeckel lassen sich bis zu 400 ml Getränke bequem trinken. Außerdem sorgt der Griff mit der ergonomischen Daumenauflage für einen guten Halt. Der Sanibel Becher besteht aus rostfreiem Stahl und schwarzem Kunststoff, was ihn sehr robust, korrosionsbeständig und leicht zu reinigen macht.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10029600_1_4804_1233.png",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 332,
+            "y": 650
+          },
+          "topRight": {
+            "x": 827,
+            "y": 650
+          },
+          "bottomRight": {
+            "x": 827,
+            "y": 1083
+          },
+          "bottomLeft": {
+            "x": 332,
+            "y": 1083
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Tampondruck",
+        "impLocation": "Vorderseite",
+        "maxColours": 4,
+        "impWidthMm": 40,
+        "impHeightMm": 35,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10029600_1_4805_1233.png",
         "label": "Back",
         "printArea": {
           "topLeft": {
-            "x": 0.355,
-            "y": 0.405
+            "x": 898,
+            "y": 712
           },
           "topRight": {
-            "x": 0.6375,
-            "y": 0.4066666666666667
+            "x": 1419,
+            "y": 712
           },
           "bottomRight": {
-            "x": 0.6375,
-            "y": 0.62
+            "x": 1419,
+            "y": 1168
           },
           "bottomLeft": {
-            "x": 0.36,
-            "y": 0.6183333333333333
+            "x": 898,
+            "y": 1168
           }
-        }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Tampondruck",
+        "impLocation": "Rückseite",
+        "maxColours": 4,
+        "impWidthMm": 40,
+        "impHeightMm": 35,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10029600_3_1284_1235.png",
+        "label": "Wrap",
+        "printArea": {
+          "topLeft": {
+            "x": 20,
+            "y": 821
+          },
+          "topRight": {
+            "x": 1655,
+            "y": 821
+          },
+          "bottomRight": {
+            "x": 1655,
+            "y": 1213
+          },
+          "bottomLeft": {
+            "x": 20,
+            "y": 1213
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Rundum-Siebdruck",
+        "impLocation": "rundum",
+        "maxColours": 1,
+        "impWidthMm": 125,
+        "impHeightMm": 30,
+        "impDiameterMm": 0
       }
     ]
   },
   {
-    "id": "maenner-premium-bio-t-shirt",
-    "name": "Men's Premium T-Shirt",
-    "description": "Organic cotton premium t-shirt",
+    "id": "bronx-900-ml-rcs-zertifizierter-kupfer-vakuum-isolierbecher",
+    "name": "Bronx 900 ml RCS-zertifizierter Kupfer-Vakuum Isolierbecher aus Edelstahl mit Doppelfunktionsdeckel",
+    "description": "Der Bronx 900 ml Becher ist aus RCS-zertifiziertem Edelstahl gefertigt und verfügt über eine doppelwandige Vakuumkonstruktion mit Kupferisolierung. Die doppelwandige Isolierung hält Ihr Getränk bis zu 12 Stunden warm oder 48 Stunden kalt. Der Deckel hat eine Doppelfunktion: einen ausklappbaren Trinkhalm zum bequemen Trinken und eine Flip-Top-Öffnung mit praktischem Klappgriff für den einfachen Transport. Für die meisten Getränkehalter im Auto geeignet. Verpackt in einer Geschenkbox aus Recyclingkarton. ",
     "views": [
       {
-        "image": "maenner-premium-bio-t-shirt.webp",
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10086401_6_7002_2133.png",
         "label": "Front",
         "printArea": {
           "topLeft": {
-            "x": 0.3734986213182011,
-            "y": 0.34073636429950577
+            "x": 417,
+            "y": 607
           },
           "topRight": {
-            "x": 0.665,
-            "y": 0.3383333333333333
+            "x": 692,
+            "y": 607
           },
           "bottomRight": {
-            "x": 0.6675,
-            "y": 0.5633333333333334
+            "x": 692,
+            "y": 1249
           },
           "bottomLeft": {
-            "x": 0.3734986213182011,
-            "y": 0.5588467390678172
-          },
-          "bulge": -0.07917833800186741
-        }
+            "x": 417,
+            "y": 1249
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Lasergravur",
+        "impLocation": "Vorderseite",
+        "maxColours": 1,
+        "impWidthMm": 30,
+        "impHeightMm": 70,
+        "impDiameterMm": 0
       },
       {
-        "image": "maenner-premium-bio-t-shirt-2.webp",
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10086401_3_1175_2334.png",
+        "label": "Wrap",
+        "printArea": {
+          "topLeft": {
+            "x": 20,
+            "y": 607
+          },
+          "topRight": {
+            "x": 1578,
+            "y": 607
+          },
+          "bottomRight": {
+            "x": 1578,
+            "y": 1249
+          },
+          "bottomLeft": {
+            "x": 20,
+            "y": 1249
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Rundum-Siebdruck",
+        "impLocation": "rundum",
+        "maxColours": 1,
+        "impWidthMm": 170,
+        "impHeightMm": 70,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "cove-1-5-l-vakuum-isolierflasche",
+    "name": "Cove 1,5 l Vakuum-Isolierflasche",
+    "description": "Extra große Vakuum-Isolierflasche aus Edelstahl im kultigen Design mit komfortablem Griff zum einfachen Tragen. BPA-frei, geprüft und zugelassen nach dem deutschen Lebensmittelrecht (LFGB). Auf Phthalate geprüft und zugelassen gemäß den REACH-Vorschriften. Das Volumen beträgt 1,5 Liter. Handwäsche empfohlen. Verpackt in einer Geschenkbox aus Recyclingkarton. Hält Getränke 12 Stunden heiß und 48 Stunden kalt.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10071001_1_6039_552.png",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 293,
+            "y": 1227
+          },
+          "topRight": {
+            "x": 505,
+            "y": 1227
+          },
+          "bottomRight": {
+            "x": 505,
+            "y": 1721
+          },
+          "bottomLeft": {
+            "x": 293,
+            "y": 1721
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Tampondruck",
+        "impLocation": "Vorderseite",
+        "maxColours": 4,
+        "impWidthMm": 30,
+        "impHeightMm": 70,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10071001_3_1175_441.png",
+        "label": "Wrap",
+        "printArea": {
+          "topLeft": {
+            "x": 20,
+            "y": 1097
+          },
+          "topRight": {
+            "x": 1925,
+            "y": 1097
+          },
+          "bottomRight": {
+            "x": 1925,
+            "y": 1873
+          },
+          "bottomLeft": {
+            "x": 20,
+            "y": 1873
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Rundum-Siebdruck",
+        "impLocation": "rundum",
+        "maxColours": 1,
+        "impWidthMm": 270,
+        "impHeightMm": 110,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "americano-switch-renew-becher-mit-deckel-300-ml",
+    "name": "Americano® Switch Renew Becher mit Deckel 300 ml",
+    "description": "Der einwandige Becher Americano® Switch Renew ist der perfekte Becher für den Kaffeegenuss unterwegs. Er hat ein Fassungsvermögen von 300 ml und einen sicheren Stülpdeckel und ist der ideale Ersatz für Einweg-Kaffeebecher. Der Becher enthält 25 % Kunststoff, der aus Zuckerrohr gewonnen wird, wodurch der Bedarf an neuem Kunststoff reduziert wird. Spülmaschinenfest, mikrowellenfest und BPA-frei. Als Teil der Americano® Switch-Familie können Sie Ihren Becher durch Hinzufügen eines Deckels und eines Griffs nach Belieben individuell gestalten. Hergestellt in UK. Verpackt in einem recycelten PE-Kunststoffbeutel.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/21028102_3_5179_441_uk.png",
+        "label": "Wrap",
+        "printArea": {
+          "topLeft": {
+            "x": 20,
+            "y": 520
+          },
+          "topRight": {
+            "x": 2380,
+            "y": 520
+          },
+          "bottomRight": {
+            "x": 2380,
+            "y": 1188
+          },
+          "bottomLeft": {
+            "x": 20,
+            "y": 1188
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Rundum-Siebdruck",
+        "impLocation": "rundum",
+        "maxColours": 4,
+        "impWidthMm": 212,
+        "impHeightMm": 60,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "ocean-bottle-350-ml-vakuumisolierter-reisebecher",
+    "name": "Ocean Bottle 350 ml vakuumisolierter Reisebecher",
+    "description": "Der Ocean Bottle 350 ml Reisebecher ist doppelwandig isoliert und hält Getränke bis zu vier Stunden heiß und bis zu zehn Stunden kalt. Jeder Reisebecher ist CO₂-neutral und finanziert die Sammlung von 1.000 Plastikflaschen, um die Lebensbedingungen in Küstengemeinden zu verbessern. Der Becher besteht zu 90 % aus recyceltem Edelstahl und anderen recycelten Materialien. Verpackt in einer Geschenkbox aus verantwortungsvoll hergestellten Recyclingkarton.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10081782_6_4805_4531.png",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 748,
+            "y": 1140
+          },
+          "topRight": {
+            "x": 957,
+            "y": 1140
+          },
+          "bottomRight": {
+            "x": 957,
+            "y": 1556
+          },
+          "bottomLeft": {
+            "x": 748,
+            "y": 1556
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Lasergravur",
+        "impLocation": "Vorderseite",
+        "maxColours": 1,
+        "impWidthMm": 20,
+        "impHeightMm": 40,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "brite-americano-espresso-250-ml-isolierbecher-mit-auslaufsic",
+    "name": "Brite-Americano® Espresso 250 ml Isolierbecher mit auslaufsicherem Schraubverschluss",
+    "description": "Kompakter, doppelwandiger Isolierbecher mit Schraubverschluss. Die äußere Schicht des Bechers ist aus recyceltem Kunststoff hergestellt. Trinköffnung mit Clip verhindert auslaufen und schließt ohne Silikon. Passt unter die meisten Kaffeemaschinen. Der Becher verfügt über ein vollfarbiges, umlaufendes Design, das an das Produkt angepasst ist – für Strapazierfähigkeit und Haltbarkeit. EN12875-1 konform; spülmaschinen- und mikrowellenfest. Das Fassungsvermögen beträgt 250 ml. Mischen und kombinieren Sie Farben, um Ihren perfekten Becher zu kreieren. Kontaktieren Sie uns für weitere Farboptionen. Hergestellt in Großbritannien. BPA-frei.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/21009100_30_5178_441_uk.png",
+        "label": "Wrap",
+        "printArea": {
+          "topLeft": {
+            "x": 20,
+            "y": 254
+          },
+          "topRight": {
+            "x": 2380,
+            "y": 254
+          },
+          "bottomRight": {
+            "x": 2380,
+            "y": 1168
+          },
+          "bottomLeft": {
+            "x": 20,
+            "y": 1168
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "In-Mould Verfahren",
+        "impLocation": "rundum",
+        "maxColours": "full color",
+        "impWidthMm": 248,
+        "impHeightMm": 96,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "h2o-active-treble-750-ml-sportflasche-mit-ausgussdeckel",
+    "name": "H2O Active® Treble 750 ml Sportflasche mit Ausgussdeckel",
+    "description": "Einwandige Sportflasche mit geripptem Design. Verfügt über einen auslaufsicheren Deckel zum Klappen Das Fassungsvermögen beträgt 750 ml. Mischen und kombinieren Sie Farben, um Ihre perfekte Flasche zu kreieren. Kontaktieren Sie uns bezüglich weiterer Farboptionen. Hergestellt in Großbritannien. Verpackt in einem recycelten PE-Kunststoffbeutel. BPA-frei.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/21087700_3_5179_441_uk.png",
+        "label": "Wrap",
+        "printArea": {
+          "topLeft": {
+            "x": 20,
+            "y": 603
+          },
+          "topRight": {
+            "x": 1835,
+            "y": 603
+          },
+          "bottomRight": {
+            "x": 1835,
+            "y": 1251
+          },
+          "bottomLeft": {
+            "x": 20,
+            "y": 1251
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Rundum-Siebdruck",
+        "impLocation": "rundum",
+        "maxColours": 4,
+        "impWidthMm": 210,
+        "impHeightMm": 75,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "h2o-active-bop-500-ml-sportflasche-mit-ausgussdeckel",
+    "name": "H2O Active® Bop 500 ml Sportflasche mit Ausgussdeckel",
+    "description": "Einwandige Sportflasche mit integriertem Fingergriff-Design. Die Flasche ist aus recycelbarem PET-Material hergestellt. Verfügt über einen auslaufsicheren Deckel mit klappbarer Tülle. Sowohl die Flasche als auch der Deckel werden in Großbritannien hergestellt. Das Fassungsvermögen beträgt 500 ml. Mischen und kombinieren Sie Farben, um Ihre perfekte Flasche zu kreieren. Verpackt in einem recycelten PE-Kunststoffbeutel. BPA-frei.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/21088300_3_5179_441_uk.png",
+        "label": "Wrap",
+        "printArea": {
+          "topLeft": {
+            "x": 20,
+            "y": 1015
+          },
+          "topRight": {
+            "x": 1092,
+            "y": 1015
+          },
+          "bottomRight": {
+            "x": 1092,
+            "y": 1954
+          },
+          "bottomLeft": {
+            "x": 20,
+            "y": 1954
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Rundum-Siebdruck",
+        "impLocation": "rundum",
+        "maxColours": 4,
+        "impWidthMm": 80,
+        "impHeightMm": 70,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "h2o-active-tempo-700-ml-sportflasche-mit-ausgussdeckel",
+    "name": "H2O Active® Tempo 700 ml Sportflasche mit Ausgussdeckel",
+    "description": "Einwandige Sportflasche mit einem stylischen, schlanken Design. Die Flasche ist aus recycelbarem PET-Material hergestellt. Verfügt über einen auslaufsicheren Deckel mit klappbarer Tülle. Das Fassungsvermögen beträgt 700 ml. Mischen und kombinieren Sie Farben, um Ihre perfekte Flasche zu kreieren. Kontaktieren Sie den Kundendienst für weitere Farboptionen. Hergestellt in Großbritannien. Verpackt in einem recycelten PE-Kunststoffbeutel. BPA-frei.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/21004000_3_5286_441_uk.png",
+        "label": "Wrap",
+        "printArea": {
+          "topLeft": {
+            "x": 20,
+            "y": 575
+          },
+          "topRight": {
+            "x": 1979,
+            "y": 575
+          },
+          "bottomRight": {
+            "x": 1979,
+            "y": 1322
+          },
+          "bottomLeft": {
+            "x": 20,
+            "y": 1322
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Rundum-Siebdruck",
+        "impLocation": "rundum",
+        "maxColours": 4,
+        "impWidthMm": 210,
+        "impHeightMm": 80,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/21004000_35_5286_43_uk.png",
+        "label": "Wrap 2",
+        "printArea": {
+          "topLeft": {
+            "x": 20,
+            "y": 544
+          },
+          "topRight": {
+            "x": 2171,
+            "y": 544
+          },
+          "bottomRight": {
+            "x": 2171,
+            "y": 1340
+          },
+          "bottomLeft": {
+            "x": 20,
+            "y": 1340
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "360 Digitaldruck",
+        "impLocation": "rundum",
+        "maxColours": "full color",
+        "impWidthMm": 230,
+        "impHeightMm": 85,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "mepal-twist-600-ml-thermo-sportflasche",
+    "name": "Mepal Twist 600 ml Thermo-Sportflasche",
+    "description": "Die Twist Sportflasche hält Getränke bis zu 6 Stunden warm oder bis zu 10 Stunden kalt. Sie verfügt über einen integrierten Strohhalm, der sich durch einfaches Drehen hervorbringen lässt, sowie über eine praktische Trageschlaufe. Auslaufsicher und spülmaschinengeeignet. BPA frei.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10091001_6_6861_1042.png",
         "label": "Back",
         "printArea": {
           "topLeft": {
-            "x": 0.300737885462555,
-            "y": 0.2926505139500729
+            "x": 472,
+            "y": 1068
           },
           "topRight": {
-            "x": 0.7,
-            "y": 0.295
+            "x": 717,
+            "y": 1068
           },
           "bottomRight": {
-            "x": 0.6975,
-            "y": 0.5
+            "x": 717,
+            "y": 2144
           },
           "bottomLeft": {
-            "x": 0.300737885462555,
-            "y": 0.49925844346549164
+            "x": 472,
+            "y": 2144
           }
-        }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Lasergravur",
+        "impLocation": "Rückseite",
+        "maxColours": 1,
+        "impWidthMm": 25,
+        "impHeightMm": 110,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10091001_41_6486_1377.png",
+        "label": "Wrap",
+        "printArea": {
+          "topLeft": {
+            "x": 20,
+            "y": 1100
+          },
+          "topRight": {
+            "x": 2339,
+            "y": 1100
+          },
+          "bottomRight": {
+            "x": 2339,
+            "y": 1687
+          },
+          "bottomLeft": {
+            "x": 20,
+            "y": 1687
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "360 Lasergravur rundum",
+        "impLocation": "rundum",
+        "maxColours": 1,
+        "impWidthMm": 237,
+        "impHeightMm": 60,
+        "impDiameterMm": 0
       }
     ]
   },
   {
-    "id": "stoffbeutel",
-    "name": "Tote Bag",
-    "description": "Cotton canvas tote bag",
+    "id": "stanley-350-ml-all-day-slim-flasche",
+    "name": "Stanley 350 ml All Day Slim Flasche",
+    "description": "Die Stanley 350 ml All Day Slim Flasche wurde für die ganztägige Flüssigkeitsversorgung entwickelt und vereint Komfort und Leistung. Sie besteht zu 90% aus recyceltem Edelstahl und hat eine zweigeteilte Öffnung – eine zum bequemen Trinken – die andere zum Einfüllen von Eis und zur einfachen Reinigung. Der Hals besteht aus einwandigem Edelstahl mit einem Kunststoffgewinde und einer sicheren, komprimierten Dichtung, die ein Auslaufen verhindert. Der doppelwandige Behälter ist vakuumisoliert. So bleiben Ihre Getränke stundenlang optimal temperiert. Die langlebige und durchdachte Konstruktion macht sie zur idealen Thermoflasche für unterwegs.",
     "views": [
       {
-        "image": "stoffbeutel.webp",
-        "label": "Front",
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10088310_35_6486_1042.png",
+        "label": "Wrap",
         "printArea": {
           "topLeft": {
-            "x": 0.28789943904359055,
-            "y": 0.46809788186180695
+            "x": 20,
+            "y": 1151
           },
           "topRight": {
-            "x": 0.6875,
-            "y": 0.465
+            "x": 1080,
+            "y": 1151
           },
           "bottomRight": {
-            "x": 0.69,
-            "y": 0.7366666666666667
+            "x": 1080,
+            "y": 2104
           },
           "bottomLeft": {
-            "x": 0.295,
-            "y": 0.7333333333333333
+            "x": 20,
+            "y": 2104
           }
-        }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "360 Digitaldruck",
+        "impLocation": "rundum",
+        "maxColours": "full color",
+        "impWidthMm": 100,
+        "impHeightMm": 90,
+        "impDiameterMm": 0
       },
       {
-        "image": "stoffbeutel-2.webp",
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10088310_1_6486_1042.png",
         "label": "Back",
         "printArea": {
           "topLeft": {
-            "x": 0.2375,
-            "y": 0.605
+            "x": 202,
+            "y": 1229
           },
           "topRight": {
-            "x": 0.585,
-            "y": 0.5233333333333333
+            "x": 521,
+            "y": 1229
           },
           "bottomRight": {
-            "x": 0.6775,
-            "y": 0.7483333333333333
+            "x": 521,
+            "y": 1971
           },
           "bottomLeft": {
-            "x": 0.3275,
-            "y": 0.8183333333333334
+            "x": 202,
+            "y": 1971
           }
-        }
-      },
-      {
-        "image": "stoffbeutel-3.webp",
-        "label": "Detail",
-        "printArea": {
-          "topLeft": {
-            "x": 0.2975,
-            "y": 0.515
-          },
-          "topRight": {
-            "x": 0.7275,
-            "y": 0.515
-          },
-          "bottomRight": {
-            "x": 0.7225,
-            "y": 0.8066666666666666
-          },
-          "bottomLeft": {
-            "x": 0.2975,
-            "y": 0.8083333333333333
-          }
-        }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Tampondruck",
+        "impLocation": "Rückseite",
+        "maxColours": 4,
+        "impWidthMm": 30,
+        "impHeightMm": 70,
+        "impDiameterMm": 0
       }
     ]
   },
   {
-    "id": "midweight-recycelter-stoffbeutel-von-stanleystella",
-    "name": "Stanley/Stella Recycled Tote",
-    "description": "Midweight recycled tote bag by Stanley/Stella",
+    "id": "mepal-ellipse-500-ml-thermoflasche",
+    "name": "Mepal Ellipse 500 ml Thermoflasche",
+    "description": "Die 500 ml Ellipse Isolierflasche aus Edelstahl hält Getränke bis zu 12 Stunden heiß oder 24 Stunden kalt – ideal für Reisen oder den Arbeitsweg. Die Flasche ist BPA-frei, auslaufsicher und spülmaschinengeeignet. Auch für kohlensäurehaltige Getränke geeignet.",
     "views": [
       {
-        "image": "midweight-recycelter-stoffbeutel-von-stanleystella.webp",
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10090952_6_6860_1041.png",
         "label": "Front",
         "printArea": {
           "topLeft": {
-            "x": 0.2175,
-            "y": 0.49833333333333335
+            "x": 237,
+            "y": 822
           },
           "topRight": {
-            "x": 0.7575,
-            "y": 0.4633333333333333
+            "x": 478,
+            "y": 822
           },
           "bottomRight": {
-            "x": 0.7825,
-            "y": 0.6816666666666666
+            "x": 478,
+            "y": 1787
           },
           "bottomLeft": {
-            "x": 0.22625,
-            "y": 0.7233333333333334
-          },
-          "bulge": -0.04167208135500843
-        }
+            "x": 237,
+            "y": 1787
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Lasergravur",
+        "impLocation": "Vorderseite",
+        "maxColours": 1,
+        "impWidthMm": 25,
+        "impHeightMm": 100,
+        "impDiameterMm": 0
       },
       {
-        "image": "midweight-recycelter-stoffbeutel-von-stanleystella-2.webp",
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10090952_35_6486_1377.png",
+        "label": "Wrap",
+        "printArea": {
+          "topLeft": {
+            "x": 20,
+            "y": 678
+          },
+          "topRight": {
+            "x": 2142,
+            "y": 678
+          },
+          "bottomRight": {
+            "x": 2142,
+            "y": 1932
+          },
+          "bottomLeft": {
+            "x": 20,
+            "y": 1932
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "360 Digitaldruck",
+        "impLocation": "rundum",
+        "maxColours": "full color",
+        "impWidthMm": 220,
+        "impHeightMm": 130,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "stanley-600-ml-all-day-slim-flasche",
+    "name": "Stanley 600 ml All Day Slim Flasche",
+    "description": "Die Stanley 600 ml All Day Slim Wasserflasche wurde für die ganztägige Flüssigkeitsversorgung entwickelt und vereint Komfort und Leistung. Sie besteht zu 90% aus recyceltem Edelstahl und hat eine zweigeteilte Öffnung – eine zum bequemen Trinken – die andere zum Einfüllen von Eis und zur einfachen Reinigung. Der Hals besteht aus einwandigem Edelstahl mit einem Kunststoffgewinde und einer sicheren, komprimierten Dichtung, die ein Auslaufen verhindert. Der doppelwandige Behälter ist vakuumisoliert. So bleiben Ihre Getränke stundenlang optimal temperiert. Die langlebige und durchdachte Konstruktion macht sie zur idealen Thermoflasche für unterwegs.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10088210_35_6486_1042.png",
+        "label": "Wrap",
+        "printArea": {
+          "topLeft": {
+            "x": 21,
+            "y": 1013
+          },
+          "topRight": {
+            "x": 912,
+            "y": 1013
+          },
+          "bottomRight": {
+            "x": 912,
+            "y": 2127
+          },
+          "bottomLeft": {
+            "x": 21,
+            "y": 2127
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "360 Digitaldruck",
+        "impLocation": "rundum",
+        "maxColours": "full color",
+        "impWidthMm": 100,
+        "impHeightMm": 125,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10088210_1_6486_1042.png",
         "label": "Back",
         "printArea": {
           "topLeft": {
-            "x": 0.29088381057268725,
-            "y": 0.527845080763583
+            "x": 203,
+            "y": 1273
           },
           "topRight": {
-            "x": 0.765,
-            "y": 0.5233333333333333
+            "x": 471,
+            "y": 1273
           },
           "bottomRight": {
-            "x": 0.765,
-            "y": 0.7783333333333333
+            "x": 471,
+            "y": 1898
           },
           "bottomLeft": {
-            "x": 0.29088381057268725,
-            "y": 0.7753120411160058
+            "x": 203,
+            "y": 1898
           }
-        }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Tampondruck",
+        "impLocation": "Rückseite",
+        "maxColours": 4,
+        "impWidthMm": 30,
+        "impHeightMm": 70,
+        "impDiameterMm": 0
       }
     ]
   },
   {
-    "id": "minimal-matte-pu-schluesselanhaenger",
-    "name": "PU Keychain",
-    "description": "Minimal matte PU leather keychain",
+    "id": "thor-500-ml-rcs-zertifizierte-trinkflasche-aus-edelstahl",
+    "name": "Thor 500 ml RCS-zertifizierte Trinkflasche aus Edelstahl",
+    "description": "Robuste, doppelwandige, vakuumisolierte RCS-zertifizierte Edelstahl Flasche, sodass Ihr Getränk bis zu 12 Stunden warm und bis zu 24 Stunden kalt bleibt.Mit Schraubverschluss  und stabiler Trageschlaufe aus Edelstahl. Fassungsvermögen: 500 ml. Auslaufsicher. Geliefert in einer Präsentbox.",
     "views": [
       {
-        "image": "minimal-matte-pu-schluesselanhaenger.webp",
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10081901_1_4799_552.png",
         "label": "Front",
         "printArea": {
           "topLeft": {
-            "x": 0.4925,
-            "y": 0.47833333333333333
+            "x": 226,
+            "y": 1074
           },
           "topRight": {
-            "x": 0.785,
-            "y": 0.20666666666666667
+            "x": 575,
+            "y": 1074
           },
           "bottomRight": {
-            "x": 0.8675,
-            "y": 0.24
+            "x": 575,
+            "y": 1885
           },
           "bottomLeft": {
-            "x": 0.5675,
-            "y": 0.5183333333333333
-          },
-          "bulge": -0.01977401129943503
-        }
+            "x": 226,
+            "y": 1885
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Tampondruck",
+        "impLocation": "Vorderseite",
+        "maxColours": 4,
+        "impWidthMm": 30,
+        "impHeightMm": 70,
+        "impDiameterMm": 0
       },
       {
-        "image": "minimal-matte-pu-schluesselanhaenger-2.webp",
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10081901_1_1175_41.png",
+        "label": "Cap",
+        "printArea": {
+          "topLeft": {
+            "x": 544,
+            "y": 406
+          },
+          "topRight": {
+            "x": 1810,
+            "y": 406
+          },
+          "bottomRight": {
+            "x": 1810,
+            "y": 1672
+          },
+          "bottomLeft": {
+            "x": 544,
+            "y": 1672
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Tampondruck",
+        "impLocation": "Kappe",
+        "maxColours": 4,
+        "impWidthMm": 0,
+        "impHeightMm": 0,
+        "impDiameterMm": 30
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10081901_3_1175_441.png",
+        "label": "Wrap",
+        "printArea": {
+          "topLeft": {
+            "x": 19,
+            "y": 746
+          },
+          "topRight": {
+            "x": 2315,
+            "y": 746
+          },
+          "bottomRight": {
+            "x": 2315,
+            "y": 2124
+          },
+          "bottomLeft": {
+            "x": 19,
+            "y": 2124
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Rundum-Siebdruck",
+        "impLocation": "rundum",
+        "maxColours": 1,
+        "impWidthMm": 200,
+        "impHeightMm": 120,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "taylor-450-ml-doppelwand-isolierflasche-aus-edelstahl-mit-te",
+    "name": "Taylor 450 ml Doppelwand Isolierflasche aus Edelstahl mit Teesieb",
+    "description": "Diese doppelwandige, vakuumisolierte Flasche aus Edelstahl hält Getränke lange auf der gewünschten Temperatur. Sie verfügt außerdem über ein herausnehmbares Teesieb für zusätzlichen Komfort. Mit einem Fassungsvermögen von 450 ml und einem auslaufsicheren Design ist sie ideal für den täglichen Gebrauch oder für Reisen.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10082601_6_4799_1041.png",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 227,
+            "y": 970
+          },
+          "topRight": {
+            "x": 476,
+            "y": 970
+          },
+          "bottomRight": {
+            "x": 476,
+            "y": 1668
+          },
+          "bottomLeft": {
+            "x": 227,
+            "y": 1668
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Lasergravur",
+        "impLocation": "Vorderseite",
+        "maxColours": 1,
+        "impWidthMm": 25,
+        "impHeightMm": 70,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10082601_3_1175_1377.png",
+        "label": "Wrap",
+        "printArea": {
+          "topLeft": {
+            "x": 21,
+            "y": 670
+          },
+          "topRight": {
+            "x": 1517,
+            "y": 670
+          },
+          "bottomRight": {
+            "x": 1517,
+            "y": 1966
+          },
+          "bottomLeft": {
+            "x": 21,
+            "y": 1966
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Rundum-Siebdruck",
+        "impLocation": "rundum",
+        "maxColours": 1,
+        "impWidthMm": 150,
+        "impHeightMm": 130,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "vasa-kupfer-vakuum-isolierflasche-in-holzoptik-500-ml",
+    "name": "Vasa Kupfer-Vakuum Isolierflasche in Holzoptik, 500 ml",
+    "description": "Mit der Kupfer-Vakuum Isolierflasche Vasa bleiben Ihre Getränke 12 Stunden lang heiß oder 48 Stunden lang kalt. Der doppelwandige Edelstahlbehälter mit Vakuumisolierung und verkupferter Innenwand hält Ihr Getränk je nach Bedarf heiß oder kalt. Die Flasche hat eine natürliche Holzoptik. Die Flasche ist BPA-frei und nach dem deutschen Lebensmittel- und Futtermittelgesetzbuch (LFGB) sowie nach REACH auf Phthalate geprüft und zugelassen. Fassungsvermögen: 500 ml. Geliefert in einer Geschenkbox.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10051500_1_1175_1041.png",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 208,
+            "y": 1308
+          },
+          "topRight": {
+            "x": 429,
+            "y": 1308
+          },
+          "bottomRight": {
+            "x": 429,
+            "y": 1925
+          },
+          "bottomLeft": {
+            "x": 208,
+            "y": 1925
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Tampondruck",
+        "impLocation": "Vorderseite",
+        "maxColours": 4,
+        "impWidthMm": 25,
+        "impHeightMm": 70,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10051500_41_1175_1377.png",
+        "label": "Wrap",
+        "printArea": {
+          "topLeft": {
+            "x": 20,
+            "y": 1180
+          },
+          "topRight": {
+            "x": 1982,
+            "y": 1180
+          },
+          "bottomRight": {
+            "x": 1982,
+            "y": 2060
+          },
+          "bottomLeft": {
+            "x": 20,
+            "y": 2060
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "360 Lasergravur rundum",
+        "impLocation": "rundum",
+        "maxColours": 1,
+        "impWidthMm": 223,
+        "impHeightMm": 100,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "wiro-a5-notizblock-mit-hardcover-und-spiralbindung",
+    "name": "Wiro A5 Notizblock mit Hardcover und Spiralbindung",
+    "description": "Verfügt über 80 Blatt Blankopapier (80 g/m2) und eine schwarze oder weiße Spiralbindung. Erhältlich in den Größe A4, A5 und A6. Vollfarbdruck auf beiden Seiten des Umschlags sowie auf jedem Blatt möglich.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/21257000_26_1209_3547_uk.png",
+        "label": "Blätter",
+        "printArea": {
+          "topLeft": {
+            "x": 114,
+            "y": 33
+          },
+          "topRight": {
+            "x": 1771,
+            "y": 33
+          },
+          "bottomRight": {
+            "x": 1771,
+            "y": 2349
+          },
+          "bottomLeft": {
+            "x": 114,
+            "y": 2349
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Druck auf Papier",
+        "impLocation": "Blätter",
+        "maxColours": 4,
+        "impWidthMm": 148,
+        "impHeightMm": 210,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/21257000_26_1209_588_uk.png",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 120,
+            "y": 33
+          },
+          "topRight": {
+            "x": 1775,
+            "y": 33
+          },
+          "bottomRight": {
+            "x": 1775,
+            "y": 2357
+          },
+          "bottomLeft": {
+            "x": 120,
+            "y": 2357
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Druck auf Papier",
+        "impLocation": "Vorderseite",
+        "maxColours": 4,
+        "impWidthMm": 154,
+        "impHeightMm": 215,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/21257000_26_1234_587_uk.png",
         "label": "Back",
         "printArea": {
           "topLeft": {
-            "x": 0.46122067393700905,
-            "y": 0.4697990812602969
+            "x": 28,
+            "y": 33
           },
           "topRight": {
-            "x": 0.8775,
-            "y": 0.47
+            "x": 1685,
+            "y": 33
           },
           "bottomRight": {
-            "x": 0.8775,
-            "y": 0.525
+            "x": 1685,
+            "y": 2349
           },
           "bottomLeft": {
-            "x": 0.46122067393700905,
-            "y": 0.5262324899584988
+            "x": 28,
+            "y": 2349
           }
-        }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Druck auf Papier",
+        "impLocation": "Rückseite",
+        "maxColours": 4,
+        "impWidthMm": 154,
+        "impHeightMm": 215,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/21257000_26_1234_3548_uk.png",
+        "label": "Back 2",
+        "printArea": {
+          "topLeft": {
+            "x": 26,
+            "y": 29
+          },
+          "topRight": {
+            "x": 1681,
+            "y": 29
+          },
+          "bottomRight": {
+            "x": 1681,
+            "y": 2351
+          },
+          "bottomLeft": {
+            "x": 26,
+            "y": 2351
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Druck auf Papier",
+        "impLocation": "Rückseite der Blätter",
+        "maxColours": 4,
+        "impWidthMm": 148,
+        "impHeightMm": 210,
+        "impDiameterMm": 0
       }
     ]
   },
   {
-    "id": "brotdose",
-    "name": "Lunch Box",
-    "description": "Stainless steel lunch box",
+    "id": "atlanta-a5-notizbuch-aus-lederresten",
+    "name": "Atlanta A5 Notizbuch aus Lederresten",
+    "description": "Referenznotizbuch im Format A5 mit Umschlag aus Lederresten. Mit Gummiband, Stiftschlaufe, Farbbandmarker und 80 Blatt, 80 g/m² liniertem Papier.",
     "views": [
       {
-        "image": "brotdose.webp",
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10757500_1_5211_1096.png",
         "label": "Front",
         "printArea": {
           "topLeft": {
-            "x": 0.14537197478322397,
-            "y": 0.4296078443680066
+            "x": 389,
+            "y": 732
           },
           "topRight": {
-            "x": 0.8575,
-            "y": 0.43333333333333335
+            "x": 870,
+            "y": 732
           },
           "bottomRight": {
-            "x": 0.855,
-            "y": 0.7133333333333334
+            "x": 870,
+            "y": 1213
           },
           "bottomLeft": {
-            "x": 0.145,
-            "y": 0.71
+            "x": 389,
+            "y": 1213
           }
-        }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Tampondruck",
+        "impLocation": "Vorderseite",
+        "maxColours": 4,
+        "impWidthMm": 55,
+        "impHeightMm": 55,
+        "impDiameterMm": 0
       },
       {
-        "image": "brotdose-2.webp",
-        "label": "Open",
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10757500_1_5211_3648.png",
+        "label": "Left",
         "printArea": {
           "topLeft": {
-            "x": 0.15125,
-            "y": 0.3683333333333333
+            "x": 105,
+            "y": 1400
           },
           "topRight": {
-            "x": 0.7175,
-            "y": 0.4
+            "x": 586,
+            "y": 1400
           },
           "bottomRight": {
-            "x": 0.725,
-            "y": 0.655
+            "x": 586,
+            "y": 1881
           },
           "bottomLeft": {
-            "x": 0.1475,
-            "y": 0.615
+            "x": 105,
+            "y": 1881
           }
-        }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Tampondruck",
+        "impLocation": "unten links",
+        "maxColours": 4,
+        "impWidthMm": 55,
+        "impHeightMm": 55,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10757500_1_4283_3649.png",
+        "label": "Right",
+        "printArea": {
+          "topLeft": {
+            "x": 667,
+            "y": 1393
+          },
+          "topRight": {
+            "x": 1148,
+            "y": 1393
+          },
+          "bottomRight": {
+            "x": 1148,
+            "y": 1874
+          },
+          "bottomLeft": {
+            "x": 667,
+            "y": 1874
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Tampondruck",
+        "impLocation": "unten rechts",
+        "maxColours": 4,
+        "impWidthMm": 55,
+        "impHeightMm": 55,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "tutico-hard-cover-notizbuch-aus-bio-baumwolle",
+    "name": "Tutico Hard Cover Notizbuch aus Bio Baumwolle",
+    "description": "Notizbuch aus Bio Baumwolle mit 120 Seiten aus weißem, liniertem, recyceltem Papier (70 g/m2). Ausgestattet mit einem schwarzen Farbband, einem Elastikverschluss und einer Stiftschlaufe. Bio Baumwolle wird mit nachhaltigen Anbaumethoden angebaut, die zum Schutz der Umwelt und zur Förderung der Artenvielfalt beitragen. Durch den Verzicht auf schädliche Chemikalien kann der ökologische Anbau von Baumwolle dazu beitragen, die Boden- und Wasserverschmutzung sowie das Risiko von Gesundheitsproblemen für Landwirte und deren Familien zu verringern.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10781306_7_5211_1096.png",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 162,
+            "y": 141
+          },
+          "topRight": {
+            "x": 884,
+            "y": 141
+          },
+          "bottomRight": {
+            "x": 884,
+            "y": 1493
+          },
+          "bottomLeft": {
+            "x": 162,
+            "y": 1493
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Transferdruck",
+        "impLocation": "Vorderseite",
+        "maxColours": 1,
+        "impWidthMm": 80,
+        "impHeightMm": 150,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10781306_2_2671_1099.png",
+        "label": "Back",
+        "printArea": {
+          "topLeft": {
+            "x": 399,
+            "y": 323
+          },
+          "topRight": {
+            "x": 1034,
+            "y": 323
+          },
+          "bottomRight": {
+            "x": 1034,
+            "y": 1320
+          },
+          "bottomLeft": {
+            "x": 399,
+            "y": 1320
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Siebdruck",
+        "impLocation": "Rückseite",
+        "maxColours": 1,
+        "impWidthMm": 70,
+        "impHeightMm": 110,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "liliana-a5-zuckerrohr-und-rpet-softcover-notizbuch",
+    "name": "Liliana A5 Zuckerrohr und RPET Softcover Notizbuch",
+    "description": "Softcover Notizbuch Liliana im A5-Format mit abgerundeten Ecken und 72 Blatt, liniert, 90 g/m² Papier. Der Einband besteht aus RPET und Zuckerrohrpapier. ",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10612521_2_1209_588.png",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 337,
+            "y": 193
+          },
+          "topRight": {
+            "x": 1451,
+            "y": 193
+          },
+          "bottomRight": {
+            "x": 1451,
+            "y": 2197
+          },
+          "bottomLeft": {
+            "x": 337,
+            "y": 2197
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Siebdruck",
+        "impLocation": "Vorderseite",
+        "maxColours": 1,
+        "impWidthMm": 100,
+        "impHeightMm": 180,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10612521_1_1234_587.png",
+        "label": "Back",
+        "printArea": {
+          "topLeft": {
+            "x": 490,
+            "y": 876
+          },
+          "topRight": {
+            "x": 1103,
+            "y": 876
+          },
+          "bottomRight": {
+            "x": 1103,
+            "y": 1489
+          },
+          "bottomLeft": {
+            "x": 490,
+            "y": 1489
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Tampondruck",
+        "impLocation": "Rückseite",
+        "maxColours": 4,
+        "impWidthMm": 55,
+        "impHeightMm": 55,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "moleskine-softcover-12-monate-tageskalender",
+    "name": "Moleskine Softcover 12 Monate Tageskalender",
+    "description": "Planen Sie jeden Tag bis ins kleinste Detail mit dem Moleskine Softcover Tagesplaner für 12 Monate. Dieser Planer ist von Januar bis Dezember 2026 datiert und so formatiert, dass auf jeder Seite ein ganzer Tag abgebildet ist, damit Sie genügend Platz haben, um Ereignisse, Termine, Aufgaben, Erinnerungen und Pläne festzuhalten. Im Laufe des Jahres wird er zu einem physischen Tagebuch, in dem Sie Tag für Tag festhalten, was Sie alles erreicht haben. Er enthält elfenbeinfarbenes, säurefreies Papier, einen schwarzen, elastischen Verschluss, ein Seitenband, eine farblich abgestimmte, erweiterbare Innentasche und Aufkleber zur persönlichen Gestaltung sowie Jahresaufkleber für den Buchrücken.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10793690_5_1954_588.png",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 230,
+            "y": 791
+          },
+          "topRight": {
+            "x": 1046,
+            "y": 791
+          },
+          "bottomRight": {
+            "x": 1046,
+            "y": 1607
+          },
+          "bottomLeft": {
+            "x": 230,
+            "y": 1607
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Prägung",
+        "impLocation": "Vorderseite",
+        "maxColours": 1,
+        "impWidthMm": 80,
+        "impHeightMm": 80,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10793690_23_4710_1093.png",
+        "label": "Papierband",
+        "printArea": {
+          "topLeft": {
+            "x": 18,
+            "y": 418
+          },
+          "topRight": {
+            "x": 2382,
+            "y": 418
+          },
+          "bottomRight": {
+            "x": 2382,
+            "y": 704
+          },
+          "bottomLeft": {
+            "x": 18,
+            "y": 704
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Digitaldruck auf Papier",
+        "impLocation": "Papierband",
+        "maxColours": "full color",
+        "impWidthMm": 460,
+        "impHeightMm": 55,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10793690_5_5211_3648.png",
+        "label": "Left",
+        "printArea": {
+          "topLeft": {
+            "x": 238,
+            "y": 1192
+          },
+          "topRight": {
+            "x": 647,
+            "y": 1192
+          },
+          "bottomRight": {
+            "x": 647,
+            "y": 2008
+          },
+          "bottomLeft": {
+            "x": 238,
+            "y": 2008
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Prägung",
+        "impLocation": "unten links",
+        "maxColours": 1,
+        "impWidthMm": 40,
+        "impHeightMm": 80,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10793690_5_5211_3649.png",
+        "label": "Right",
+        "printArea": {
+          "topLeft": {
+            "x": 744,
+            "y": 1192
+          },
+          "topRight": {
+            "x": 1154,
+            "y": 1192
+          },
+          "bottomRight": {
+            "x": 1154,
+            "y": 2008
+          },
+          "bottomLeft": {
+            "x": 744,
+            "y": 2008
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Prägung",
+        "impLocation": "unten rechts",
+        "maxColours": 1,
+        "impWidthMm": 40,
+        "impHeightMm": 80,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "ecoseal-5-l-grs-recycelte-nonwoven-tragetasche",
+    "name": "EcoSeal 5 L GRS-recycelte Nonwoven Tragetasche",
+    "description": "Die aus strapazierfähigem und reißfestem RPET hergestellte, GRS-zertifizierte recycelte EcoSeal Tragetasche verfügt über eine ultraschallverschweißte Konstruktion und gestanzte Griffe. Sie ist nahtfrei, leicht und dennoch robust. Perfekt für den täglichen Bedarf, Veranstaltungen oder schnelle Besorgungen. Beständigkeit bis zu 3 kg. Fassungsvermögen: 5 Liter.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/13010301_49_4703_552.png",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 365,
+            "y": 456
+          },
+          "topRight": {
+            "x": 1519,
+            "y": 456
+          },
+          "bottomRight": {
+            "x": 1519,
+            "y": 2066
+          },
+          "bottomLeft": {
+            "x": 365,
+            "y": 2066
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "DTF Transfer",
+        "impLocation": "Vorderseite",
+        "maxColours": "full color",
+        "impWidthMm": 215,
+        "impHeightMm": 300,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "liberty-tragetasche-mit-hartem-boden-aus-recyceltem-grs-non",
+    "name": "Liberty Tragetasche mit hartem Boden aus recyceltem GRS Non Woven 6 L",
+    "description": "Die Liberty Tragetasche aus GRS-zertifiziertem Recyclingmaterial besteht aus strapazierfähigem und reißfestem RPET-Non Woven und verfügt über einen harten Boden, der sie vielseitig und stabil macht. Die Tasche hat ein großes Hauptfach und 25 cm lange Tragegriffe. Fassungsvermögen: 29 Liter. Beständigkeit bis zu 12 kg.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/13008101_2_6962_1287.png",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 388,
+            "y": 957
+          },
+          "topRight": {
+            "x": 1090,
+            "y": 957
+          },
+          "bottomRight": {
+            "x": 1090,
+            "y": 2164
+          },
+          "bottomLeft": {
+            "x": 388,
+            "y": 2164
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Siebdruck",
+        "impLocation": "Vorderseite",
+        "maxColours": 3,
+        "impWidthMm": 120,
+        "impHeightMm": 275,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "pheebs-150-g-m-aware-recycelte-tragetasche",
+    "name": "Pheebs 150 g/m² Aware™ recycelte Tragetasche ",
+    "description": "Tragetasche aus einem 150 g/m² schweren Recyclingbaumwolle-Polyester-Gemisch. Diese Tasche lässt sich leicht zusammenfalten, sodass sie auf kleinem Raum Platz findet und ist die perfekte Begleiterin für eine Vielzahl von Aktivitäten wie Lebensmitteleinkäufe, Tagesausflüge oder Bastelprojekte. Recycelte Baumwolle wird aus Verbrauchsabfällen hergestellt, die während des Schneidevorgangs in Textilfabriken anfallen. Ähnliche Farben werden miteinander vermischt, sodass kein zusätzliches Färben erforderlich ist. Aufgrund der Beschaffenheit von Recyclingbaumwolle kann es zu sehr leichten Farbabweichungen kommen. Dies trägt eindeutig zu einem authentischeren Erscheinungsbild bei. Jede Tasche wird außerdem mit einem Aware™ Tracer geliefert. Diese innovative Funktion ermöglicht es den Nutzern, die Herkunft und den Weg ihres Artikels mithilfe eines QR-Codes nachzuvollziehen, wodurch die Transparenz der Lieferkette erhöht und eine stärkere Verbindung zwischen dem Produkt und seinem Herstellungsprozess fördert. Belastbarkeit bis zu 5 kg. Grifflänge: 31 cm.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/12070306_2_4703_552.png",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 108,
+            "y": 1139
+          },
+          "topRight": {
+            "x": 1156,
+            "y": 1139
+          },
+          "bottomRight": {
+            "x": 1156,
+            "y": 2299
+          },
+          "bottomLeft": {
+            "x": 108,
+            "y": 2299
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Siebdruck",
+        "impLocation": "Vorderseite",
+        "maxColours": 1,
+        "impWidthMm": 280,
+        "impHeightMm": 310,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/12070306_2_4703_575.png",
+        "label": "Back",
+        "printArea": {
+          "topLeft": {
+            "x": 145,
+            "y": 1123
+          },
+          "topRight": {
+            "x": 1193,
+            "y": 1123
+          },
+          "bottomRight": {
+            "x": 1193,
+            "y": 2283
+          },
+          "bottomLeft": {
+            "x": 145,
+            "y": 2283
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Siebdruck",
+        "impLocation": "Rückseite",
+        "maxColours": 1,
+        "impWidthMm": 280,
+        "impHeightMm": 310,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "thule-lithos-rucksack-20-l",
+    "name": "ThuLe Lithos Rucksack 20 L",
+    "description": "Ein stilvoller Rucksack mit viel Platz, einem gepolsterten Rückenteil und Schultergurten für optimalen Komfort. Mit einem gepolsterten Fach für ein 16\"-MacBook® oder einen 15,6\"-Laptop, einem speziellen Einschubfach für ein 10,5\"-Tablet und mehreren Fächern für die Aufbewahrung und den einfachen Zugriff auf kleinere Gegenstände.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/12063290_33_1226_43.png",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 563,
+            "y": 1192
+          },
+          "topRight": {
+            "x": 1010,
+            "y": 1192
+          },
+          "bottomRight": {
+            "x": 1010,
+            "y": 1763
+          },
+          "bottomLeft": {
+            "x": 563,
+            "y": 1763
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Digital-Transferdruck",
+        "impLocation": "Vorderseite",
+        "maxColours": "full color",
+        "impWidthMm": 90,
+        "impHeightMm": 115,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/12063290_2_1226_43.png",
+        "label": "Front 2",
+        "printArea": {
+          "topLeft": {
+            "x": 513,
+            "y": 1196
+          },
+          "topRight": {
+            "x": 1059,
+            "y": 1196
+          },
+          "bottomRight": {
+            "x": 1059,
+            "y": 1891
+          },
+          "bottomLeft": {
+            "x": 513,
+            "y": 1891
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Siebdruck",
+        "impLocation": "Front",
+        "maxColours": 1,
+        "impWidthMm": 110,
+        "impHeightMm": 140,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/12063290_2_1226_74.png",
+        "label": "Flap",
+        "printArea": {
+          "topLeft": {
+            "x": 513,
+            "y": 583
+          },
+          "topRight": {
+            "x": 1059,
+            "y": 583
+          },
+          "bottomRight": {
+            "x": 1059,
+            "y": 856
+          },
+          "bottomLeft": {
+            "x": 513,
+            "y": 856
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Siebdruck",
+        "impLocation": "Klappe.",
+        "maxColours": 1,
+        "impWidthMm": 110,
+        "impHeightMm": 55,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "moleskine-classic-rucksack",
+    "name": "Moleskine Classic Rucksack",
+    "description": "Der Classic Rucksack ist ein urbaner Rucksack mit klarem Design und 2 Hauptfächern für einen Laptop und andere persönliche Dinge. Mit atmungsaktivem Netzgewebe auf der Rückseite für angenehmen Tragekomfort unterwegs, einer leicht zugänglichen Fronttasche mit hitzeversiegeltem Reißverschluss, einem Gepäckgurt für längere Reisen und einem umlaufenden Reißverschluss oben. Außerdem enthält sie mehrere Innenfächer. Ein Notizbuchfach, ein sicheres Reißverschlussfach und einen Organizer mit 2 Stiftschlaufen und einem Visitenkartenfach. Ein elektronisches Gerät bis 15\" kann ebenfalls sicher verstaut werden. ",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/13006890_6_6667_2513.png",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 666,
+            "y": 1131
+          },
+          "topRight": {
+            "x": 1070,
+            "y": 1131
+          },
+          "bottomRight": {
+            "x": 1070,
+            "y": 1536
+          },
+          "bottomLeft": {
+            "x": 666,
+            "y": 1536
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Lasergravur",
+        "impLocation": "Vorderseite",
+        "maxColours": 1,
+        "impWidthMm": 80,
+        "impHeightMm": 80,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "evergreen-premium-non-woven-turnbeutel-5l",
+    "name": "Evergreen Premium Non Woven Turnbeutel 5L",
+    "description": "Der Evergreen Sportbeutel ist eine gute Wahl, wenn Sie eine Tasche suchen, die sich gut als einfach zu handhabendes Giveaway eignet, um eine Marke oder eine Marketingkampagne zu bewerben. Der leichte Rucksack ist budgetfreundlich und verfügt über einen Kordelzug, mit dem er sich leicht über der Schulter oder als Rucksack tragen lässt. Die Tasche besteht aus 80 g/m² PP-Kunststoff, verfügt über ein großes Hauptfach und lässt auf der Außenseite genügend Platz, um ein Logo oder andere Botschaften anzubringen. ",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/11961900_49_4739_552.png",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 418,
+            "y": 472
+          },
+          "topRight": {
+            "x": 1512,
+            "y": 472
+          },
+          "bottomRight": {
+            "x": 1512,
+            "y": 1998
+          },
+          "bottomLeft": {
+            "x": 418,
+            "y": 1998
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "DTF Transfer",
+        "impLocation": "Vorderseite",
+        "maxColours": "full color",
+        "impWidthMm": 215,
+        "impHeightMm": 300,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "pheebs-210-g-m-recycelter-turnbeutel-6l",
+    "name": "Pheebs 210 g/m² recycelter Turnbeutel 6L",
+    "description": "Rucksack aus 210 g/m² recycelter Baumwolle und recyceltem Polyester. Recycelte Baumwolle wird aus Verbrauchsabfällen hergestellt, die während des Schneidevorgangs in Textilfabriken anfallen. Großes Hauptfach mit Kordelzugverschluss aus Baumwolle. Ausgestattet mit zwei Griffen mit einer Höhe von 14 cm. Beständigkeit bis zu 5 kg Gewicht. Aufgrund des Produktionsprozesses kann es zu geringfügigen Farbabweichungen des Produktes kommen.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/12046000_2_5558_552.png",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 315,
+            "y": 888
+          },
+          "topRight": {
+            "x": 1409,
+            "y": 888
+          },
+          "bottomRight": {
+            "x": 1409,
+            "y": 2145
+          },
+          "bottomLeft": {
+            "x": 315,
+            "y": 2145
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Siebdruck",
+        "impLocation": "Vorderseite",
+        "maxColours": 1,
+        "impWidthMm": 270,
+        "impHeightMm": 310,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/12046000_2_5558_575.png",
+        "label": "Back",
+        "printArea": {
+          "topLeft": {
+            "x": 342,
+            "y": 873
+          },
+          "topRight": {
+            "x": 1436,
+            "y": 873
+          },
+          "bottomRight": {
+            "x": 1436,
+            "y": 2129
+          },
+          "bottomLeft": {
+            "x": 342,
+            "y": 2129
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Siebdruck",
+        "impLocation": "Rückseite",
+        "maxColours": 1,
+        "impWidthMm": 270,
+        "impHeightMm": 310,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "dovi-800-ml-lunchbox",
+    "name": "Dovi 800 ml Lunchbox",
+    "description": "Die 800 ml-Dovi-Lunchbox besteht zu 100 % aus recyceltem Kunststoff und ist damit eine nachhaltige und trendige Wahl. Der Deckel ist mit einem Gummibandverschluss versehen, der ihn auch unterwegs sicher hält.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/11327402_1_6010_4024.png",
+        "label": "Lid",
+        "printArea": {
+          "topLeft": {
+            "x": 1390,
+            "y": 509
+          },
+          "topRight": {
+            "x": 2062,
+            "y": 509
+          },
+          "bottomRight": {
+            "x": 2062,
+            "y": 1181
+          },
+          "bottomLeft": {
+            "x": 1390,
+            "y": 1181
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Tampondruck",
+        "impLocation": "Deckel",
+        "maxColours": 4,
+        "impWidthMm": 55,
+        "impHeightMm": 55,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "mangi-750-ml-lunchbox",
+    "name": "Mangi 750 ml Lunchbox",
+    "description": "Die Mangi Lunchbox besteht aus recyceltem Kunststoff und hat ein Fassungsvermögen von 750 ml. Sie hat einen Deckel aus Bambus und ein Gummiband, das den Deckel an Ort und Stelle hält und dafür sorgt, dass der Inhalt frisch bleibt. Der Behälter ist spülmaschinenfest, jedoch nicht der Deckel.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/11336101_6_4759_4377.png",
+        "label": "linke Seite",
+        "printArea": {
+          "topLeft": {
+            "x": 202,
+            "y": 264
+          },
+          "topRight": {
+            "x": 867,
+            "y": 264
+          },
+          "bottomRight": {
+            "x": 867,
+            "y": 1353
+          },
+          "bottomLeft": {
+            "x": 202,
+            "y": 1353
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Lasergravur",
+        "impLocation": "linke Seite",
+        "maxColours": 1,
+        "impWidthMm": 55,
+        "impHeightMm": 90,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/11336101_6_4759_4378.png",
+        "label": "rechte Seite",
+        "printArea": {
+          "topLeft": {
+            "x": 1538,
+            "y": 252
+          },
+          "topRight": {
+            "x": 2214,
+            "y": 252
+          },
+          "bottomRight": {
+            "x": 2214,
+            "y": 1358
+          },
+          "bottomLeft": {
+            "x": 1538,
+            "y": 1358
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Lasergravur",
+        "impLocation": "rechte Seite",
+        "maxColours": 1,
+        "impWidthMm": 55,
+        "impHeightMm": 90,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "snappy-1000-ml-lunchbox-und-besteckset",
+    "name": "Snappy 1000 ml Lunchbox und Besteckset",
+    "description": "Bewahren Sie Ihre Mahlzeiten mühelos auf mit dieser stilvollen Lunchbox und dem passenden Besteckset. Das geräumige Fach hält Ihre Speisen frisch, ordentlich und zum Verzehr bereit. Das Besteck ist in einem separaten Fach im Deckel der Lunchbox untergebracht – praktisch zum Mitnehmen und ideal für Schule, Arbeit oder Reisen. Kapazität 1000 ml.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/11342001_15_1986_65.png",
+        "label": "Lid",
+        "printArea": {
+          "topLeft": {
+            "x": 416,
+            "y": 330
+          },
+          "topRight": {
+            "x": 1962,
+            "y": 330
+          },
+          "bottomRight": {
+            "x": 1962,
+            "y": 882
+          },
+          "bottomLeft": {
+            "x": 416,
+            "y": 882
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Digitaldruck",
+        "impLocation": "Deckel",
+        "maxColours": "full color",
+        "impWidthMm": 140,
+        "impHeightMm": 50,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "parker-im-achromatischer-kugelschreiber-blaue-mine",
+    "name": "Parker IM achromatischer Kugelschreiber (blaue Mine)",
+    "description": "Der Parker IM ist ein idealer Partner mit unbegrenztem Potenzial. Die schlanke Form ergibt zusammen mit dem innovativen Design ein markantes Gesamtbild. Das trendige matte Finish des Korpus und die PVD-Beschichtung der Zierteile machen diesen Parker-Kugelschreiber zum perfekten, langlebigen Schreibgerät für Studenten und Profis. Die Kugelschreiberspitze und die Quinkflow-Tinte werden mit einem hörbaren Klick eingezogen und sorgen für ein außergewöhnlich flüssiges und zuverlässiges Schreibgefühl. Zur Verwendung mit QUINK Kugelschreiber- und Geltintenminen. Im Lieferumfang enthalten sind eine Patrone und eine Parker-Geschenkbox. Exklusives Design.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10780190_6_5012_43.png",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 833,
+            "y": 144
+          },
+          "topRight": {
+            "x": 1980,
+            "y": 144
+          },
+          "bottomRight": {
+            "x": 1980,
+            "y": 226
+          },
+          "bottomLeft": {
+            "x": 833,
+            "y": 226
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Lasergravur",
+        "impLocation": "Front",
+        "maxColours": 1,
+        "impWidthMm": 70,
+        "impHeightMm": 5,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "wicker-kugelschreiber-aus-bambus-schwarze-mine",
+    "name": "Wicker Kugelschreiber aus Bambus (schwarze Mine)",
+    "description": "Dieser Kugelschreiber aus Bambus bietet ein elegantes und nachhaltiges Schreiberlebnis. Tintenfarbe: Schwarz. Schreiblänge: 1000 Meter. Schreibspitze: 1 mm.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10625306_6_5012_3391.png",
+        "label": "Cap",
+        "printArea": {
+          "topLeft": {
+            "x": 1140,
+            "y": 124
+          },
+          "topRight": {
+            "x": 2098,
+            "y": 124
+          },
+          "bottomRight": {
+            "x": 2098,
+            "y": 221
+          },
+          "bottomLeft": {
+            "x": 1140,
+            "y": 221
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Lasergravur",
+        "impLocation": "Kappe",
+        "maxColours": 1,
+        "impWidthMm": 60,
+        "impHeightMm": 6,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10625306_1_5012_3595.png",
+        "label": "Barrel",
+        "printArea": {
+          "topLeft": {
+            "x": 511,
+            "y": 124
+          },
+          "topRight": {
+            "x": 911,
+            "y": 124
+          },
+          "bottomRight": {
+            "x": 911,
+            "y": 221
+          },
+          "bottomLeft": {
+            "x": 511,
+            "y": 221
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Tampondruck",
+        "impLocation": "Schaft",
+        "maxColours": 4,
+        "impWidthMm": 25,
+        "impHeightMm": 6,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10625306_3_5009_3391.png",
+        "label": "Wrap",
+        "printArea": {
+          "topLeft": {
+            "x": 1208,
+            "y": 20
+          },
+          "topRight": {
+            "x": 1926,
+            "y": 20
+          },
+          "bottomRight": {
+            "x": 1926,
+            "y": 340
+          },
+          "bottomLeft": {
+            "x": 1208,
+            "y": 340
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Rundum-Siebdruck",
+        "impLocation": "rundum",
+        "maxColours": 1,
+        "impWidthMm": 20,
+        "impHeightMm": 20,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "orb-runder-i7-schluesselanhaenger",
+    "name": "Orb runder I7 Schlüsselanhänger",
+    "description": "Transparenter, runder I7-Schlüsselanhänger mit metallenem Schlüsselring. Der Metallring bietet ein flaches Profil, das sich ideal für Mailings eignet. Durchmesser des Druckeinsatzes: 3,3 cm.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/21055200_45_1810_3577_uk.png",
+        "label": "beide Seiten",
+        "printArea": {
+          "topLeft": {
+            "x": 1181,
+            "y": 144
+          },
+          "topRight": {
+            "x": 2254,
+            "y": 144
+          },
+          "bottomRight": {
+            "x": 2254,
+            "y": 1217
+          },
+          "bottomLeft": {
+            "x": 1181,
+            "y": 1217
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Litho full color",
+        "impLocation": "beide Seiten",
+        "maxColours": "full color",
+        "impWidthMm": 0,
+        "impHeightMm": 0,
+        "impDiameterMm": 33
+      }
+    ]
+  },
+  {
+    "id": "sergio-rechteckiger-schluesselanhaenger",
+    "name": "Sergio Rechteckiger Schlüsselanhänger",
+    "description": "Zeitloser Schlüsselanhänger aus Metall.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/19538050_1_1301_552.png",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 283,
+            "y": 1376
+          },
+          "topRight": {
+            "x": 835,
+            "y": 1376
+          },
+          "bottomRight": {
+            "x": 835,
+            "y": 2247
+          },
+          "bottomLeft": {
+            "x": 283,
+            "y": 2247
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Tampondruck",
+        "impLocation": "Vorderseite",
+        "maxColours": 4,
+        "impWidthMm": 16,
+        "impHeightMm": 25,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "scx-design-p40-10-000-mah-kabellose-powerbank-mit-leuchtlogo",
+    "name": "SCX.design P40 10.000 mAh kabellose Powerbank mit Leuchtlogo ",
+    "description": "Kabellose 10.000 mAh Powerbank mit antibakterieller Soft-Touch-Oberfläche und leuchtendem Logo. Das Gerät leuchtet 30 Sekunden lang, wenn es berührt oder aufgeladen wird. 3-in-1 (Typ C, Android, iPhone) Kabel aus recyceltem PET Kunststoff. Kapazität: 10.000 mAh Input: 5 V/2,4 A (Mikro). Output: 5 V/2,4 A (USB). Wireless Output: 5 V/2 A max. Frequenz: 110 kHz - 205 kHz. Lieferung in einer Geschenkbox aus recyceltem Papier.\n",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/2PX06090_6_6975_3069.png",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 710,
+            "y": 223
+          },
+          "topRight": {
+            "x": 1779,
+            "y": 223
+          },
+          "bottomRight": {
+            "x": 1779,
+            "y": 793
+          },
+          "bottomLeft": {
+            "x": 710,
+            "y": 793
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Lasergravur",
+        "impLocation": "Vorderseite",
+        "maxColours": 1,
+        "impWidthMm": 75,
+        "impHeightMm": 40,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "loop-10-000-mah-powerbank-aus-recyceltem-kunststoff",
+    "name": "Loop 10.000 mAh Powerbank aus recyceltem Kunststoff",
+    "description": "Powerbank aus recyceltem ABS-Kunststoff. Die Powerbank enthält einen langlebigen Lithium-Polymer-Akku der Güteklasse A mit 10.000 mAh für schnelles Aufladen. Die Energieanzeige zeigt den verbleibenden Energiestand an, so dass Sie immer wissen, wann Sie wieder aufladen müssen. Typ-C-Eingang 5V/2A, Micro-USB-Eingang 5V/2A, dualer USB-A-Ausgang 5V/2A, Gesamtleistung 10 W. Geliefert mit einem 30 cm langen TPE-2A-USB-A-auf-Typ-C-Ladekabel, einer Bedienungsanleitung und einer Geschenkbox aus Kraftpapier.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/12432190_15_5890_2545.png",
+        "label": "Segment",
+        "printArea": {
+          "topLeft": {
+            "x": 269,
+            "y": 181
+          },
+          "topRight": {
+            "x": 1650,
+            "y": 181
+          },
+          "bottomRight": {
+            "x": 1650,
+            "y": 1044
+          },
+          "bottomLeft": {
+            "x": 269,
+            "y": 1044
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Digitaldruck",
+        "impLocation": "Segment",
+        "maxColours": "full color",
+        "impWidthMm": 80,
+        "impHeightMm": 50,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "felta-kuehltragetasche-aus-grs-recyceltem-filz-12-l",
+    "name": "Felta Kühltragetasche aus GRS-recyceltem Filz 12 L",
+    "description": "Stilvolle Kühltragetasche aus hochwertigem, weichem und langlebigem GRS-zertifiziertem, recyceltem Filz. Großes Hauptfach mit lebensmittelechter Aluminiumisolierung und Klettverschluss an der Oberseite, damit Getränke, Erfrischungen und Tiefkühlprodukte länger kühl und von äußeren Einflüssen abgeschirmt bleiben. Mit langen, gewebten Baumwollgriffen (30 × 2,5 cm), einem extra breiten Boden und einer Vordertasche mit Reißverschluss. Egal, ob Sie zum Strand gehen, Einkäufe erledigen oder einfach nur einen Tag im Freien mit Freunden und Familie genießen möchten, diese Tasche ist der ideale Begleiter für Sie.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/21074382_7_1226_153.png",
+        "label": "Tasche",
+        "printArea": {
+          "topLeft": {
+            "x": 317,
+            "y": 1479
+          },
+          "topRight": {
+            "x": 767,
+            "y": 1479
+          },
+          "bottomRight": {
+            "x": 767,
+            "y": 1760
+          },
+          "bottomLeft": {
+            "x": 317,
+            "y": 1760
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Transferdruck",
+        "impLocation": "Tasche",
+        "maxColours": 1,
+        "impWidthMm": 160,
+        "impHeightMm": 100,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "oslo-kuehltasche-13l",
+    "name": "Oslo Kühltasche 13L",
+    "description": "Mit der Oslo-Kühltasche haben Sie jederzeit und überall gekühlte Getränke und Snacks dabei. Die Kühltasche hat zwei separate Fächer mit Reißverschluss. Das obere Fach eignet sich perfekt für kleine Snacks, während das untere Fach ideal für größere Lebensmittel ist. Der Schultergurt ist verstellbar, so dass die Tasche von jedem leicht zu tragen ist. Die Kühltasche besteht aus 600D Polyester, einem strapazierfähigen und langlebigen Material.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/11960000_2_1212_1013.png",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 402,
+            "y": 997
+          },
+          "topRight": {
+            "x": 2004,
+            "y": 997
+          },
+          "bottomRight": {
+            "x": 2004,
+            "y": 1719
+          },
+          "bottomLeft": {
+            "x": 402,
+            "y": 1719
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Siebdruck",
+        "impLocation": "Vorderseite",
+        "maxColours": 1,
+        "impWidthMm": 200,
+        "impHeightMm": 90,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/11960000_2_6462_1014.png",
+        "label": "Top",
+        "printArea": {
+          "topLeft": {
+            "x": 582,
+            "y": 341
+          },
+          "topRight": {
+            "x": 1818,
+            "y": 341
+          },
+          "bottomRight": {
+            "x": 1818,
+            "y": 1037
+          },
+          "bottomLeft": {
+            "x": 582,
+            "y": 1037
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Siebdruck",
+        "impLocation": "Oberseite",
+        "maxColours": 1,
+        "impWidthMm": 160,
+        "impHeightMm": 90,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "lisa-23-automatikregenschirm-mit-holzgriff",
+    "name": "Lisa 23\" Automatikregenschirm mit Holzgriff",
+    "description": "Der Regenschirm Lisa 23\" ist ein echter Verkaufsschlager. Dank des automatischen Systems lässt sich der Schirm schnell öffnen. Der Schaft und die Rippen sind aus Metall, und der Holzgriff verleiht dem Schirm ein klassisches Aussehen. Der Schirm bietet zahlreiche Möglichkeiten, um eine Werbebotschaft oder ein Logo anzubringen. Außerdem ist der Regenschirm Lisa in einer Vielzahl von Farben erhältlich. ",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10901702_2_614_7.png",
+        "label": "1. Segment",
+        "printArea": {
+          "topLeft": {
+            "x": 901,
+            "y": 1920
+          },
+          "topRight": {
+            "x": 1462,
+            "y": 1920
+          },
+          "bottomRight": {
+            "x": 1462,
+            "y": 2300
+          },
+          "bottomLeft": {
+            "x": 901,
+            "y": 2300
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Siebdruck",
+        "impLocation": "1. Segment",
+        "maxColours": 2,
+        "impWidthMm": 270,
+        "impHeightMm": 180,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10901702_2_616_7.png",
+        "label": "3. Segment",
+        "printArea": {
+          "topLeft": {
+            "x": 1909,
+            "y": 912
+          },
+          "topRight": {
+            "x": 2291,
+            "y": 912
+          },
+          "bottomRight": {
+            "x": 2291,
+            "y": 1475
+          },
+          "bottomLeft": {
+            "x": 1909,
+            "y": 1475
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Siebdruck",
+        "impLocation": "3. Segment",
+        "maxColours": 2,
+        "impWidthMm": 270,
+        "impHeightMm": 180,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10901702_2_618_7.png",
+        "label": "5. Segment",
+        "printArea": {
+          "topLeft": {
+            "x": 937,
+            "y": 86
+          },
+          "topRight": {
+            "x": 1497,
+            "y": 86
+          },
+          "bottomRight": {
+            "x": 1497,
+            "y": 466
+          },
+          "bottomLeft": {
+            "x": 937,
+            "y": 466
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Siebdruck",
+        "impLocation": "5. Segment",
+        "maxColours": 2,
+        "impWidthMm": 270,
+        "impHeightMm": 180,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10901702_2_620_7.png",
+        "label": "7. Segment",
+        "printArea": {
+          "topLeft": {
+            "x": 99,
+            "y": 891
+          },
+          "topRight": {
+            "x": 479,
+            "y": 891
+          },
+          "bottomRight": {
+            "x": 479,
+            "y": 1452
+          },
+          "bottomLeft": {
+            "x": 99,
+            "y": 1452
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Siebdruck",
+        "impLocation": "7. Segment",
+        "maxColours": 2,
+        "impWidthMm": 270,
+        "impHeightMm": 180,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "fontana-23-automatikschirm-mit-karbonoptik-und-gebogenem-gri",
+    "name": "Fontana 23\" Automatikschirm mit Karbonoptik und gebogenem Griff",
+    "description": "Selbstöffnender Regenschirm mit Pongee Polyester Baldachin und einem stabilen schwarz beschichteten Metallschaft. Die hochwertigen Speichen aus Vollglasfaser bieten maximale Flexibilität bei windigen Bedingungen. Gebogener Griff in Karbonoptik mit schwarz vernickelten Spitzen. Luxe Markendetails auf dem gewebten Etikett auf Baldachin und Verschlussriemen. Große Werbeanbringungssfläche auf jedem Paneel.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10941390_2_614_7.png",
+        "label": "1. Segment",
+        "printArea": {
+          "topLeft": {
+            "x": 885,
+            "y": 1833
+          },
+          "topRight": {
+            "x": 1561,
+            "y": 1833
+          },
+          "bottomRight": {
+            "x": 1561,
+            "y": 2284
+          },
+          "bottomLeft": {
+            "x": 885,
+            "y": 2284
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Siebdruck",
+        "impLocation": "1. Segment",
+        "maxColours": 2,
+        "impWidthMm": 270,
+        "impHeightMm": 180,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10941390_2_616_7.png",
+        "label": "3. Segment",
+        "printArea": {
+          "topLeft": {
+            "x": 1867,
+            "y": 819
+          },
+          "topRight": {
+            "x": 2322,
+            "y": 819
+          },
+          "bottomRight": {
+            "x": 2322,
+            "y": 1495
+          },
+          "bottomLeft": {
+            "x": 1867,
+            "y": 1495
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Siebdruck",
+        "impLocation": "3. Segment",
+        "maxColours": 2,
+        "impWidthMm": 270,
+        "impHeightMm": 180,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10941390_2_618_7.png",
+        "label": "5. Segment",
+        "printArea": {
+          "topLeft": {
+            "x": 914,
+            "y": 75
+          },
+          "topRight": {
+            "x": 1590,
+            "y": 75
+          },
+          "bottomRight": {
+            "x": 1590,
+            "y": 526
+          },
+          "bottomLeft": {
+            "x": 914,
+            "y": 526
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Siebdruck",
+        "impLocation": "5. Segment",
+        "maxColours": 2,
+        "impWidthMm": 270,
+        "impHeightMm": 180,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10941390_2_620_7.png",
+        "label": "7. Segment",
+        "printArea": {
+          "topLeft": {
+            "x": 92,
+            "y": 832
+          },
+          "topRight": {
+            "x": 547,
+            "y": 832
+          },
+          "bottomRight": {
+            "x": 547,
+            "y": 1509
+          },
+          "bottomLeft": {
+            "x": 92,
+            "y": 1509
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Siebdruck",
+        "impLocation": "7. Segment",
+        "maxColours": 2,
+        "impWidthMm": 270,
+        "impHeightMm": 180,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "lega-kurze-240-g-m-schuerze",
+    "name": "Lega kurze 240 g/m² Schürze",
+    "description": "Schürze aus Twill Gewebe mit 3 Taschen und 0,9 m langem Bindeband.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/11205100_2_1625_50.png",
+        "label": "rechtes Fach",
+        "printArea": {
+          "topLeft": {
+            "x": 650,
+            "y": 529
+          },
+          "topRight": {
+            "x": 856,
+            "y": 529
+          },
+          "bottomRight": {
+            "x": 856,
+            "y": 757
+          },
+          "bottomLeft": {
+            "x": 650,
+            "y": 757
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Siebdruck",
+        "impLocation": "rechtes Fach",
+        "maxColours": 3,
+        "impWidthMm": 70,
+        "impHeightMm": 100,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/11205100_2_1625_49.png",
+        "label": "linkes Fach",
+        "printArea": {
+          "topLeft": {
+            "x": 1439,
+            "y": 529
+          },
+          "topRight": {
+            "x": 1644,
+            "y": 529
+          },
+          "bottomRight": {
+            "x": 1644,
+            "y": 757
+          },
+          "bottomLeft": {
+            "x": 1439,
+            "y": 757
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Siebdruck",
+        "impLocation": "linkes Fach",
+        "maxColours": 3,
+        "impWidthMm": 70,
+        "impHeightMm": 100,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/11205100_4_1625_72.png",
+        "label": "Tasche",
+        "printArea": {
+          "topLeft": {
+            "x": 1117,
+            "y": 603
+          },
+          "topRight": {
+            "x": 1200,
+            "y": 603
+          },
+          "bottomRight": {
+            "x": 1200,
+            "y": 686
+          },
+          "bottomLeft": {
+            "x": 1117,
+            "y": 686
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Stick",
+        "impLocation": "Tasche",
+        "maxColours": 12,
+        "impWidthMm": 57,
+        "impHeightMm": 57,
+        "impDiameterMm": 80
+      }
+    ]
+  },
+  {
+    "id": "transit-kulturbeutel",
+    "name": "Transit Kulturbeutel",
+    "description": "Die hübsche Transit Kulturtasche hat ein einfaches Layout und ist daher ideal für Reisen. Große Produkte wie Shampoo und Parfüm passen in das Hauptfach mit Reißverschluss, während der Reißverschluss an der Vorderseite für kleine Gegenstände wie einen Spiegel geeignet ist. Die Kulturtasche besteht aus 300D-Polyester, ist leicht und einfach zu pflegen. Darüber hinaus bietet der Transit Kulturbeutel verschiedene Werbeanbringungsoptionen für Logos und andere Unternehmensbotschaften.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/11996800_2_2936_328.png",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 944,
+            "y": 541
+          },
+          "topRight": {
+            "x": 1930,
+            "y": 541
+          },
+          "bottomRight": {
+            "x": 1930,
+            "y": 1148
+          },
+          "bottomLeft": {
+            "x": 944,
+            "y": 1148
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Siebdruck",
+        "impLocation": "Vorderseite",
+        "maxColours": 1,
+        "impWidthMm": 130,
+        "impHeightMm": 80,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/11996800_7_3395_1093.png",
+        "label": "Back",
+        "printArea": {
+          "topLeft": {
+            "x": 383,
+            "y": 254
+          },
+          "topRight": {
+            "x": 1564,
+            "y": 254
+          },
+          "bottomRight": {
+            "x": 1564,
+            "y": 1065
+          },
+          "bottomLeft": {
+            "x": 383,
+            "y": 1065
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Transferdruck",
+        "impLocation": "Rückseite",
+        "maxColours": 1,
+        "impWidthMm": 160,
+        "impHeightMm": 80,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "pheebs-150-g-m-grs-zuziehbeutel-aus-recyclingbaumwolle-mitte",
+    "name": "Pheebs 150 g/m² GRS Zuziehbeutel aus Recyclingbaumwolle mittel 1,5 l",
+    "description": "Zuziehbeutel aus GRS-zertifizierter, Recyclingbaumwolle mit Kordelzugverschluss aus Baumwolle. Ideal zum Verschenken oder Aufbewahren von Gegenständen. Größe 25 x 30 cm. Aufgrund des Produktionsprozesses kann es zu geringfügigen Farbabweichungen des Produktes kommen.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/12067106_2_1237_1041.png",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 604,
+            "y": 389
+          },
+          "topRight": {
+            "x": 1778,
+            "y": 389
+          },
+          "bottomRight": {
+            "x": 1778,
+            "y": 2009
+          },
+          "bottomLeft": {
+            "x": 604,
+            "y": 2009
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Siebdruck",
+        "impLocation": "Vorderseite",
+        "maxColours": 1,
+        "impWidthMm": 130,
+        "impHeightMm": 200,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/12067106_2_1237_1042.png",
+        "label": "Back",
+        "printArea": {
+          "topLeft": {
+            "x": 612,
+            "y": 390
+          },
+          "topRight": {
+            "x": 1799,
+            "y": 390
+          },
+          "bottomRight": {
+            "x": 1799,
+            "y": 2028
+          },
+          "bottomLeft": {
+            "x": 612,
+            "y": 2028
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Siebdruck",
+        "impLocation": "Rückseite",
+        "maxColours": 1,
+        "impWidthMm": 130,
+        "impHeightMm": 200,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "nola-brotbeutel-aus-baumwolle",
+    "name": "Nola Brotbeutel aus Baumwolle",
+    "description": "Eine wiederverwendbare Baumwolltasche zur Aufbewahrung von Brot. So bleibt das Brot frisch und der Plastikverbrauch wird reduziert. Sie ist leicht, atmungsaktiv, einfach zu waschen und perfekt für den täglichen Gebrauch in der Küche oder für den Einkauf beim Bäcker.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/12636906_42_5980_1048.png",
+        "label": "Tasche",
+        "printArea": {
+          "topLeft": {
+            "x": 319,
+            "y": 1345
+          },
+          "topRight": {
+            "x": 554,
+            "y": 1345
+          },
+          "bottomRight": {
+            "x": 554,
+            "y": 1581
+          },
+          "bottomLeft": {
+            "x": 319,
+            "y": 1581
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Stick fix",
+        "impLocation": "Tasche",
+        "maxColours": 12,
+        "impWidthMm": 57,
+        "impHeightMm": 57,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "sticky-mate-haftnotizen-100-x-100-mm",
+    "name": "Sticky-Mate® Haftnotizen 100 x 100 mm",
+    "description": "Sticky-Mate® Haftnotizen mit selbstklebendem 80 g/m2 Papier. Ein vollfarbiger Druck ist auf jedem Blatt möglich. Erhältlich in 3 Größen: 25, 50, 100 Blatt.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/2109500_31_5306_3540_uk.png",
+        "label": "Top",
+        "printArea": {
+          "topLeft": {
+            "x": 46,
+            "y": 32
+          },
+          "topRight": {
+            "x": 2338,
+            "y": 32
+          },
+          "bottomRight": {
+            "x": 2338,
+            "y": 2366
+          },
+          "bottomLeft": {
+            "x": 46,
+            "y": 2366
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Web Offsetdruck",
+        "impLocation": "Blätter (Klebung oben)",
+        "maxColours": 4,
+        "impWidthMm": 100,
+        "impHeightMm": 100,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/2109500_31_5305_3540_uk.png",
+        "label": "Left",
+        "printArea": {
+          "topLeft": {
+            "x": 46,
+            "y": 32
+          },
+          "topRight": {
+            "x": 2338,
+            "y": 32
+          },
+          "bottomRight": {
+            "x": 2338,
+            "y": 2366
+          },
+          "bottomLeft": {
+            "x": 46,
+            "y": 2366
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Web Offsetdruck",
+        "impLocation": "Blätter (Klebung links)",
+        "maxColours": 4,
+        "impWidthMm": 100,
+        "impHeightMm": 100,
+        "impDiameterMm": 0
+      }
+    ]
+  },
+  {
+    "id": "remy-kuehlhandtuch-in-pet-behaelter",
+    "name": "Remy Kühlhandtuch in PET-Behälter",
+    "description": "Schnell einziehendes, schnell trocknendes und waschbares kühlendes Handtuch aus starkem und strapazierfähigem Polyester, perfekt um während des Trainings oder bei allen Outdoor-Aktivitäten kühl zu bleiben. Wird in einem PET-Behälter mit Tragegriff und integriertem Karabinerhaken für einfaches Tragen geliefert. Erhältlich in 5 frischen Farben. Große Deko-Logofläche auf dem Behälter, Dekoration auch auf dem Kühlhandtuch selbst möglich. Größe 30 x 80 cm.",
+    "views": [
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/12617002_3_1175_1377.png",
+        "label": "Front",
+        "printArea": {
+          "topLeft": {
+            "x": 20,
+            "y": 1275
+          },
+          "topRight": {
+            "x": 2352,
+            "y": 1275
+          },
+          "bottomRight": {
+            "x": 2352,
+            "y": 1961
+          },
+          "bottomLeft": {
+            "x": 20,
+            "y": 1961
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Rundum-Siebdruck",
+        "impLocation": "Front",
+        "maxColours": 1,
+        "impWidthMm": 170,
+        "impHeightMm": 50,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/12617002_2_3728_2333.png",
+        "label": "Top",
+        "printArea": {
+          "topLeft": {
+            "x": 922,
+            "y": 159
+          },
+          "topRight": {
+            "x": 1499,
+            "y": 159
+          },
+          "bottomRight": {
+            "x": 1499,
+            "y": 684
+          },
+          "bottomLeft": {
+            "x": 922,
+            "y": 684
+          }
+        },
+        "coordinateImageSize": {
+          "width": 2400,
+          "height": null,
+          "longestSide": "width"
+        },
+        "impMethod": "Siebdruck",
+        "impLocation": "Oberseite",
+        "maxColours": 4,
+        "impWidthMm": 220,
+        "impHeightMm": 200,
+        "impDiameterMm": 0
+      },
+      {
+        "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/12617002_16_5614_1093.png",
+        "label": "Handtuch",
+        "printArea": {
+          "topLeft": {
+            "x": 103,
+            "y": 664
+          },
+          "topRight": {
+            "x": 776,
+            "y": 664
+          },
+          "bottomRight": {
+            "x": 776,
+            "y": 1777
+          },
+          "bottomLeft": {
+            "x": 103,
+            "y": 1777
+          }
+        },
+        "coordinateImageSize": {
+          "width": null,
+          "height": 2400,
+          "longestSide": "height"
+        },
+        "impMethod": "Sublimation",
+        "impLocation": "Handtuch",
+        "maxColours": "full color",
+        "impWidthMm": 260,
+        "impHeightMm": 430,
+        "impDiameterMm": 0
       }
     ]
   }

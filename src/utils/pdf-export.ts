@@ -207,14 +207,40 @@ function renderProductPage(
   doc.setFont('helvetica', 'bold');
   doc.text(article.name, pageW / 2, margin + 8, { align: 'center' });
 
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(100, 100, 100);
-  doc.text(article.description, pageW / 2, margin + 14, { align: 'center' });
-  doc.setTextColor(0, 0, 0);
+  // Article details table
+  const view = article.views[viewIndex];
+  const detailRows: [string, string][] = [['Article ID', article.id]];
+
+  if (view?.impMethod) detailRows.push(['Print Method', view.impMethod]);
+  if (view?.impLocation) detailRows.push(['Print Location', view.impLocation]);
+
+  if (view?.impDiameterMm && view.impDiameterMm > 0) {
+    detailRows.push(['Print Area', `\u00D8 ${view.impDiameterMm} mm`]);
+  } else if (view?.impWidthMm && view?.impHeightMm) {
+    detailRows.push(['Print Area', `${view.impWidthMm} \u00D7 ${view.impHeightMm} mm`]);
+  }
+
+  if (view?.maxColours) detailRows.push(['Max Colors', `${view.maxColours}`]);
+
+  const detailRowH = 6;
+  const detailCol1W = 30;
+  const detailTableY = margin + 16;
+
+  doc.setFontSize(9);
+  detailRows.forEach((row, i) => {
+    const y = detailTableY + i * detailRowH;
+    doc.setFont('helvetica', 'bold');
+    doc.text(row[0], margin, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(row[1], margin + detailCol1W, y);
+  });
+
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.3);
+  doc.line(margin, detailTableY + detailRows.length * detailRowH + 2, margin + contentW, detailTableY + detailRows.length * detailRowH + 2);
 
   const mockupFormat = dataUrlToImageFormat(mockupDataUrl);
-  const mockupY = margin + 22;
+  const mockupY = detailTableY + detailRows.length * detailRowH + 6;
   const maxMockupH = pageH - mockupY - margin;
 
   const aspectRatio = canvasW / Math.max(canvasH, 1);
@@ -229,7 +255,6 @@ function renderProductPage(
   const imgX = (pageW - imgW) / 2;
   doc.addImage(mockupDataUrl, mockupFormat, imgX, mockupY, imgW, imgH);
 
-  const view = article.views[viewIndex];
   if (config.showPrintAreaGuides && view?.printArea != null) {
     drawPrintAreaGuide(doc, view.printArea, imgX, mockupY, imgW, imgH, canvasW, canvasH);
   }

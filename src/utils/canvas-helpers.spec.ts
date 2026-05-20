@@ -1,4 +1,4 @@
-import { generateObjectId, fitLogoToPrintArea, printAreaToPixelCorners, pixelCornersToPrintArea, legacyToPrintArea, defaultPrintArea, trimSvgWhitespace } from './canvas-helpers';
+import { generateObjectId, fitLogoToPrintArea, printAreaToPixelCorners, pixelCornersToPrintArea, legacyToPrintArea, defaultPrintArea, trimSvgWhitespace, isPixelPrintArea, normalizePrintArea } from './canvas-helpers';
 import { PrintArea, LegacyPrintArea } from '../types';
 
 // Canvas helpers rely on Fabric.js which requires a real canvas context.
@@ -184,6 +184,81 @@ describe('trimSvgWhitespace', () => {
     const svgDataUrl = 'data:image/svg+xml,' + encodeURIComponent(svgContent);
     const result = await trimSvgWhitespace(svgDataUrl);
     expect(result).toBe(svgDataUrl);
+  });
+});
+
+describe('isPixelPrintArea', () => {
+  it('returns true when coordinates are pixel values', () => {
+    const pa: PrintArea = {
+      topLeft: { x: 447, y: 255 },
+      topRight: { x: 1338, y: 255 },
+      bottomRight: { x: 1338, y: 1245 },
+      bottomLeft: { x: 447, y: 1245 },
+    };
+    expect(isPixelPrintArea(pa)).toBe(true);
+  });
+
+  it('returns false when coordinates are normalized (0-1)', () => {
+    const pa: PrintArea = {
+      topLeft: { x: 0.25, y: 0.25 },
+      topRight: { x: 0.75, y: 0.25 },
+      bottomRight: { x: 0.75, y: 0.75 },
+      bottomLeft: { x: 0.25, y: 0.75 },
+    };
+    expect(isPixelPrintArea(pa)).toBe(false);
+  });
+
+  it('returns false for edge case where all values are exactly 0 or 1', () => {
+    const pa: PrintArea = {
+      topLeft: { x: 0, y: 0 },
+      topRight: { x: 1, y: 0 },
+      bottomRight: { x: 1, y: 1 },
+      bottomLeft: { x: 0, y: 1 },
+    };
+    expect(isPixelPrintArea(pa)).toBe(false);
+  });
+});
+
+describe('normalizePrintArea', () => {
+  it('converts pixel coordinates to 0-1 values', () => {
+    const pa: PrintArea = {
+      topLeft: { x: 600, y: 300 },
+      topRight: { x: 1800, y: 300 },
+      bottomRight: { x: 1800, y: 900 },
+      bottomLeft: { x: 600, y: 900 },
+    };
+    const result = normalizePrintArea(pa, 2400, 1200);
+    expect(result.topLeft.x).toBeCloseTo(0.25);
+    expect(result.topLeft.y).toBeCloseTo(0.25);
+    expect(result.topRight.x).toBeCloseTo(0.75);
+    expect(result.topRight.y).toBeCloseTo(0.25);
+    expect(result.bottomRight.x).toBeCloseTo(0.75);
+    expect(result.bottomRight.y).toBeCloseTo(0.75);
+    expect(result.bottomLeft.x).toBeCloseTo(0.25);
+    expect(result.bottomLeft.y).toBeCloseTo(0.75);
+  });
+
+  it('passes through bulge value', () => {
+    const pa: PrintArea = {
+      topLeft: { x: 600, y: 300 },
+      topRight: { x: 1800, y: 300 },
+      bottomRight: { x: 1800, y: 900 },
+      bottomLeft: { x: 600, y: 900 },
+      bulge: 0.3,
+    };
+    const result = normalizePrintArea(pa, 2400, 1200);
+    expect(result.bulge).toBe(0.3);
+  });
+
+  it('returns already-normalized area unchanged', () => {
+    const pa: PrintArea = {
+      topLeft: { x: 0.25, y: 0.25 },
+      topRight: { x: 0.75, y: 0.25 },
+      bottomRight: { x: 0.75, y: 0.75 },
+      bottomLeft: { x: 0.25, y: 0.75 },
+    };
+    const result = normalizePrintArea(pa, 2400, 1200);
+    expect(result).toBe(pa);
   });
 });
 

@@ -71,6 +71,12 @@ export interface ArticleView {
   image: string;
   label: string;
   printArea: PrintArea | null;
+  impMethod?: string;
+  impLocation?: string;
+  impWidthMm?: number;
+  impHeightMm?: number;
+  impDiameterMm?: number;
+  maxColours?: number;
 }
 
 export interface Article {

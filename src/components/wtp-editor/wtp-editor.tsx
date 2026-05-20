@@ -270,7 +270,14 @@ export class WtpEditor {
   @Method()
   async exportImage(format: 'png' | 'jpeg' = 'png', quality: number = 1): Promise<string> {
     if (this.canvas === undefined) throw new Error('Canvas not initialized');
-    return this.canvas.toDataURL({ multiplier: 1, format, quality });
+    try {
+      return this.canvas.toDataURL({ multiplier: 1, format, quality });
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'SecurityError') {
+        throw new Error('Cannot export: product image is cross-origin. Use a CORS proxy or serve images from the same domain.');
+      }
+      throw e;
+    }
   }
 
   /** Export the canvas as a high-resolution data URL image (for PDF/print).
@@ -288,7 +295,17 @@ export class WtpEditor {
     this.debug = false;
     this.canvas.renderAll();
 
-    const dataUrl = this.canvas.toDataURL({ multiplier, format, quality });
+    let dataUrl: string;
+    try {
+      dataUrl = this.canvas.toDataURL({ multiplier, format, quality });
+    } catch (e) {
+      this.debug = wasDebug;
+      this.canvas.renderAll();
+      if (e instanceof DOMException && e.name === 'SecurityError') {
+        throw new Error('Cannot export: product image is cross-origin. Use a CORS proxy or serve images from the same domain.');
+      }
+      throw e;
+    }
     const width = this.canvas.getWidth();
     const height = this.canvas.getHeight();
 

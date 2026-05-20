@@ -7,14 +7,14 @@
 
 ## Properties
 
-| Property                  | Attribute                   | Description                                                     | Type                   | Default                                                                      |
-| ------------------------- | --------------------------- | --------------------------------------------------------------- | ---------------------- | ---------------------------------------------------------------------------- |
-| `accept`                  | `accept`                    | Accepted file MIME types for the file input.                    | `string`               | `'image/png,image/jpeg,image/svg+xml,image/tiff,image/avif,application/pdf'` |
-| `bgRemovalConfig`         | --                          | Configuration for the color-based background removal algorithm. | `BgRemovalConfig`      | `{}`                                                                         |
-| `config`                  | --                          | Validation rules for uploaded logos.                            | `LogoValidationConfig` | `DEFAULT_VALIDATION_CONFIG`                                                  |
-| `disabled`                | `disabled`                  | Disables the upload component.                                  | `boolean`              | `false`                                                                      |
-| `enableBackgroundRemoval` | `enable-background-removal` | Enables background removal for raster images after upload.      | `boolean`              | `false`                                                                      |
-| `multiple`                | `multiple`                  | Whether multiple files can be uploaded at once.                 | `boolean`              | `false`                                                                      |
+| Property                  | Attribute                   | Description                                                     | Type                   | Default                                                      |
+| ------------------------- | --------------------------- | --------------------------------------------------------------- | ---------------------- | ------------------------------------------------------------ |
+| `accept`                  | `accept`                    | Accepted file MIME types for the file input.                    | `string`               | `'image/png,image/jpeg,image/svg+xml,image/tiff,image/avif'` |
+| `bgRemovalConfig`         | --                          | Configuration for the color-based background removal algorithm. | `BgRemovalConfig`      | `{}`                                                         |
+| `config`                  | --                          | Validation rules for uploaded logos.                            | `LogoValidationConfig` | `DEFAULT_VALIDATION_CONFIG`                                  |
+| `disabled`                | `disabled`                  | Disables the upload component.                                  | `boolean`              | `false`                                                      |
+| `enableBackgroundRemoval` | `enable-background-removal` | Enables background removal for raster images after upload.      | `boolean`              | `false`                                                      |
+| `multiple`                | `multiple`                  | Whether multiple files can be uploaded at once.                 | `boolean`              | `false`                                                      |
 
 
 ## Events

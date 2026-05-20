@@ -177,6 +177,31 @@
         transition: all 0.15s;
       }
       .btn-reset:hover { background: #fee2e2; border-color: #dc2626; color: #dc2626; }
+
+      .imprint-info {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 10px 16px;
+        margin-bottom: 12px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 12px;
+        color: #475569;
+      }
+      .imprint-info .imp-tag {
+        display: inline-flex;
+        padding: 2px 8px;
+        background: #f1f5f9;
+        border-radius: 4px;
+        white-space: nowrap;
+      }
+      .imprint-info .imp-label {
+        font-weight: 600;
+        color: #64748b;
+        margin-right: 4px;
+      }
     </style>
   </head>
   <body>
@@ -200,6 +225,7 @@
 
         <div id="main-content" style="display:none;">
           <div id="view-tabs" class="view-tabs"></div>
+          <div id="imprint-info" class="imprint-info" style="display:none;"></div>
           <div class="editor-container">
             <wtp-print-area-editor id="editor" width="800" height="600"></wtp-print-area-editor>
           </div>
@@ -282,17 +308,68 @@
         bottomLeft: { x: 0.35, y: 0.675 },
       };
 
-      function loadView(article, viewIdx) {
-        const view = article.views[viewIdx];
-        editorEl.productImage = '/demo-article/' + view.image;
+      function loadImageDimensions(url) {
+        return new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+          img.onerror = () => resolve(null);
+          img.src = url;
+        });
+      }
 
-        if (view.printArea) {
-          editorEl.setPrintArea(view.printArea);
+      function isPixelPrintArea(pa) {
+        return [pa.topLeft, pa.topRight, pa.bottomRight, pa.bottomLeft].some(p => p.x > 1 || p.y > 1);
+      }
+
+      function normalizePrintArea(pa, imgW, imgH) {
+        if (!isPixelPrintArea(pa)) return pa;
+        return {
+          topLeft: { x: pa.topLeft.x / imgW, y: pa.topLeft.y / imgH },
+          topRight: { x: pa.topRight.x / imgW, y: pa.topRight.y / imgH },
+          bottomRight: { x: pa.bottomRight.x / imgW, y: pa.bottomRight.y / imgH },
+          bottomLeft: { x: pa.bottomLeft.x / imgW, y: pa.bottomLeft.y / imgH },
+          ...(pa.bulge != null && pa.bulge !== 0 ? { bulge: pa.bulge } : {}),
+        };
+      }
+
+      function imprintSize(view) {
+        if (view.impDiameterMm) return '\u2300 ' + view.impDiameterMm + ' mm';
+        if (view.impWidthMm && view.impHeightMm) return view.impWidthMm + ' \u00d7 ' + view.impHeightMm + ' mm';
+        return null;
+      }
+
+      function updateImprintInfo(view) {
+        const el = document.getElementById('imprint-info');
+        const fields = [];
+        if (view.impMethod) fields.push(`<span class="imp-tag"><span class="imp-label">Method:</span> ${view.impMethod}</span>`);
+        if (view.impLocation) fields.push(`<span class="imp-tag"><span class="imp-label">Location:</span> ${view.impLocation}</span>`);
+        const size = imprintSize(view);
+        if (size) fields.push(`<span class="imp-tag"><span class="imp-label">Print area:</span> ${size}</span>`);
+        if (view.maxColours) fields.push(`<span class="imp-tag"><span class="imp-label">Max colours:</span> ${view.maxColours}</span>`);
+        if (fields.length > 0) {
+          el.style.display = 'flex';
+          el.innerHTML = fields.join('');
         } else {
-          editorEl.setPrintArea(DEFAULT_AREA);
+          el.style.display = 'none';
+        }
+      }
+
+      async function loadView(article, viewIdx) {
+        const view = article.views[viewIdx];
+        editorEl.productImage = view.image;
+
+        let area = view.printArea;
+        if (area && isPixelPrintArea(area)) {
+          const dims = await loadImageDimensions(view.image);
+          if (dims) {
+            area = normalizePrintArea(area, dims.width, dims.height);
+            view.printArea = area;
+          }
         }
 
-        updateReadout(view.printArea || DEFAULT_AREA);
+        editorEl.setPrintArea(area || DEFAULT_AREA);
+        updateReadout(area || DEFAULT_AREA);
+        updateImprintInfo(view);
       }
 
       async function saveCurrentPrintArea() {

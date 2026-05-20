@@ -146,6 +146,23 @@
         color: #64748b;
         margin-top: 2px;
       }
+      .product-card .card-info .card-imprint {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+      }
+      .product-card .card-info .card-imprint .tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        padding: 2px 8px;
+        font-size: 11px;
+        background: #f1f5f9;
+        color: #475569;
+        border-radius: 4px;
+        white-space: nowrap;
+      }
       .product-card .card-info .card-action {
         display: inline-flex;
         align-items: center;
@@ -224,6 +241,26 @@
       }
       .editor-header .btn-close svg { width: 18px; height: 18px; }
 
+      .editor-imprint {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 8px 20px;
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        font-size: 12px;
+        color: #475569;
+      }
+      .editor-imprint .imp-field {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .editor-imprint .imp-label {
+        font-weight: 600;
+        color: #64748b;
+      }
+
       .editor-body {
         overflow: auto;
         padding: 16px 20px;
@@ -282,6 +319,7 @@
             </button>
           </div>
         </div>
+        <div id="editor-imprint" class="editor-imprint" style="display:none;"></div>
         <div class="editor-body">
           <wtp-editor id="editor" width="860" height="540" debug></wtp-editor>
         </div>
@@ -303,9 +341,66 @@
       const editorEl = document.getElementById('editor');
       const editorTitle = document.getElementById('editor-title');
 
+      // --- Normalize pixel print areas to 0-1 ---
+      function loadImageDimensions(url) {
+        return new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+          img.onerror = () => resolve(null);
+          img.src = url;
+        });
+      }
+
+      function isPixelPrintArea(pa) {
+        return [pa.topLeft, pa.topRight, pa.bottomRight, pa.bottomLeft].some(p => p.x > 1 || p.y > 1);
+      }
+
+      function normalizePrintArea(pa, imgW, imgH) {
+        if (!isPixelPrintArea(pa)) return pa;
+        return {
+          topLeft: { x: pa.topLeft.x / imgW, y: pa.topLeft.y / imgH },
+          topRight: { x: pa.topRight.x / imgW, y: pa.topRight.y / imgH },
+          bottomRight: { x: pa.bottomRight.x / imgW, y: pa.bottomRight.y / imgH },
+          bottomLeft: { x: pa.bottomLeft.x / imgW, y: pa.bottomLeft.y / imgH },
+          ...(pa.bulge != null && pa.bulge !== 0 ? { bulge: pa.bulge } : {}),
+        };
+      }
+
+      function getViewImageDimensions(view) {
+        const cis = view.coordinateImageSize;
+        if (cis && cis.width && cis.longestSide === 'width') {
+          // Width is known (2400), need to load image for height
+          return loadImageDimensions(view.image).then(dims => dims || { width: cis.width, height: cis.width });
+        }
+        if (cis && cis.height && cis.longestSide === 'height') {
+          return loadImageDimensions(view.image).then(dims => dims || { width: cis.height, height: cis.height });
+        }
+        return loadImageDimensions(view.image);
+      }
+
+      async function normalizeArticles(data) {
+        const tasks = [];
+        for (const article of data) {
+          for (const view of article.views) {
+            if (view.printArea && isPixelPrintArea(view.printArea)) {
+              tasks.push(
+                getViewImageDimensions(view).then(dims => {
+                  if (dims) {
+                    view.printArea = normalizePrintArea(view.printArea, dims.width, dims.height);
+                  }
+                })
+              );
+            }
+          }
+        }
+        await Promise.all(tasks);
+        return data;
+      }
+
       // --- Load articles catalog ---
       fetch('/demo-article/articles.json')
         .then(r => r.json())
+        .then(data => normalizeArticles(data))
         .then(data => { articles = data; });
 
       // --- Logo upload/selection handler ---
@@ -313,6 +408,27 @@
         currentLogo = e.detail;
         showProducts();
       });
+
+      // --- Imprint info helpers ---
+      function imprintSize(view) {
+        if (view.impDiameterMm) return '\u2300 ' + view.impDiameterMm + ' mm';
+        if (view.impWidthMm && view.impHeightMm) return view.impWidthMm + ' \u00d7 ' + view.impHeightMm + ' mm';
+        return null;
+      }
+
+      function imprintTags(view) {
+        const tags = [];
+        if (view.impMethod) tags.push(view.impMethod);
+        if (view.impLocation) tags.push(view.impLocation);
+        const size = imprintSize(view);
+        if (size) tags.push(size);
+        if (view.maxColours) tags.push('max. ' + view.maxColours + ' colours');
+        return tags;
+      }
+
+      function imprintTagsHtml(view) {
+        return imprintTags(view).map(t => `<span class="tag">${t}</span>`).join('');
+      }
 
       // --- Build product grid ---
       function showProducts() {
@@ -322,7 +438,7 @@
 
         articles.forEach(article => {
           const firstView = article.views[0];
-          const productImgUrl = '/demo-article/' + firstView.image;
+          const productImgUrl = firstView.image;
 
           const card = document.createElement('div');
           card.className = 'product-card';
@@ -345,6 +461,7 @@
             <div class="card-info">
               <h3>${article.name}</h3>
               <div class="card-meta">${article.description}</div>
+              <div class="card-imprint">${imprintTagsHtml(firstView)}</div>
               <div class="card-action">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -392,7 +509,7 @@
         const renderer = card.querySelector('wtp-logo-renderer');
         if (!renderer || !view) return;
 
-        renderer.productImage = '/demo-article/' + view.image;
+        renderer.productImage = view.image;
         renderer.printArea = view.printArea || null;
 
         if (currentLogo) {
@@ -407,6 +524,10 @@
         card.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
         const activeBtn = card.querySelector(`.view-btn[data-view-index="${viewIndex}"]`);
         if (activeBtn) activeBtn.classList.add('active');
+
+        // Update imprint tags
+        const imprintEl = card.querySelector('.card-imprint');
+        if (imprintEl) imprintEl.innerHTML = imprintTagsHtml(view);
       }
 
       // --- Editor ---
@@ -421,7 +542,22 @@
         if (activeCard) activeCard.classList.add('active');
 
         const firstView = article.views[0];
-        const productImgUrl = '/demo-article/' + firstView.image;
+        const productImgUrl = firstView.image;
+
+        // Show imprint info
+        const editorImprint = document.getElementById('editor-imprint');
+        const fields = [];
+        if (firstView.impMethod) fields.push(`<span class="imp-field"><span class="imp-label">Method:</span> ${firstView.impMethod}</span>`);
+        if (firstView.impLocation) fields.push(`<span class="imp-field"><span class="imp-label">Location:</span> ${firstView.impLocation}</span>`);
+        const size = imprintSize(firstView);
+        if (size) fields.push(`<span class="imp-field"><span class="imp-label">Print area:</span> ${size}</span>`);
+        if (firstView.maxColours) fields.push(`<span class="imp-field"><span class="imp-label">Max colours:</span> ${firstView.maxColours}</span>`);
+        if (fields.length > 0) {
+          editorImprint.style.display = 'flex';
+          editorImprint.innerHTML = fields.join('');
+        } else {
+          editorImprint.style.display = 'none';
+        }
 
         // If we have a saved state for this article, restore it
         if (editorStates[article.id]) {
@@ -594,14 +730,36 @@
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
         doc.text(article.name, pageW / 2, margin + 8, { align: 'center' });
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(100, 100, 100);
-        doc.text(article.description, pageW / 2, margin + 14, { align: 'center' });
-        doc.setTextColor(0, 0, 0);
+
+        // Article details table
+        const view = article.views[viewIndex];
+        const detailRows = [['Article ID', article.id]];
+        if (view && view.impMethod) detailRows.push(['Print Method', view.impMethod]);
+        if (view && view.impLocation) detailRows.push(['Print Location', view.impLocation]);
+        if (view && view.impDiameterMm && view.impDiameterMm > 0) {
+          detailRows.push(['Print Area', '\u00D8 ' + view.impDiameterMm + ' mm']);
+        } else if (view && view.impWidthMm && view.impHeightMm) {
+          detailRows.push(['Print Area', view.impWidthMm + ' \u00D7 ' + view.impHeightMm + ' mm']);
+        }
+        if (view && view.maxColours) detailRows.push(['Max Colors', '' + view.maxColours]);
+
+        const detailTableY = margin + 16;
+        const detailRowH = 6;
+        doc.setFontSize(9);
+        detailRows.forEach(function(row, i) {
+          const y = detailTableY + i * detailRowH;
+          doc.setFont('helvetica', 'bold');
+          doc.text(row[0], margin, y);
+          doc.setFont('helvetica', 'normal');
+          doc.text(row[1], margin + 30, y);
+        });
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.3);
+        const detailLineY = detailTableY + detailRows.length * detailRowH + 2;
+        doc.line(margin, detailLineY, margin + contentW, detailLineY);
 
         const mockFmt = mockupDataUrl.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
-        const mockY = margin + 22;
+        const mockY = detailTableY + detailRows.length * detailRowH + 6;
         const maxMockH = pageH - mockY - margin;
         const mAspect = canvasW / Math.max(canvasH, 1);
         let mW = contentW;
@@ -611,7 +769,6 @@
         doc.addImage(mockupDataUrl, mockFmt, mX, mockY, mW, mH);
 
         // Print area guides
-        const view = article.views[viewIndex];
         if (view && view.printArea) {
           const pa = view.printArea;
           const corners = [pa.topLeft, pa.topRight, pa.bottomRight, pa.bottomLeft].map(function(c) {

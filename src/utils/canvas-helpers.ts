@@ -5,12 +5,33 @@ export function generateObjectId(): string {
   return crypto.randomUUID();
 }
 
+const IMAGE_PROXY_BASE = 'http://localhost:3001';
+
+/** Load a FabricImage from a URL, trying CORS → local proxy → plain load (tainted). */
+async function loadFabricImage(url: string): Promise<FabricImage> {
+  // Data URLs and blob URLs are always same-origin
+  if (url.startsWith('data:') || url.startsWith('blob:')) {
+    return FabricImage.fromURL(url);
+  }
+  // Try direct CORS
+  try {
+    return await FabricImage.fromURL(url, { crossOrigin: 'anonymous' });
+  } catch { /* CORS rejected */ }
+  // Try local image proxy
+  try {
+    const proxyUrl = `${IMAGE_PROXY_BASE}/?url=${encodeURIComponent(url)}`;
+    return await FabricImage.fromURL(proxyUrl, { crossOrigin: 'anonymous' });
+  } catch { /* proxy not available */ }
+  // Fallback: load without CORS (canvas will be tainted, export blocked)
+  return FabricImage.fromURL(url);
+}
+
 export async function setCanvasBackground(
   canvas: StaticCanvas,
   imageUrl: string,
   fitMode: 'cover' | 'contain' | 'fill' = 'contain',
 ): Promise<void> {
-  const img = await FabricImage.fromURL(imageUrl);
+  const img = await loadFabricImage(imageUrl);
   const canvasWidth = canvas.getWidth();
   const canvasHeight = canvas.getHeight();
 
@@ -139,6 +160,22 @@ export function legacyToPrintArea(legacy: LegacyPrintArea): PrintArea {
     bottomLeft: { x: x + corners[3].x, y: y + corners[3].y },
     ...(bulge !== 0 ? { bulge } : {}),
   };
+}
+
+/** Detect whether a PrintArea uses pixel coordinates (at least one value > 1). */
+export function isPixelPrintArea(pa: PrintArea): boolean {
+  return [pa.topLeft, pa.topRight, pa.bottomRight, pa.bottomLeft].some(p => p.x > 1 || p.y > 1);
+}
+
+/** Normalize a PrintArea from pixel coordinates to 0–1 relative values. Already-normalized areas are returned unchanged. */
+export function normalizePrintArea(pa: PrintArea, imageWidth: number, imageHeight: number): PrintArea {
+  if (!isPixelPrintArea(pa)) return pa;
+  return pixelCornersToPrintArea(
+    [pa.topLeft, pa.topRight, pa.bottomRight, pa.bottomLeft],
+    imageWidth,
+    imageHeight,
+    pa.bulge ?? 0,
+  );
 }
 
 /** Returns a default centered print area (30% width x 35% height rectangle). */
