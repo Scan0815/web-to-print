@@ -5,10 +5,10 @@
  * It contains typing information for all components that exist in this project.
  */
 import { HTMLStencilElement, JSXBase } from "@stencil/core/internal";
-import { BgRemovalConfig, EditorState, LogoData, LogoValidationConfig, LogoValidationIssue, PlacedLogo, PrintArea } from "./types";
+import { BgRemovalConfig, EditorLabels, EditorState, LogoData, LogoUploadLabels, LogoValidationConfig, LogoValidationIssue, PlacedLogo, PrintArea } from "./types";
 import { FabricObject, IText } from "fabric";
 import { RenderLayer } from "./utils/html-render-helpers";
-export { BgRemovalConfig, EditorState, LogoData, LogoValidationConfig, LogoValidationIssue, PlacedLogo, PrintArea } from "./types";
+export { BgRemovalConfig, EditorLabels, EditorState, LogoData, LogoUploadLabels, LogoValidationConfig, LogoValidationIssue, PlacedLogo, PrintArea } from "./types";
 export { FabricObject, IText } from "fabric";
 export { RenderLayer } from "./utils/html-render-helpers";
 export namespace Components {
@@ -56,6 +56,11 @@ export namespace Components {
           * JSON-serialized initial editor state.
          */
         "initialState": string | undefined;
+        /**
+          * Override any of the user-facing toolbar strings. Missing keys fall back to English defaults.
+          * @default {}
+         */
+        "labels": Partial<EditorLabels>;
         /**
           * Load a previously exported editor state.
          */
@@ -146,6 +151,11 @@ export namespace Components {
           * @default false
          */
         "enableBackgroundRemoval": boolean;
+        /**
+          * Override any of the user-facing strings. Missing keys fall back to English defaults.
+          * @default {}
+         */
+        "labels": Partial<LogoUploadLabels>;
         /**
           * Whether multiple files can be uploaded at once.
           * @default false
@@ -302,6 +312,11 @@ declare namespace LocalJSX {
          */
         "initialState"?: string | undefined;
         /**
+          * Override any of the user-facing toolbar strings. Missing keys fall back to English defaults.
+          * @default {}
+         */
+        "labels"?: Partial<EditorLabels>;
+        /**
           * Fires when the current selection is cleared.
          */
         "onWtpEditorObjectDeselected"?: (event: WtpEditorCustomEvent<void>) => void;
@@ -395,6 +410,11 @@ declare namespace LocalJSX {
           * @default false
          */
         "enableBackgroundRemoval"?: boolean;
+        /**
+          * Override any of the user-facing strings. Missing keys fall back to English defaults.
+          * @default {}
+         */
+        "labels"?: Partial<LogoUploadLabels>;
         /**
           * Whether multiple files can be uploaded at once.
           * @default false

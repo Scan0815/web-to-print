@@ -128,4 +128,51 @@ describe('wtp-editor', () => {
 
     expect(page.rootInstance.printArea).toEqual(printArea);
   });
+
+  // --- Labels prop tests ---
+
+  it('uses default labels when no override is provided', async () => {
+    const page = await newSpecPage({
+      components: [WtpEditor],
+      html: '<wtp-editor></wtp-editor>',
+    });
+
+    const buttons = page.root?.querySelectorAll('.toolbar-btn');
+    const addTextBtn = Array.from(buttons ?? []).find(b => b.querySelector('span')?.textContent === 'Add Text');
+    expect(addTextBtn).toBeTruthy();
+    expect(addTextBtn?.getAttribute('title')).toBe('Add text');
+  });
+
+  it('overrides toolbar labels via the labels prop', async () => {
+    const page = await newSpecPage({
+      components: [WtpEditor],
+      html: '<wtp-editor></wtp-editor>',
+    });
+
+    (page.root as unknown as { labels: object }).labels = {
+      addTextButton: 'Text hinzufügen',
+      addTextTooltip: 'Text hinzufügen',
+      deleteButtonTooltip: 'Auswahl löschen',
+    };
+    await page.waitForChanges();
+
+    const buttons = page.root?.querySelectorAll('.toolbar-btn');
+    const addTextBtn = Array.from(buttons ?? []).find(b => b.querySelector('span')?.textContent === 'Text hinzufügen');
+    const deleteBtn = page.root?.querySelector('.toolbar-btn.danger');
+    expect(addTextBtn).toBeTruthy();
+    expect(deleteBtn?.getAttribute('title')).toBe('Auswahl löschen');
+  });
+
+  it('falls back to defaults for unspecified label keys', async () => {
+    const page = await newSpecPage({
+      components: [WtpEditor],
+      html: '<wtp-editor></wtp-editor>',
+    });
+
+    (page.root as unknown as { labels: object }).labels = { addTextButton: 'Custom' };
+    await page.waitForChanges();
+
+    const select = page.root?.querySelector('.font-select');
+    expect(select?.getAttribute('title')).toBe('Font family');
+  });
 });

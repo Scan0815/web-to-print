@@ -144,4 +144,72 @@ describe('wtp-logo-upload', () => {
     const pendingChoices = page.root?.shadowRoot?.querySelector('.pending-choices');
     expect(pendingChoices).toBeNull();
   });
+
+  // --- Labels prop tests ---
+
+  it('uses default labels when no override is provided', async () => {
+    const page = await newSpecPage({
+      components: [WtpLogoUpload],
+      html: '<wtp-logo-upload></wtp-logo-upload>',
+    });
+
+    const promptText = page.root?.shadowRoot?.querySelector('.prompt-text');
+    const dividerText = page.root?.shadowRoot?.querySelector('.divider-text');
+    const submitBtn = page.root?.shadowRoot?.querySelector('.url-submit-btn');
+    expect(promptText?.textContent).toContain('Drag & drop');
+    expect(dividerText?.textContent).toBe('or');
+    expect(submitBtn?.textContent).toContain('Fetch');
+  });
+
+  it('overrides individual labels via the labels prop', async () => {
+    const page = await newSpecPage({
+      components: [WtpLogoUpload],
+      html: '<wtp-logo-upload></wtp-logo-upload>',
+    });
+
+    (page.root as unknown as { labels: object }).labels = {
+      dropPromptText: 'Logo hierher ziehen',
+      dividerText: 'oder',
+      urlSubmit: 'Laden',
+    };
+    await page.waitForChanges();
+
+    const promptText = page.root?.shadowRoot?.querySelector('.prompt-text');
+    const dividerText = page.root?.shadowRoot?.querySelector('.divider-text');
+    const submitBtn = page.root?.shadowRoot?.querySelector('.url-submit-btn');
+    expect(promptText?.textContent).toBe('Logo hierher ziehen');
+    expect(dividerText?.textContent).toBe('oder');
+    expect(submitBtn?.textContent).toContain('Laden');
+  });
+
+  it('falls back to defaults for unspecified label keys', async () => {
+    const page = await newSpecPage({
+      components: [WtpLogoUpload],
+      html: '<wtp-logo-upload></wtp-logo-upload>',
+    });
+
+    (page.root as unknown as { labels: object }).labels = { dividerText: 'oder' };
+    await page.waitForChanges();
+
+    const promptText = page.root?.shadowRoot?.querySelector('.prompt-text');
+    expect(promptText?.textContent).toContain('Drag & drop');
+  });
+
+  // --- CSS part attribute tests ---
+
+  it('exposes part attributes for shadow-DOM theming', async () => {
+    const page = await newSpecPage({
+      components: [WtpLogoUpload],
+      html: '<wtp-logo-upload></wtp-logo-upload>',
+    });
+
+    const root = page.root?.shadowRoot?.querySelector('[part="root"]');
+    const urlInput = page.root?.shadowRoot?.querySelector('[part="url-input"]');
+    const submitBtn = page.root?.shadowRoot?.querySelector('[part="url-submit-btn"]');
+    const divider = page.root?.shadowRoot?.querySelector('[part="divider"]');
+    expect(root).toBeTruthy();
+    expect(urlInput).toBeTruthy();
+    expect(submitBtn).toBeTruthy();
+    expect(divider).toBeTruthy();
+  });
 });

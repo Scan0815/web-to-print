@@ -7,15 +7,16 @@
 
 ## Properties
 
-| Property       | Attribute       | Description                                                            | Type        | Default                                                           |
-| -------------- | --------------- | ---------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------- |
-| `debug`        | `debug`         | Show print area overlay and bounding box for debugging.                | `boolean`   | `false`                                                           |
-| `fonts`        | --              | Available font families for the text tool.                             | `string[]`  | `['Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Verdana']` |
-| `height`       | `height`        | Canvas height in pixels.                                               | `number`    | `600`                                                             |
-| `initialState` | `initial-state` | JSON-serialized initial editor state.                                  | `string`    | `undefined`                                                       |
-| `printArea`    | --              | Print area definition (0-1 relative coordinates) to constrain objects. | `PrintArea` | `undefined`                                                       |
-| `productImage` | `product-image` | Product background image URL.                                          | `string`    | `undefined`                                                       |
-| `width`        | `width`         | Canvas width in pixels.                                                | `number`    | `800`                                                             |
+| Property       | Attribute       | Description                                                                                  | Type           | Default                                                           |
+| -------------- | --------------- | -------------------------------------------------------------------------------------------- | -------------- | ----------------------------------------------------------------- |
+| `debug`        | `debug`         | Show print area overlay and bounding box for debugging.                                      | `boolean`      | `false`                                                           |
+| `fonts`        | --              | Available font families for the text tool.                                                   | `string[]`     | `['Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Verdana']` |
+| `height`       | `height`        | Canvas height in pixels.                                                                     | `number`       | `600`                                                             |
+| `initialState` | `initial-state` | JSON-serialized initial editor state.                                                        | `string`       | `undefined`                                                       |
+| `labels`       | --              | Override any of the user-facing toolbar strings. Missing keys fall back to English defaults. | `EditorLabels` | `{}`                                                              |
+| `printArea`    | --              | Print area definition (0-1 relative coordinates) to constrain objects.                       | `PrintArea`    | `undefined`                                                       |
+| `productImage` | `product-image` | Product background image URL.                                                                | `string`       | `undefined`                                                       |
+| `width`        | `width`         | Canvas width in pixels.                                                                      | `number`       | `800`                                                             |
 
 
 ## Events

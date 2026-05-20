@@ -1,23 +1,35 @@
 // Design tokens
+//
+// Colors and font-family are exposed as CSS custom properties so consumers
+// can theme the components from outside. The Sass variables resolve to
+// `var(--name, fallback)`, so existing SCSS keeps working unchanged.
+//
+// Override example:
+//   wtp-editor { --wtp-color-primary: #ff0000; }
+//
+// Sass color functions (rgba, mix, ...) cannot operate on `var()` strings.
+// For the one case where we need a translucent primary, use
+// `$wtp-color-primary-fade` (its own CSS var with an rgba fallback).
 
 // Colors
-$wtp-color-primary: #2563eb;
-$wtp-color-primary-hover: #1d4ed8;
-$wtp-color-primary-light: #dbeafe;
-$wtp-color-secondary: #64748b;
-$wtp-color-error: #dc2626;
-$wtp-color-error-light: #fee2e2;
-$wtp-color-success: #16a34a;
-$wtp-color-success-light: #dcfce7;
-$wtp-color-warning: #d97706;
-$wtp-color-warning-light: #fef3c7;
-$wtp-color-text: #1e293b;
-$wtp-color-text-muted: #64748b;
-$wtp-color-border: #e2e8f0;
-$wtp-color-bg: #ffffff;
-$wtp-color-bg-muted: #f8fafc;
+$wtp-color-primary: var(--wtp-color-primary, #2563eb);
+$wtp-color-primary-hover: var(--wtp-color-primary-hover, #1d4ed8);
+$wtp-color-primary-light: var(--wtp-color-primary-light, #dbeafe);
+$wtp-color-primary-fade: var(--wtp-color-primary-fade, rgba(37, 99, 235, 0.2));
+$wtp-color-secondary: var(--wtp-color-secondary, #64748b);
+$wtp-color-error: var(--wtp-color-error, #dc2626);
+$wtp-color-error-light: var(--wtp-color-error-light, #fee2e2);
+$wtp-color-success: var(--wtp-color-success, #16a34a);
+$wtp-color-success-light: var(--wtp-color-success-light, #dcfce7);
+$wtp-color-warning: var(--wtp-color-warning, #d97706);
+$wtp-color-warning-light: var(--wtp-color-warning-light, #fef3c7);
+$wtp-color-text: var(--wtp-color-text, #1e293b);
+$wtp-color-text-muted: var(--wtp-color-text-muted, #64748b);
+$wtp-color-border: var(--wtp-color-border, #e2e8f0);
+$wtp-color-bg: var(--wtp-color-bg, #ffffff);
+$wtp-color-bg-muted: var(--wtp-color-bg-muted, #f8fafc);
 
-// Spacing
+// Spacing (build-time only — not overridable)
 $wtp-spacing-xs: 4px;
 $wtp-spacing-sm: 8px;
 $wtp-spacing-md: 16px;
@@ -32,7 +44,7 @@ $wtp-radius-lg: 12px;
 $wtp-radius-full: 9999px;
 
 // Typography
-$wtp-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+$wtp-font-family: var(--wtp-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
 $wtp-font-size-xs: 12px;
 $wtp-font-size-sm: 14px;
 $wtp-font-size-md: 16px;

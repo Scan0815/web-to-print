@@ -1,6 +1,6 @@
 import { Component, h, Prop, State, Method, Event, EventEmitter, Watch, Element } from '@stencil/core';
 import { Canvas, FabricObject, FabricImage, IText } from 'fabric';
-import { PlacedLogo, PlacedText, EditorState, LogoData, CanvasTransform, PrintArea } from '../../types';
+import { PlacedLogo, PlacedText, EditorState, LogoData, CanvasTransform, PrintArea, EditorLabels, DEFAULT_EDITOR_LABELS } from '../../types';
 import { setCanvasBackground, generateObjectId, upscaleSvgDataUrl, fitLogoToPrintArea, printAreaToPixelCorners } from '../../utils/canvas-helpers';
 
 @Component({
@@ -25,6 +25,12 @@ export class WtpEditor {
   @Prop() printArea: PrintArea | undefined;
   /** Show print area overlay and bounding box for debugging. */
   @Prop() debug: boolean = false;
+  /** Override any of the user-facing toolbar strings. Missing keys fall back to English defaults. */
+  @Prop() labels: Partial<EditorLabels> = {};
+
+  private getLabels(): EditorLabels {
+    return { ...DEFAULT_EDITOR_LABELS, ...this.labels };
+  }
 
   @State() selectedObjectId: string | null = null;
   @State() selectedObjectType: string | null = null;
@@ -615,7 +621,7 @@ export class WtpEditor {
   }
 
   private handleAddText = () => {
-    this.addText('New Text', { fontFamily: this.selectedFont });
+    this.addText(this.getLabels().defaultText, { fontFamily: this.selectedFont });
   };
 
   private handleFontChange = (e: Event) => {
@@ -655,28 +661,30 @@ export class WtpEditor {
   };
 
   render() {
+    const labels = this.getLabels();
+
     return (
       <div class="wtp-editor">
         <div class="toolbar">
-          <button class="toolbar-btn" onClick={this.handleAddText} title="Add text">
+          <button class="toolbar-btn" onClick={this.handleAddText} title={labels.addTextTooltip}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="4 7 4 4 20 4 20 7" />
               <line x1="9" y1="20" x2="15" y2="20" />
               <line x1="12" y1="4" x2="12" y2="20" />
             </svg>
-            <span>Add Text</span>
+            <span>{labels.addTextButton}</span>
           </button>
 
           <div class="toolbar-separator" />
 
-          <select class="font-select" onChange={this.handleFontChange} title="Font family">
+          <select class="font-select" onChange={this.handleFontChange} title={labels.fontSelectTooltip}>
             {this.fonts.map(font => (
               <option value={font} style={{ fontFamily: font }}>{font}</option>
             ))}
           </select>
 
           {this.selectedObjectType === 'i-text' && (
-            <input class="color-input" type="color" value={this.selectedTextColor} onInput={this.handleColorChange} title="Text color" />
+            <input class="color-input" type="color" value={this.selectedTextColor} onInput={this.handleColorChange} title={labels.colorPickerTooltip} />
           )}
 
           <div class="toolbar-separator" />
@@ -685,7 +693,7 @@ export class WtpEditor {
             class="toolbar-btn danger"
             onClick={this.handleDeleteSelected}
             disabled={this.selectedObjectId === null}
-            title="Delete selected"
+            title={labels.deleteButtonTooltip}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="3 6 5 6 21 6" />

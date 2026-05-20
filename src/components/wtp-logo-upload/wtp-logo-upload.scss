@@ -341,7 +341,7 @@
 
   &--selected {
     border-color: $wtp-color-primary;
-    box-shadow: 0 0 0 2px rgba($wtp-color-primary, 0.2);
+    box-shadow: 0 0 0 2px $wtp-color-primary-fade;
   }
 }
 

@@ -1,5 +1,5 @@
 import { Component, h, Prop, State, Event, EventEmitter } from '@stencil/core';
-import { LogoValidationConfig, LogoData, LogoValidationIssue, LogoMetadata, DEFAULT_VALIDATION_CONFIG, BgRemovalConfig } from '../../types';
+import { LogoValidationConfig, LogoData, LogoValidationIssue, LogoMetadata, DEFAULT_VALIDATION_CONFIG, BgRemovalConfig, LogoUploadLabels, DEFAULT_LOGO_UPLOAD_LABELS } from '../../types';
 import { validateLogo } from '../../utils/logo-validation';
 import { removeBackground } from '../../utils/background-removal';
 import { generatePreviewDataUrl } from '../../utils/image-preview';
@@ -33,6 +33,12 @@ export class WtpLogoUpload {
   @Prop() enableBackgroundRemoval: boolean = false;
   /** Configuration for the color-based background removal algorithm. */
   @Prop() bgRemovalConfig: Partial<BgRemovalConfig> = {};
+  /** Override any of the user-facing strings. Missing keys fall back to English defaults. */
+  @Prop() labels: Partial<LogoUploadLabels> = {};
+
+  private getLabels(): LogoUploadLabels {
+    return { ...DEFAULT_LOGO_UPLOAD_LABELS, ...this.labels };
+  }
 
   @State() isDragOver: boolean = false;
   @State() previews: LogoData[] = [];
@@ -169,10 +175,11 @@ export class WtpLogoUpload {
 
   private async handleUrlSubmit() {
     const url = this.urlInput.trim();
+    const labels = this.getLabels();
     this.urlError = null;
 
     if (url === '') {
-      this.urlError = 'Please enter a URL';
+      this.urlError = labels.urlErrorEmpty;
       return;
     }
 
@@ -180,12 +187,12 @@ export class WtpLogoUpload {
     try {
       parsed = new URL(url);
     } catch {
-      this.urlError = 'Invalid URL format';
+      this.urlError = labels.urlErrorInvalid;
       return;
     }
 
     if (parsed.protocol !== 'https:') {
-      this.urlError = 'Only HTTPS URLs are supported';
+      this.urlError = labels.urlErrorProtocol;
       return;
     }
 
@@ -194,7 +201,7 @@ export class WtpLogoUpload {
     try {
       const response = await fetch(url, { mode: 'cors' });
       if (!response.ok) {
-        this.urlError = `HTTP ${response.status}: ${response.statusText}`;
+        this.urlError = labels.urlErrorHttp(response.status, response.statusText);
         return;
       }
 
@@ -205,9 +212,9 @@ export class WtpLogoUpload {
       this.urlInput = '';
       await this.processFiles([file]);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch image';
+      const message = err instanceof Error ? err.message : labels.urlErrorFetch;
       if (message.includes('Failed to fetch') || message.includes('NetworkError')) {
-        this.urlError = 'Could not fetch the image. The server may not allow cross-origin requests (CORS).';
+        this.urlError = labels.urlErrorNetwork;
       } else {
         this.urlError = message;
       }
@@ -318,15 +325,18 @@ export class WtpLogoUpload {
   };
 
   render() {
+    const labels = this.getLabels();
+
     return (
-      <div class="wtp-logo-upload">
+      <div class="wtp-logo-upload" part="root">
         {/* URL input section */}
         <div class="url-input-section">
           <div class="url-input-wrapper">
             <input
               type="url"
               class="url-input"
-              placeholder="https://example.com/logo.png"
+              part="url-input"
+              placeholder={labels.urlPlaceholder}
               value={this.urlInput}
               disabled={this.disabled || this.isUrlFetching}
               onInput={this.handleUrlInput}
@@ -334,18 +344,19 @@ export class WtpLogoUpload {
             />
             <button
               class="url-submit-btn"
+              part="url-submit-btn"
               disabled={this.disabled || this.isUrlFetching || this.urlInput.trim() === ''}
               onClick={this.handleUrlSubmitClick}
             >
-              {this.isUrlFetching ? <span class="spinner-sm" /> : 'Fetch'}
+              {this.isUrlFetching ? <span class="spinner-sm" /> : labels.urlSubmit}
             </button>
           </div>
-          {this.urlError !== null && <p class="url-error">{this.urlError}</p>}
+          {this.urlError !== null && <p class="url-error" part="url-error">{this.urlError}</p>}
         </div>
 
         {/* Divider */}
-        <div class="divider">
-          <span class="divider-text">or</span>
+        <div class="divider" part="divider">
+          <span class="divider-text">{labels.dividerText}</span>
         </div>
 
         {/* Drag-and-drop zone */}
@@ -355,6 +366,7 @@ export class WtpLogoUpload {
             'drag-over': this.isDragOver,
             'disabled': this.disabled,
           }}
+          part={`upload-zone${this.isDragOver ? ' drag-over' : ''}${this.disabled ? ' disabled' : ''}`}
           onDragOver={this.handleDragOver}
           onDragLeave={this.handleDragLeave}
           onDrop={this.handleDrop}
@@ -362,7 +374,7 @@ export class WtpLogoUpload {
           onKeyDown={this.handleKeyDown}
           role="button"
           tabindex={this.disabled ? -1 : 0}
-          aria-label="Upload logo file"
+          aria-label={labels.uploadAriaLabel}
           aria-disabled={this.disabled ? 'true' : undefined}
         >
           <input
@@ -381,8 +393,8 @@ export class WtpLogoUpload {
                 <polyline points="17 8 12 3 7 8" />
                 <line x1="12" y1="3" x2="12" y2="15" />
               </svg>
-              <p class="prompt-text">Drag & drop your logo here or click to browse</p>
-              <p class="prompt-hint">PNG, JPEG, SVG, TIFF, or AVIF</p>
+              <p class="prompt-text" part="prompt-text">{labels.dropPromptText}</p>
+              <p class="prompt-hint" part="prompt-hint">{labels.dropPromptHint}</p>
             </div>
           </slot>
           {this.isProcessing && <div class="processing-overlay"><span class="spinner" /></div>}
@@ -390,9 +402,9 @@ export class WtpLogoUpload {
 
         {/* Rejections */}
         {this.rejections.length > 0 && (
-          <div class="rejections">
+          <div class="rejections" part="rejections">
             {this.rejections.map(r => (
-              <div class="rejection-item">
+              <div class="rejection-item" part="rejection-item">
                 <strong>{r.fileName}</strong>
                 <ul>
                   {r.issues.filter(i => i.severity === 'error').map(i => (
@@ -409,20 +421,21 @@ export class WtpLogoUpload {
 
         {/* Pending choice cards (background removal) */}
         {this.pendingChoices.length > 0 && (
-          <div class="pending-choices">
+          <div class="pending-choices" part="pending-choices">
             {this.pendingChoices.map((choice, index) => (
-              <div class="choice-card">
+              <div class="choice-card" part="choice-card">
                 <p class="choice-title">{choice.metadata.fileName}</p>
                 <div class="choice-options">
-                  <button class="choice-option" data-index={index} onClick={this.handleSelectOriginal}>
+                  <button class="choice-option" part="choice-option" data-index={index} onClick={this.handleSelectOriginal}>
                     <img src={choice.originalDataUrl} alt="Original" class="choice-image" />
-                    <span class="choice-label">Use Original</span>
+                    <span class="choice-label">{labels.bgRemovalUseOriginal}</span>
                   </button>
                   <button
                     class={{
                       'choice-option': true,
                       'choice-option--disabled': choice.status === 'processing',
                     }}
+                    part="choice-option"
                     disabled={choice.status === 'processing'}
                     data-index={index}
                     onClick={this.handleSelectRemoved}
@@ -430,7 +443,7 @@ export class WtpLogoUpload {
                     {choice.status === 'processing' && (
                       <div class="choice-image choice-image--loading">
                         <span class="spinner-sm" />
-                        <span class="choice-loading-text">Removing background...</span>
+                        <span class="choice-loading-text">{labels.bgRemovalProcessing}</span>
                       </div>
                     )}
                     {choice.status === 'ready' && choice.removedBgDataUrl !== null && (
@@ -442,7 +455,7 @@ export class WtpLogoUpload {
                       </div>
                     )}
                     <span class="choice-label">
-                      {choice.status === 'error' ? 'Failed' : 'Without Background'}
+                      {choice.status === 'error' ? labels.bgRemovalFailed : labels.bgRemovalUseRemoved}
                     </span>
                   </button>
                 </div>
@@ -453,10 +466,11 @@ export class WtpLogoUpload {
 
         {/* Previews */}
         {this.previews.length > 0 && (
-          <div class="previews">
+          <div class="previews" part="previews">
             {this.previews.map((preview, index) => (
               <div
                 class={{ 'preview-item': true, 'preview-item--selected': index === this.selectedIndex }}
+                part={`preview-item${index === this.selectedIndex ? ' selected' : ''}`}
                 data-index={index}
                 onClick={this.handleSelectPreview}
                 role="button"
@@ -466,9 +480,9 @@ export class WtpLogoUpload {
                 <div class="preview-info">
                   <span class="preview-name">{preview.metadata.fileName}</span>
                   <span class="preview-dims">{preview.metadata.width} x {preview.metadata.height}px</span>
-                  {preview.metadata.dpiX !== null && <span class="preview-dpi">{preview.metadata.dpiX} DPI</span>}
+                  {preview.metadata.dpiX !== null && <span class="preview-dpi">{preview.metadata.dpiX} {labels.rejectionDpiUnit}</span>}
                 </div>
-                <button class="remove-btn" data-index={index} onClick={this.handleRemovePreview} aria-label={`Remove ${preview.metadata.fileName}`}>
+                <button class="remove-btn" part="remove-btn" data-index={index} onClick={this.handleRemovePreview} aria-label={labels.removeAriaLabel(preview.metadata.fileName)}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="18" y1="6" x2="6" y2="18" />
                     <line x1="6" y1="6" x2="18" y2="18" />
