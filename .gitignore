@@ -25,3 +25,6 @@ $RECYCLE.BIN/
 Thumbs.db
 UserInterfaceState.xcuserstate
 .env
+
+# Claude Code per-project instructions (private)
+CLAUDE.md
