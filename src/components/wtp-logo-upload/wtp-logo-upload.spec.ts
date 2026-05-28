@@ -86,10 +86,22 @@ describe('wtp-logo-upload', () => {
 
   // --- URL input tests ---
 
-  it('renders URL input and submit button', async () => {
+  it('hides the URL input by default', async () => {
     const page = await newSpecPage({
       components: [WtpLogoUpload],
       html: '<wtp-logo-upload></wtp-logo-upload>',
+    });
+
+    const urlInputSection = page.root?.shadowRoot?.querySelector('.url-input-section');
+    const divider = page.root?.shadowRoot?.querySelector('.divider');
+    expect(urlInputSection).toBeNull();
+    expect(divider).toBeNull();
+  });
+
+  it('renders URL input and submit button when allowUrlUpload is set', async () => {
+    const page = await newSpecPage({
+      components: [WtpLogoUpload],
+      html: '<wtp-logo-upload allow-url-upload></wtp-logo-upload>',
     });
 
     const urlInput = page.root?.shadowRoot?.querySelector('.url-input') as HTMLInputElement;
@@ -103,7 +115,7 @@ describe('wtp-logo-upload', () => {
   it('disables URL input when component is disabled', async () => {
     const page = await newSpecPage({
       components: [WtpLogoUpload],
-      html: '<wtp-logo-upload disabled></wtp-logo-upload>',
+      html: '<wtp-logo-upload allow-url-upload disabled></wtp-logo-upload>',
     });
 
     const urlInput = page.root?.shadowRoot?.querySelector('.url-input') as HTMLInputElement;
@@ -112,10 +124,10 @@ describe('wtp-logo-upload', () => {
     expect(submitBtn.hasAttribute('disabled')).toBe(true);
   });
 
-  it('renders divider between URL input and drop zone', async () => {
+  it('renders divider between URL input and drop zone when allowUrlUpload is set', async () => {
     const page = await newSpecPage({
       components: [WtpLogoUpload],
-      html: '<wtp-logo-upload></wtp-logo-upload>',
+      html: '<wtp-logo-upload allow-url-upload></wtp-logo-upload>',
     });
 
     const divider = page.root?.shadowRoot?.querySelector('.divider');
@@ -150,7 +162,7 @@ describe('wtp-logo-upload', () => {
   it('uses default labels when no override is provided', async () => {
     const page = await newSpecPage({
       components: [WtpLogoUpload],
-      html: '<wtp-logo-upload></wtp-logo-upload>',
+      html: '<wtp-logo-upload allow-url-upload></wtp-logo-upload>',
     });
 
     const promptText = page.root?.shadowRoot?.querySelector('.prompt-text');
@@ -164,7 +176,7 @@ describe('wtp-logo-upload', () => {
   it('overrides individual labels via the labels prop', async () => {
     const page = await newSpecPage({
       components: [WtpLogoUpload],
-      html: '<wtp-logo-upload></wtp-logo-upload>',
+      html: '<wtp-logo-upload allow-url-upload></wtp-logo-upload>',
     });
 
     (page.root as unknown as { labels: object }).labels = {
@@ -200,7 +212,7 @@ describe('wtp-logo-upload', () => {
   it('exposes part attributes for shadow-DOM theming', async () => {
     const page = await newSpecPage({
       components: [WtpLogoUpload],
-      html: '<wtp-logo-upload></wtp-logo-upload>',
+      html: '<wtp-logo-upload allow-url-upload></wtp-logo-upload>',
     });
 
     const root = page.root?.shadowRoot?.querySelector('[part="root"]');

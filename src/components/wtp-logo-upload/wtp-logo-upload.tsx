@@ -31,6 +31,8 @@ export class WtpLogoUpload {
   @Prop() disabled: boolean = false;
   /** Enables background removal for raster images after upload. */
   @Prop() enableBackgroundRemoval: boolean = false;
+  /** Shows the "fetch from URL" input. Hidden by default; set to true to opt in. */
+  @Prop() allowUrlUpload: boolean = false;
   /** Configuration for the color-based background removal algorithm. */
   @Prop() bgRemovalConfig: Partial<BgRemovalConfig> = {};
   /** Override any of the user-facing strings. Missing keys fall back to English defaults. */
@@ -329,35 +331,39 @@ export class WtpLogoUpload {
 
     return (
       <div class="wtp-logo-upload" part="root">
-        {/* URL input section */}
-        <div class="url-input-section">
-          <div class="url-input-wrapper">
-            <input
-              type="url"
-              class="url-input"
-              part="url-input"
-              placeholder={labels.urlPlaceholder}
-              value={this.urlInput}
-              disabled={this.disabled || this.isUrlFetching}
-              onInput={this.handleUrlInput}
-              onKeyDown={this.handleUrlInputKeyDown}
-            />
-            <button
-              class="url-submit-btn"
-              part="url-submit-btn"
-              disabled={this.disabled || this.isUrlFetching || this.urlInput.trim() === ''}
-              onClick={this.handleUrlSubmitClick}
-            >
-              {this.isUrlFetching ? <span class="spinner-sm" /> : labels.urlSubmit}
-            </button>
-          </div>
-          {this.urlError !== null && <p class="url-error" part="url-error">{this.urlError}</p>}
-        </div>
+        {this.allowUrlUpload && (
+          <div>
+            {/* URL input section */}
+            <div class="url-input-section">
+              <div class="url-input-wrapper">
+                <input
+                  type="url"
+                  class="url-input"
+                  part="url-input"
+                  placeholder={labels.urlPlaceholder}
+                  value={this.urlInput}
+                  disabled={this.disabled || this.isUrlFetching}
+                  onInput={this.handleUrlInput}
+                  onKeyDown={this.handleUrlInputKeyDown}
+                />
+                <button
+                  class="url-submit-btn"
+                  part="url-submit-btn"
+                  disabled={this.disabled || this.isUrlFetching || this.urlInput.trim() === ''}
+                  onClick={this.handleUrlSubmitClick}
+                >
+                  {this.isUrlFetching ? <span class="spinner-sm" /> : labels.urlSubmit}
+                </button>
+              </div>
+              {this.urlError !== null && <p class="url-error" part="url-error">{this.urlError}</p>}
+            </div>
 
-        {/* Divider */}
-        <div class="divider" part="divider">
-          <span class="divider-text">{labels.dividerText}</span>
-        </div>
+            {/* Divider */}
+            <div class="divider" part="divider">
+              <span class="divider-text">{labels.dividerText}</span>
+            </div>
+          </div>
+        )}
 
         {/* Drag-and-drop zone */}
         <div

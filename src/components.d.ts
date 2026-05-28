@@ -132,6 +132,11 @@ export namespace Components {
          */
         "accept": string;
         /**
+          * Shows the "fetch from URL" input. Hidden by default; set to true to opt in.
+          * @default false
+         */
+        "allowUrlUpload": boolean;
+        /**
           * Configuration for the color-based background removal algorithm.
           * @default {}
          */
@@ -391,6 +396,11 @@ declare namespace LocalJSX {
          */
         "accept"?: string;
         /**
+          * Shows the "fetch from URL" input. Hidden by default; set to true to opt in.
+          * @default false
+         */
+        "allowUrlUpload"?: boolean;
+        /**
           * Configuration for the color-based background removal algorithm.
           * @default {}
          */
@@ -480,6 +490,7 @@ declare namespace LocalJSX {
         "multiple": boolean;
         "disabled": boolean;
         "enableBackgroundRemoval": boolean;
+        "allowUrlUpload": boolean;
     }
     interface WtpPrintAreaEditorAttributes {
         "productImage": string | undefined;

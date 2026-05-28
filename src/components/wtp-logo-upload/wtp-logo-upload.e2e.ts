@@ -93,7 +93,7 @@ describe('wtp-logo-upload e2e', () => {
 
   it('renders URL input and button in browser', async () => {
     const page = await newE2EPage();
-    await page.setContent('<wtp-logo-upload></wtp-logo-upload>');
+    await page.setContent('<wtp-logo-upload allow-url-upload></wtp-logo-upload>');
 
     const urlInput = await page.find('wtp-logo-upload >>> .url-input');
     const submitBtn = await page.find('wtp-logo-upload >>> .url-submit-btn');
@@ -103,7 +103,7 @@ describe('wtp-logo-upload e2e', () => {
 
   it('shows error for invalid URL', async () => {
     const page = await newE2EPage();
-    await page.setContent('<wtp-logo-upload></wtp-logo-upload>');
+    await page.setContent('<wtp-logo-upload allow-url-upload></wtp-logo-upload>');
 
     await page.evaluate(() => {
       const component = document.querySelector('wtp-logo-upload');
