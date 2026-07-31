@@ -1,3 +1,5 @@
+import type { LogoValidationIssue } from './logo';
+
 export interface CanvasTransform {
   x: number;
   y: number;
@@ -8,11 +10,22 @@ export interface CanvasTransform {
   skewY?: number;
 }
 
+/** The file the customer uploaded, kept unmodified for the print shop. */
+export interface LogoSource {
+  dataUrl: string;
+  mimeType: string;
+  fileName: string;
+  fileSize: number;
+}
+
 export interface PlacedLogo {
   id: string;
+  /** Canvas representation — always something the browser can draw. */
   dataUrl: string;
   /** Downscaled preview for product catalog rendering (optional). */
   previewDataUrl?: string;
+  /** The uploaded original. Absent for logos placed before 0.2.0. */
+  source?: LogoSource;
   transform?: CanvasTransform;
 }
 
@@ -67,16 +80,37 @@ export interface EditorState {
   height: number;
 }
 
+/** Resolution the pixel coordinates of a print area refer to. */
+export interface CoordinateImageSize {
+  width: number | null;
+  height: number | null;
+  longestSide: 'width' | 'height';
+}
+
+/** Number of printable colours, or 'full color' for digital/sublimation printing. */
+export type MaxColours = number | 'full color';
+
+/** One decoration option (Veredelung) of an article. */
 export interface ArticleView {
+  /**
+   * Stable decoration id supplied by the host — in the shop payload this is the
+   * `printCodeSKU`, which doubles as the key of the purchasable decoration.
+   * Required: positional identity breaks when the supplier feed reorders views.
+   */
+  id: string;
   image: string;
   label: string;
   printArea: PrintArea | null;
+  /** Source resolution when `printArea` holds pixel instead of 0-1 coordinates. */
+  coordinateImageSize?: CoordinateImageSize;
+  /** Pre-selects this decoration when the editor opens. Falls back to the first view. */
+  isDefault?: boolean;
   impMethod?: string;
   impLocation?: string;
   impWidthMm?: number;
   impHeightMm?: number;
   impDiameterMm?: number;
-  maxColours?: number;
+  maxColours?: MaxColours;
 }
 
 export interface Article {
@@ -84,4 +118,30 @@ export interface Article {
   name: string;
   description: string;
   views: ArticleView[];
+}
+
+/** State of a single decoration inside the article-level envelope. */
+export interface DecorationState {
+  /** Matches ArticleView.id. */
+  viewId: string;
+  label: string;
+  impMethod?: string;
+  impLocation?: string;
+  impWidthMm?: number;
+  impHeightMm?: number;
+  maxColours?: MaxColours;
+  /** 'designed' iff the canvas holds at least one logo or text object. */
+  status: 'empty' | 'designed';
+  state: EditorState;
+  /** Downscaled preview for shop thumbnails. */
+  previewDataUrl?: string;
+  /** Non-blocking validation findings for this decoration. */
+  issues: LogoValidationIssue[];
+}
+
+/** Versioned envelope returned by the editor for a whole article. */
+export interface ArticleEditorState {
+  version: 2;
+  articleId: string;
+  decorations: DecorationState[];
 }

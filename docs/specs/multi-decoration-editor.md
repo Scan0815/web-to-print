@@ -85,6 +85,44 @@ Remy). The type is corrected as part of this work.
 
 `src/examples/demo-article/articles.json` gets an `id` per view.
 
+### 3.1a Mapping from the shop payload
+
+Verified against the live article (`GET /api/v2/article/:id` with header
+`x-shop-id`), stored at `src/examples/shop-payload/article-6a0ec74680e785c3c5962c75.json`
+because the route is not permanently available.
+
+Decorations hang off the **colour variant**, not the article:
+
+```
+options[<articleId>][0].printAreas.decorations[]   →  ArticleView[]
+additionalOptions[<printCodeSKU>][0]               →  price + name of that decoration
+```
+
+| `ArticleView` | Source field | Example |
+|---|---|---|
+| `id` | `decorations[].printCodeSKU` | `184932` |
+| `image` | `decorations[].imagePrintLine` (prefix with the shop's file server) | `print-areas/p/h/…png` |
+| `printArea` | `decorations[].printArea` — **already normalized 0–1** | |
+| — | `decorations[].coor{Top,Bottom}{Left,Right}{X,Y}` + `imagePrintLineNaturalWidth/Height` | pixel fallback |
+| `label` / `impLocation` | `decorations[].impLocation` (`impLocationCode` is the machine key) | `Beutel` / `pouch` |
+| `impMethod` | `additionalOptions[printCodeSKU][0].articleText.de.name`, or `printCode` | `Siebdruck - Beutel - Farben : 1` / `MR03` |
+| `maxColours` | parsed from that name (`Farben : 1`, `Farben : Full color`) | `1`, `'full color'` |
+
+Three consequences:
+
+1. **`printCodeSKU` is the decoration id** — it is simultaneously the key into
+   `additionalOptions`, i.e. the purchasable item with its own price. That makes the
+   editor's returned `viewId` directly usable for the shop's ordering logic.
+2. **Positional identity is provably unsafe.** The same four decorations appear in a
+   different order for one of the twelve colour variants of the verified article
+   (`(184932, 184933, 184179, 184928)` vs. `(184933, 184179, 184928, 184932)`).
+3. **The host resolves the colour variant first**, then passes that variant's decorations
+   as `views`. The editor does not know about colour variants.
+
+No explicit `impWidthMm`/`impHeightMm` exist in this payload — the size limit is encoded
+in the option name (`12 cm²`, `100 cm²`). The mm fields stay optional; the size check in
+§5 is skipped when they are absent.
+
 ### 3.2 Per-logo source separation
 
 A logo now carries two distinct things: what the customer uploaded (goes to the print
@@ -468,12 +506,11 @@ In implementation order; each ends green.
 
 ## 13. Open questions
 
-1. **Decoration id in the shop payload.** The b2c shop is a Stencil SPA and every path
-   returns the shell; `api.experimental.connect-shop.net` answers with JSON 404s on
-   `/articles/:id`, `/api/articles/:id`, `/docs-json`, `/api-json`; the MongoDB route was
-   blocked by the permission classifier. Needed from a real article payload: **what the
-   decoration id is called, whether it is globally unique or unique per article, and
-   whether a default flag exists.** Until then the spec assumes host-supplied `id` and
-   optional `isDefault`.
+1. ~~Decoration id in the shop payload.~~ **Resolved** — see §3.1a. The id is
+   `printCodeSKU`. No default flag exists in the payload, so `isDefault` stays optional
+   and the editor falls back to the first view.
 2. **`Blob` vs. data URLs** in the export payload for IndexedDB (§3.4) — recommendation
    recorded, decision deferred, no version impact.
+3. **Where the shop-payload → `ArticleView` mapping lives.** The table in §3.1a is
+   currently the host's job. If a second consumer appears, it should move into the
+   library as an exported adapter.

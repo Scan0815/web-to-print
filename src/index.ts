@@ -22,8 +22,15 @@ export type {
   LegacyPrintArea,
   ArticleView,
   Article,
+  LogoSource,
+  CoordinateImageSize,
+  MaxColours,
+  DecorationState,
+  ArticleEditorState,
 } from './types';
 export { DEFAULT_VALIDATION_CONFIG, DEFAULT_BG_REMOVAL_CONFIG } from './types';
+
+export { isPixelPrintArea, normalizePrintArea, resolveViewPrintArea } from './utils/print-area';
 
 export type { PdfExportConfig } from './utils/pdf-export';
 export { exportProductPdf } from './utils/pdf-export';

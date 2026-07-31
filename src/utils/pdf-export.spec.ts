@@ -128,7 +128,7 @@ describe('pdf-export', () => {
         id: 'A-1',
         name: 'Test Article',
         description: '',
-        views: [{ image: '', label: 'Front', printArea: null }],
+        views: [{ id: 'front', image: '', label: 'Front', printArea: null }],
       };
 
       // Window.jspdf is not set — getJsPDF() should throw
