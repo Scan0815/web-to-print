@@ -1,6 +1,6 @@
 # Spec: Multi-Decoration Editor
 
-**Status:** Approved for implementation
+**Status:** Implemented (see §14 for deviations)
 **Target version:** `0.2.0` (breaking)
 **Date:** 2026-07-31
 
@@ -455,7 +455,19 @@ inlined default values; cosmetic.
   tests, which are the only coverage the Fabric canvas logic has (JSDOM has no canvas
   context). Bumping it inside this rebuild means a red e2e test has two possible causes.
 
-## 11. Test plan
+## 11. Test plan (as built)
+
+The suite runs on **Vitest** via `@stencil/vitest`, in two projects:
+
+- **spec** (`*.spec.ts` / `*.spec.tsx`, `environment: 'stencil'`) — pure functions and
+  rendered markup, using `render()` instead of `newSpecPage`
+- **browser** (`*.test.tsx`, headless Chromium via Playwright) — everything touching the
+  Fabric canvas, which now runs against a real canvas context instead of being
+  impossible in JSDOM
+
+Both load the built bundle, so `npm run build` must precede the tests.
+
+## 11a. Original test plan
 
 **Spec tests (`*.spec.ts`)**
 
@@ -503,6 +515,25 @@ In implementation order; each ends green.
 8. **Dependency update** — in-range only, verify `npm test`.
 9. **Docs + release** — component readmes (auto-generated), migration note in the README,
    version `0.2.0`.
+
+## 14. Deviations from this spec
+
+1. **`productImage`/`printArea` were not removed.** They stay as a deprecated
+   single-decoration fallback: with no `views`, the editor builds one implicit view from
+   them. This keeps existing integrations and the v1 load path working, and cost nothing.
+2. **`pdfjs-dist` is not a dependency.** PDF/AI rendering expects `window.pdfjsLib`,
+   the same contract jsPDF already had — no bundling risk, no new dependency.
+3. **`exportProductPdf` was kept as-is** next to `exportArticlePdf` rather than becoming
+   a wrapper; it still carries the richer single-logo metadata table.
+4. **The editor gained `exportPdf(article, config?)`.** Importing the library's ESM
+   bundle into a page that already loaded the components pulls in a **second Stencil
+   runtime**, which silently breaks re-rendering. Going through the component avoids it.
+   Found by testing the demo in a real browser.
+5. **The demo keeps a small local print-area normalization** for the catalog cards, for
+   the same reason — the editor itself uses the library utility.
+6. **Colour validation is text-only.** Counting colours in an arbitrary customer logo is
+   not reliable, so single-colour methods ask the customer to confirm monochrome instead
+   of guessing.
 
 ## 13. Open questions
 
