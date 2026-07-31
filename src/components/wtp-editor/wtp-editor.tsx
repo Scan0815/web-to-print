@@ -19,6 +19,9 @@ import { resolveViewPrintArea } from '../../utils/print-area';
 /** Id of the implicit view used when the host supplies productImage/printArea instead of views. */
 const LEGACY_VIEW_ID = 'default';
 
+/** Longest side of a decoration thumbnail in pixels. */
+const PREVIEW_SIZE = 120;
+
 @Component({
   tag: 'wtp-editor',
   styleUrl: 'wtp-editor.scss',
@@ -51,6 +54,8 @@ export class WtpEditor {
    * @deprecated Single-decoration fallback used only when `views` is empty.
    */
   @Prop() printArea: PrintArea | undefined;
+  /** Show the built-in decoration strip. Turn off to build your own switcher around `activeViewId`. */
+  @Prop() showViewStrip: boolean = true;
   /** Show print area overlay and bounding box for debugging. */
   @Prop() debug: boolean = false;
   /** Override any of the user-facing toolbar strings. Missing keys fall back to English defaults. */
@@ -65,6 +70,8 @@ export class WtpEditor {
   @State() selectedFont: string = 'Arial';
   @State() selectedTextColor: string = '#000000';
   @State() currentViewId: string = LEGACY_VIEW_ID;
+  /** Thumbnails per view id, refreshed when a view is left. */
+  @State() viewPreviews: Record<string, string> = {};
 
   /** Fires when the canvas is initialized and ready. */
   @Event() wtpEditorReady: EventEmitter<void>;
@@ -391,11 +398,38 @@ export class WtpEditor {
     this.canvas.renderAll();
   }
 
-  /** Store the canvas state of the currently edited view. */
+  /** Store the canvas state of the currently edited view, plus a fresh thumbnail. */
   private flushActiveView(): void {
     if (this.canvas === undefined) return;
     this.viewStates.set(this.currentViewId, this.buildEditorState());
+    this.capturePreview(this.currentViewId);
   }
+
+  /**
+   * Renders a small thumbnail of the current canvas. Only called when a view is left
+   * (and on export) — a full-size toDataURL on every object change is far too expensive
+   * for 2400px product images.
+   */
+  private capturePreview(viewId: string): void {
+    if (this.canvas === undefined) return;
+
+    const width = this.canvas.getWidth();
+    const height = this.canvas.getHeight();
+    if (width <= 0 || height <= 0) return;
+
+    const multiplier = PREVIEW_SIZE / Math.max(width, height);
+    try {
+      const dataUrl = this.canvas.toDataURL({ multiplier: Math.min(multiplier, 1), format: 'png', quality: 1 });
+      this.viewPreviews = { ...this.viewPreviews, [viewId]: dataUrl };
+    } catch {
+      // Cross-origin product images taint the canvas; the strip falls back to a label.
+    }
+  }
+
+  private handleViewSelect = (e: MouseEvent) => {
+    const viewId = (e.currentTarget as HTMLElement).dataset.viewId;
+    if (viewId !== undefined && viewId !== '') void this.setActiveView(viewId);
+  };
 
   private async loadEditorState(state: EditorState): Promise<void> {
     if (this.canvas === undefined) throw new Error('Canvas not initialized');
@@ -825,6 +859,7 @@ export class WtpEditor {
         ...(view.maxColours !== undefined ? { maxColours: view.maxColours } : {}),
         status: designed ? 'designed' : 'empty',
         state,
+        ...(this.viewPreviews[view.id] !== undefined ? { previewDataUrl: this.viewPreviews[view.id] } : {}),
         issues: [],
       };
     });
@@ -887,6 +922,49 @@ export class WtpEditor {
     }
   };
 
+  /** Horizontal strip of decoration thumbnails, showing which ones already carry a design. */
+  private renderViewStrip() {
+    const views = this.getViews();
+    if (!this.showViewStrip || views.length < 2) return null;
+
+    const labels = this.getLabels();
+
+    return (
+      <div class="view-strip" role="tablist" aria-label={labels.viewStripLabel}>
+        {views.map(view => {
+          const isActive = view.id === this.currentViewId;
+          const state = view.id === this.currentViewId ? undefined : this.viewStates.get(view.id);
+          const designed = isActive ? this.objectMap.size > 0 : state !== undefined && (state.logos.length > 0 || state.texts.length > 0);
+          const preview = this.viewPreviews[view.id];
+
+          return (
+            <button
+              key={view.id}
+              class={{ 'view-thumb': true, active: isActive, designed }}
+              role="tab"
+              aria-selected={isActive ? 'true' : 'false'}
+              title={view.impMethod !== undefined ? `${view.label} — ${view.impMethod}` : view.label}
+              data-view-id={view.id}
+              onClick={this.handleViewSelect}
+            >
+              <span class="view-thumb-image">
+                {preview !== undefined ? <img src={preview} alt="" /> : view.image !== '' ? <img src={view.image} alt="" /> : null}
+                {designed && (
+                  <span class="view-thumb-badge" title={labels.viewDesignedBadge}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </span>
+                )}
+              </span>
+              <span class="view-thumb-label">{view.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
   render() {
     const labels = this.getLabels();
 
@@ -933,6 +1011,8 @@ export class WtpEditor {
         <div class="canvas-container">
           <canvas ref={el => (this.canvasEl = el)} />
         </div>
+
+        {this.renderViewStrip()}
       </div>
     );
   }

@@ -50,6 +50,10 @@ export interface EditorLabels {
   colorPickerTooltip: string;
   deleteButtonTooltip: string;
   defaultText: string;
+  viewStripLabel: string;
+  viewDesignedBadge: string;
+  applyToAllButton: string;
+  applyToAllTooltip: string;
 }
 
 export const DEFAULT_EDITOR_LABELS: EditorLabels = {
@@ -59,4 +63,8 @@ export const DEFAULT_EDITOR_LABELS: EditorLabels = {
   colorPickerTooltip: 'Text color',
   deleteButtonTooltip: 'Delete selected',
   defaultText: 'New Text',
+  viewStripLabel: 'Decoration options',
+  viewDesignedBadge: 'Designed',
+  applyToAllButton: 'Apply to all',
+  applyToAllTooltip: 'Place this logo on every empty decoration',
 };

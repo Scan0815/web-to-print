@@ -97,6 +97,11 @@ export namespace Components {
          */
         "setActiveView": (viewId: string) => Promise<void>;
         /**
+          * Show the built-in decoration strip. Turn off to build your own switcher around `activeViewId`.
+          * @default true
+         */
+        "showViewStrip": boolean;
+        /**
           * Update the text content of a text object by its ID.
          */
         "updateText": (id: string, text: string) => Promise<void>;
@@ -382,6 +387,11 @@ declare namespace LocalJSX {
          */
         "productImage"?: string | undefined;
         /**
+          * Show the built-in decoration strip. Turn off to build your own switcher around `activeViewId`.
+          * @default true
+         */
+        "showViewStrip"?: boolean;
+        /**
           * Decoration options (Veredelungen) of the article. Each view needs a stable `id`.
           * @default []
          */
@@ -520,6 +530,7 @@ declare namespace LocalJSX {
         "activeViewId": string | undefined;
         "productImage": string | undefined;
         "initialState": string | undefined;
+        "showViewStrip": boolean;
         "debug": boolean;
     }
     interface WtpLogoRendererAttributes {

@@ -229,6 +229,55 @@ describe('wtp-editor browser', () => {
     expect(envelope.decorations.find(d => d.viewId === 'back')?.status).toBe('empty');
   });
 
+  // --- Decoration strip ---
+
+  it('renders one thumbnail per decoration', async () => {
+    const { root } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
+    expect(root.querySelectorAll('.view-thumb').length).toBe(3);
+    expect(root.querySelector('.view-thumb.active')?.textContent).toContain('Front');
+  });
+
+  it('hides the strip for a single decoration', async () => {
+    const { root } = await mount(<wtp-editor views={[VIEWS[0]]}></wtp-editor>);
+    expect(root.querySelector('.view-strip')).toBeNull();
+  });
+
+  it('hides the strip when showViewStrip is off', async () => {
+    const { root, setProps, waitForChanges } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
+
+    await setProps({ showViewStrip: false });
+    await waitForChanges();
+
+    expect(root.querySelector('.view-strip')).toBeNull();
+  });
+
+  it('switches the decoration when a thumbnail is clicked', async () => {
+    const { root, waitForChanges } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
+
+    const thumbs = root.querySelectorAll('.view-thumb');
+    (thumbs[1] as HTMLButtonElement).click();
+    await waitForChanges();
+    await new Promise(r => setTimeout(r, 50));
+
+    expect(root.querySelector('.view-thumb.active')?.textContent).toContain('Back');
+  });
+
+  it('marks designed decorations in the strip and stores a preview', async () => {
+    const { root, waitForChanges } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
+    const el = root as EditorElement;
+
+    await el.addText('Front text');
+    await el.setActiveView('back');
+    await waitForChanges();
+
+    const frontThumb = root.querySelectorAll('.view-thumb')[0];
+    expect(frontThumb.classList.contains('designed')).toBe(true);
+    expect(root.querySelectorAll('.view-thumb')[2].classList.contains('designed')).toBe(false);
+
+    const envelope = await el.exportState();
+    expect(envelope.decorations.find(d => d.viewId === 'front')?.previewDataUrl).toContain('data:image/png');
+  });
+
   it('Add Text button adds text via toolbar', async () => {
     const { root, spyOnEvent, waitForChanges } = await mount(<wtp-editor></wtp-editor>);
     const stateChangedSpy = spyOnEvent('wtpEditorStateChanged');
