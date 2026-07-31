@@ -13,10 +13,12 @@ import {
   ArticleEditorState,
   DecorationState,
   LogoValidationIssue,
+  Article,
 } from '../../types';
 import { setCanvasBackground, generateObjectId, upscaleSvgDataUrl, fitLogoToPrintArea, printAreaToPixelCorners } from '../../utils/canvas-helpers';
 import { resolveViewPrintArea } from '../../utils/print-area';
 import { validateDecoration, type ObjectBounds } from '../../utils/decoration-validation';
+import { exportArticlePdf, selectPrintableDecorations, type PdfExportConfig } from '../../utils/pdf-export';
 
 /** Id of the implicit view used when the host supplies productImage/printArea instead of views. */
 const LEGACY_VIEW_ID = 'default';
@@ -103,6 +105,11 @@ export class WtpEditor {
 
   componentWillLoad() {
     const views = this.getViews();
+    this.assertValidViews(views);
+    this.currentViewId = this.resolveInitialViewId(views);
+  }
+
+  private assertValidViews(views: ArticleView[]): void {
     for (const view of views) {
       if (view.id === undefined || view.id === '') {
         throw new Error('wtp-editor: every entry in `views` needs a stable `id`.');
@@ -112,7 +119,6 @@ export class WtpEditor {
     if (ids.size !== views.length) {
       throw new Error('wtp-editor: `views` contains duplicate ids.');
     }
-    this.currentViewId = this.resolveInitialViewId(views);
   }
 
   componentDidLoad() {
@@ -193,6 +199,20 @@ export class WtpEditor {
 
   @Watch('views')
   onViewsChange() {
+    const views = this.getViews();
+    this.assertValidViews(views);
+
+    // A new set of decorations means a different article: drop the old per-view state
+    // and open the new default decoration.
+    if (!views.some(v => v.id === this.currentViewId)) {
+      this.viewStates.clear();
+      this.viewIssues.clear();
+      this.viewPreviews = {};
+      this.currentViewId = this.resolveInitialViewId(views);
+      this.activeViewId = this.currentViewId;
+      void this.activateView(this.getActiveView());
+    }
+
     void this.resolvePrintAreas();
   }
 
@@ -409,6 +429,24 @@ export class WtpEditor {
     if (this.currentViewId !== originalViewId) await this.setActiveView(originalViewId);
 
     return mockups;
+  }
+
+  /**
+   * Renders the proof PDF for every designed decoration and triggers the download.
+   *
+   * Hosts can also call `exportArticlePdf` themselves — but importing the library's ESM
+   * bundle into a page that already loaded the components pulls in a second Stencil
+   * runtime, so going through the component is the safer route.
+   * Requires jsPDF to be loaded globally.
+   */
+  @Method()
+  async exportPdf(article: Article, config?: Partial<PdfExportConfig>): Promise<void> {
+    const state = await this.exportState();
+    const viewIds = selectPrintableDecorations(state, config?.viewIds).map(d => d.viewId);
+    if (viewIds.length === 0) throw new Error('wtp-editor: no designed decoration to export.');
+
+    const mockups = await this.renderMockups(viewIds);
+    await exportArticlePdf(state, article, mockups, config);
   }
 
   /** Load a previously exported state — the v2 envelope or a legacy single-view state. */

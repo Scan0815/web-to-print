@@ -124,6 +124,28 @@ Type: `Promise<{ dataUrl: string; width: number; height: number; }>`
 
 
 
+### `exportPdf(article: Article, config?: Partial<PdfExportConfig>) => Promise<void>`
+
+Renders the proof PDF for every designed decoration and triggers the download.
+
+Hosts can also call `exportArticlePdf` themselves — but importing the library's ESM
+bundle into a page that already loaded the components pulls in a second Stencil
+runtime, so going through the component is the safer route.
+Requires jsPDF to be loaded globally.
+
+#### Parameters
+
+| Name      | Type                                                                                                                                                                                      | Description |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| `article` | `Article`                                                                                                                                                                                 |             |
+| `config`  | `{ pageFormat?: "a4" \| "letter"; orientation?: "portrait" \| "landscape"; marginMm?: number; showPrintAreaGuides?: boolean; title?: string; viewIds?: string[]; proofNotice?: string; }` |             |
+
+#### Returns
+
+Type: `Promise<void>`
+
+
+
 ### `exportState() => Promise<ArticleEditorState>`
 
 Export the state of every decoration as a versioned envelope.

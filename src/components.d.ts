@@ -5,11 +5,13 @@
  * It contains typing information for all components that exist in this project.
  */
 import { HTMLStencilElement, JSXBase } from "@stencil/core/internal";
-import { ArticleEditorState, ArticleView, BgRemovalConfig, EditorLabels, EditorState, LogoData, LogoUploadLabels, LogoValidationConfig, LogoValidationIssue, PlacedLogo, PrintArea } from "./types";
+import { Article, ArticleEditorState, ArticleView, BgRemovalConfig, EditorLabels, EditorState, LogoData, LogoUploadLabels, LogoValidationConfig, LogoValidationIssue, PlacedLogo, PrintArea } from "./types";
 import { FabricObject, IText } from "fabric";
+import { PdfExportConfig } from "./utils/pdf-export";
 import { RenderLayer } from "./utils/html-render-helpers";
-export { ArticleEditorState, ArticleView, BgRemovalConfig, EditorLabels, EditorState, LogoData, LogoUploadLabels, LogoValidationConfig, LogoValidationIssue, PlacedLogo, PrintArea } from "./types";
+export { Article, ArticleEditorState, ArticleView, BgRemovalConfig, EditorLabels, EditorState, LogoData, LogoUploadLabels, LogoValidationConfig, LogoValidationIssue, PlacedLogo, PrintArea } from "./types";
 export { FabricObject, IText } from "fabric";
+export { PdfExportConfig } from "./utils/pdf-export";
 export { RenderLayer } from "./utils/html-render-helpers";
 export namespace Components {
     interface WtpEditor {
@@ -47,6 +49,10 @@ export namespace Components {
           * Export the canvas as a high-resolution data URL image (for PDF/print). Returns the data URL plus the actual canvas dimensions (which may differ from the width/height props after setCanvasBackground resizes the canvas).
          */
         "exportImageHighRes": (format?: "png" | "jpeg", quality?: number, multiplier?: number) => Promise<{ dataUrl: string; width: number; height: number; }>;
+        /**
+          * Renders the proof PDF for every designed decoration and triggers the download.  Hosts can also call `exportArticlePdf` themselves — but importing the library's ESM bundle into a page that already loaded the components pulls in a second Stencil runtime, so going through the component is the safer route. Requires jsPDF to be loaded globally.
+         */
+        "exportPdf": (article: Article, config?: Partial<PdfExportConfig>) => Promise<void>;
         /**
           * Export the state of every decoration as a versioned envelope.
          */

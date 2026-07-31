@@ -248,6 +248,22 @@ describe('wtp-editor browser', () => {
     expect(envelope.decorations.find(d => d.viewId === 'back')?.status).toBe('empty');
   });
 
+  it('adopts views handed over after mount', async () => {
+    // How a host actually uses it: the element exists, the article arrives later.
+    const { root, setProps, waitForChanges } = await mount(<wtp-editor></wtp-editor>);
+    const el = root as EditorElement;
+
+    await setProps({ views: VIEWS });
+    await waitForChanges();
+
+    const logoId = await el.addLogo({ dataUrl: LOGO_DATA_URL, metadata: LOGO_METADATA });
+    await el.applyLogoToAllViews(logoId);
+
+    const envelope = await el.exportState();
+    expect(envelope.decorations.map(d => d.viewId)).toEqual(['front', 'back', 'wrap']);
+    expect(envelope.decorations.every(d => d.status === 'designed')).toBe(true);
+  });
+
   // --- Apply to all decorations ---
 
   it('places a logo on every empty decoration', async () => {

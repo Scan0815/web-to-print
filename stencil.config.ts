@@ -26,8 +26,6 @@ export const config: Config = {
       serviceWorker: null,
       copy: [
         { src: 'examples/demo-article', dest: 'demo-article' },
-        // Lets the demo page import the library's utilities as ESM from the dev server.
-        { src: '../dist/esm', dest: 'lib' },
         { src: 'tool-print-area.html', dest: 'tool-print-area.html' },
       ],
     },

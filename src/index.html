@@ -8,11 +8,6 @@
     <script type="module" src="/build/web-to-print.esm.js"></script>
     <script nomodule src="/build/web-to-print.js"></script>
     <script src="https://unpkg.com/jspdf@4.1.0/dist/jspdf.umd.min.js"></script>
-    <!-- Library utilities as ESM, copied into the dev server by the www output target. -->
-    <script type="module">
-      import { exportArticlePdf, resolveViewPrintArea } from '/lib/index.js';
-      window.wtpLib = { exportArticlePdf, resolveViewPrintArea };
-    </script>
 
     <style>
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -346,22 +341,46 @@
       const editorEl = document.getElementById('editor');
       const editorTitle = document.getElementById('editor-title');
 
-      // --- Normalize pixel print areas to 0-1 (library utility) ---
-      async function lib() {
-        // The module script that publishes window.wtpLib is deferred.
-        while (!window.wtpLib) await new Promise(r => setTimeout(r, 10));
-        return window.wtpLib;
+      // --- Normalize pixel print areas to 0-1 for the catalog cards ---
+      // The editor normalizes its own views via the library; this only feeds
+      // wtp-logo-renderer on the product grid.
+      function isPixelPrintArea(pa) {
+        return [pa.topLeft, pa.topRight, pa.bottomRight, pa.bottomLeft].some(p => p.x > 1 || p.y > 1);
+      }
+
+      function loadImageDimensions(url) {
+        return new Promise(resolve => {
+          const img = new Image();
+          img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+          img.onerror = () => resolve(null);
+          img.src = url;
+        });
       }
 
       async function normalizeArticles(data) {
-        const { resolveViewPrintArea } = await lib();
-        await Promise.all(
-          data.flatMap(article =>
-            article.views.map(async view => {
-              view.printArea = await resolveViewPrintArea(view);
-            })
-          )
-        );
+        const tasks = [];
+        for (const article of data) {
+          for (const view of article.views) {
+            if (!view.printArea || !isPixelPrintArea(view.printArea)) continue;
+            tasks.push(
+              loadImageDimensions(view.image).then(dims => {
+                const cis = view.coordinateImageSize;
+                const w = dims ? dims.width : cis && cis.width;
+                const h = dims ? dims.height : cis && (cis.height || cis.width);
+                if (!w || !h) return;
+                const pa = view.printArea;
+                view.printArea = {
+                  topLeft: { x: pa.topLeft.x / w, y: pa.topLeft.y / h },
+                  topRight: { x: pa.topRight.x / w, y: pa.topRight.y / h },
+                  bottomRight: { x: pa.bottomRight.x / w, y: pa.bottomRight.y / h },
+                  bottomLeft: { x: pa.bottomLeft.x / w, y: pa.bottomLeft.y / h },
+                  ...(pa.bulge ? { bulge: pa.bulge } : {}),
+                };
+              })
+            );
+          }
+        }
+        await Promise.all(tasks);
         return data;
       }
 
@@ -582,15 +601,7 @@
         btn.textContent = 'Generating...';
         btn.disabled = true;
         try {
-          const envelope = await editorEl.exportState();
-          const designed = envelope.decorations.filter(d => d.status === 'designed').map(d => d.viewId);
-          if (designed.length === 0) {
-            alert('Design at least one decoration before exporting.');
-            return;
-          }
-          const mockups = await editorEl.renderMockups(designed);
-          const { exportArticlePdf } = await lib();
-          await exportArticlePdf(envelope, activeArticle, mockups);
+          await editorEl.exportPdf(activeArticle);
         } finally {
           btn.textContent = 'Export PDF';
           btn.disabled = false;
