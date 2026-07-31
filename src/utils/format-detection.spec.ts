@@ -84,3 +84,32 @@ describe('detectFileFormat', () => {
     expect(await detectFileFormat(file)).toBe('unknown');
   });
 });
+
+describe('PDF and AI detection', () => {
+  function fileFrom(bytes: number[], name: string, type = ''): File {
+    return new File([new Uint8Array(bytes)], name, { type });
+  }
+
+  const PDF_HEADER = [0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37];
+
+  it('detects PDF from the %PDF header', async () => {
+    expect(await detectFileFormat(fileFrom(PDF_HEADER, 'logo.pdf', 'application/pdf'))).toBe('pdf');
+  });
+
+  it('detects AI files, which carry the same PDF header', async () => {
+    expect(await detectFileFormat(fileFrom(PDF_HEADER, 'logo.ai', 'application/pdf'))).toBe('ai');
+  });
+
+  it('detects AI files without a PDF header from the extension', async () => {
+    expect(await detectFileFormat(fileFrom([0x00, 0x01, 0x02, 0x03], 'legacy.ai'))).toBe('ai');
+  });
+
+  it('maps the PDF mime type', () => {
+    expect(mimeToFormat('application/pdf')).toBe('pdf');
+  });
+
+  it('maps Illustrator mime types', () => {
+    expect(mimeToFormat('application/illustrator')).toBe('ai');
+    expect(mimeToFormat('application/postscript')).toBe('ai');
+  });
+});

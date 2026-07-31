@@ -167,7 +167,7 @@ export namespace Components {
     interface WtpLogoUpload {
         /**
           * Accepted file MIME types for the file input.
-          * @default 'image/png,image/jpeg,image/svg+xml,image/tiff,image/avif'
+          * @default 'image/png,image/jpeg,image/svg+xml,image/tiff,image/avif,application/pdf,.ai'
          */
         "accept": string;
         /**
@@ -182,7 +182,7 @@ export namespace Components {
         "bgRemovalConfig": Partial<BgRemovalConfig>;
         /**
           * Validation rules for uploaded logos.
-          * @default {   minDpi: 300,   maxFileSize: 50 * 1024 * 1024, // 50MB   minWidth: 100,   minHeight: 100,   allowedFormats: ['png', 'jpeg', 'svg', 'tiff', 'avif'], }
+          * @default {   minDpi: 300,   maxFileSize: 50 * 1024 * 1024, // 50MB   minWidth: 100,   minHeight: 100,   allowedFormats: ['png', 'jpeg', 'svg', 'tiff', 'avif', 'pdf', 'ai'], }
          */
         "config": LogoValidationConfig;
         /**
@@ -457,7 +457,7 @@ declare namespace LocalJSX {
     interface WtpLogoUpload {
         /**
           * Accepted file MIME types for the file input.
-          * @default 'image/png,image/jpeg,image/svg+xml,image/tiff,image/avif'
+          * @default 'image/png,image/jpeg,image/svg+xml,image/tiff,image/avif,application/pdf,.ai'
          */
         "accept"?: string;
         /**
@@ -472,7 +472,7 @@ declare namespace LocalJSX {
         "bgRemovalConfig"?: Partial<BgRemovalConfig>;
         /**
           * Validation rules for uploaded logos.
-          * @default {   minDpi: 300,   maxFileSize: 50 * 1024 * 1024, // 50MB   minWidth: 100,   minHeight: 100,   allowedFormats: ['png', 'jpeg', 'svg', 'tiff', 'avif'], }
+          * @default {   minDpi: 300,   maxFileSize: 50 * 1024 * 1024, // 50MB   minWidth: 100,   minHeight: 100,   allowedFormats: ['png', 'jpeg', 'svg', 'tiff', 'avif', 'pdf', 'ai'], }
          */
         "config"?: LogoValidationConfig;
         /**

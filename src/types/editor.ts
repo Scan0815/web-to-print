@@ -1,4 +1,4 @@
-import type { LogoValidationIssue } from './logo';
+import type { LogoValidationIssue, LogoSource } from './logo';
 
 export interface CanvasTransform {
   x: number;
@@ -8,14 +8,6 @@ export interface CanvasTransform {
   angle: number;
   skewX?: number;
   skewY?: number;
-}
-
-/** The file the customer uploaded, kept unmodified for the print shop. */
-export interface LogoSource {
-  dataUrl: string;
-  mimeType: string;
-  fileName: string;
-  fileSize: number;
 }
 
 export interface PlacedLogo {

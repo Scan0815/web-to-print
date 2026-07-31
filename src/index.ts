@@ -35,6 +35,9 @@ export { isPixelPrintArea, normalizePrintArea, resolveViewPrintArea } from './ut
 export type { PdfExportConfig, DecorationMockup, LogoSourcePage } from './utils/pdf-export';
 export { exportProductPdf, exportArticlePdf, collectLogoSources, selectPrintableDecorations } from './utils/pdf-export';
 
+export type { RenderedPdfPage } from './utils/pdf-render';
+export { renderPdfFirstPage, isPdfRenderingAvailable } from './utils/pdf-render';
+
 export type { ObjectBounds, DecorationValidationInput } from './utils/decoration-validation';
 export { validateDecoration } from './utils/decoration-validation';
 

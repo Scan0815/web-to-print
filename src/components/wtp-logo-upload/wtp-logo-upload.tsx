@@ -1,5 +1,6 @@
 import { Component, h, Prop, State, Event, EventEmitter } from '@stencil/core';
-import { LogoValidationConfig, LogoData, LogoValidationIssue, LogoMetadata, DEFAULT_VALIDATION_CONFIG, BgRemovalConfig, LogoUploadLabels, DEFAULT_LOGO_UPLOAD_LABELS } from '../../types';
+import { LogoValidationConfig, LogoData, LogoSource, LogoValidationIssue, LogoMetadata, DEFAULT_VALIDATION_CONFIG, BgRemovalConfig, LogoUploadLabels, DEFAULT_LOGO_UPLOAD_LABELS } from '../../types';
+import { renderPdfFirstPage } from '../../utils/pdf-render';
 import { validateLogo } from '../../utils/logo-validation';
 import { removeBackground } from '../../utils/background-removal';
 import { generatePreviewDataUrl } from '../../utils/image-preview';
@@ -24,7 +25,7 @@ export class WtpLogoUpload {
   /** Validation rules for uploaded logos. */
   @Prop() config: LogoValidationConfig = DEFAULT_VALIDATION_CONFIG;
   /** Accepted file MIME types for the file input. */
-  @Prop() accept: string = 'image/png,image/jpeg,image/svg+xml,image/tiff,image/avif';
+  @Prop() accept: string = 'image/png,image/jpeg,image/svg+xml,image/tiff,image/avif,application/pdf,.ai';
   /** Whether multiple files can be uploaded at once. */
   @Prop() multiple: boolean = false;
   /** Disables the upload component. */
@@ -63,9 +64,9 @@ export class WtpLogoUpload {
 
   private fileInputRef: HTMLInputElement | undefined;
 
-  private async buildLogoData(dataUrl: string, metadata: LogoMetadata): Promise<LogoData> {
+  private async buildLogoData(dataUrl: string, metadata: LogoMetadata, source?: LogoSource): Promise<LogoData> {
     const previewDataUrl = await generatePreviewDataUrl(dataUrl);
-    return { dataUrl, previewDataUrl, metadata };
+    return { dataUrl, previewDataUrl, ...(source !== undefined ? { source } : {}), metadata };
   }
 
   private isRasterFormat(format: string): boolean {
@@ -87,9 +88,25 @@ export class WtpLogoUpload {
       if (result.valid) {
         const rawDataUrl = await this.fileToDataUrl(file);
         let dataUrl: string;
+        let source: LogoSource | undefined;
         const metadata = result.metadata;
 
-        if (metadata.format === 'svg') {
+        if (metadata.format === 'pdf' || metadata.format === 'ai') {
+          // The canvas cannot draw a PDF: rasterize page 1 and keep the original for print.
+          try {
+            const rendered = await renderPdfFirstPage(file);
+            dataUrl = rendered.dataUrl;
+            metadata.width = rendered.width;
+            metadata.height = rendered.height;
+            source = { dataUrl: rawDataUrl, mimeType: file.type, fileName: file.name, fileSize: file.size };
+          } catch (e) {
+            const message = e instanceof Error ? e.message : 'Could not read the file.';
+            const issues = [{ code: 'PDF_RENDER_FAILED', severity: 'error' as const, message }];
+            this.rejections = [...this.rejections, { fileName: file.name, issues }];
+            this.wtpLogoRejected.emit({ file, issues });
+            continue;
+          }
+        } else if (metadata.format === 'svg') {
           dataUrl = await trimSvgWhitespace(rawDataUrl);
           const trimmedDims = parseSvgDimensions(dataUrl);
           if (trimmedDims !== null) {
@@ -103,7 +120,7 @@ export class WtpLogoUpload {
         if (this.enableBackgroundRemoval && this.isRasterFormat(metadata.format)) {
           this.addPendingChoice(dataUrl, metadata, file);
         } else {
-          const logoData = await this.buildLogoData(dataUrl, metadata);
+          const logoData = await this.buildLogoData(dataUrl, metadata, source);
           this.previews = [...this.previews, logoData];
           this.selectedIndex = this.previews.length - 1;
           this.wtpLogoValidated.emit(logoData);

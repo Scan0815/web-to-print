@@ -930,10 +930,12 @@ export class WtpEditor {
     for (const [id, obj] of this.objectMap) {
       if (obj.type === 'image') {
         const previewDataUrl = this.previewUrlMap.get(id);
+        const source = this.placedLogoData.get(id)?.source;
         logos.push({
           id,
           dataUrl: (obj as FabricImage).getSrc(),
           ...(previewDataUrl !== undefined ? { previewDataUrl } : {}),
+          ...(source !== undefined ? { source } : {}),
           transform: this.getObjectTransform(obj),
         });
       } else if (obj.type === 'i-text') {

@@ -20,7 +20,7 @@ describe('wtp-logo-upload', () => {
     const { root } = await render(<wtp-logo-upload></wtp-logo-upload>);
     const input = root.shadowRoot?.querySelector('input[type="file"]') as HTMLInputElement;
     expect(input).toBeTruthy();
-    expect(input.accept).toBe('image/png,image/jpeg,image/svg+xml,image/tiff,image/avif');
+    expect(input.accept).toBe('image/png,image/jpeg,image/svg+xml,image/tiff,image/avif,application/pdf,.ai');
   });
 
   it('reflects the disabled state', async () => {

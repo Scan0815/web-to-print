@@ -1,4 +1,12 @@
-export type LogoFormat = 'png' | 'jpeg' | 'svg' | 'tiff' | 'avif' | 'unknown';
+export type LogoFormat = 'png' | 'jpeg' | 'svg' | 'tiff' | 'avif' | 'pdf' | 'ai' | 'unknown';
+
+/** The file the customer uploaded, kept unmodified for the print shop. */
+export interface LogoSource {
+  dataUrl: string;
+  mimeType: string;
+  fileName: string;
+  fileSize: number;
+}
 
 export interface LogoMetadata {
   format: LogoFormat;
@@ -33,9 +41,12 @@ export interface LogoValidationResult {
 }
 
 export interface LogoData {
+  /** Canvas representation — always something the browser can draw. */
   dataUrl: string;
   /** Downscaled preview for product catalog rendering (optional, for backward compat). */
   previewDataUrl?: string;
+  /** The uploaded original; differs from dataUrl for PDF/AI (and rasterized SVG). */
+  source?: LogoSource;
   metadata: LogoMetadata;
 }
 
@@ -44,7 +55,7 @@ export const DEFAULT_VALIDATION_CONFIG: LogoValidationConfig = {
   maxFileSize: 50 * 1024 * 1024, // 50MB
   minWidth: 100,
   minHeight: 100,
-  allowedFormats: ['png', 'jpeg', 'svg', 'tiff', 'avif'],
+  allowedFormats: ['png', 'jpeg', 'svg', 'tiff', 'avif', 'pdf', 'ai'],
 };
 
 export interface BgRemovalConfig {

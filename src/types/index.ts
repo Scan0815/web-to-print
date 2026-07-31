@@ -1,4 +1,4 @@
-export type { LogoFormat, LogoMetadata, LogoValidationIssue, LogoValidationConfig, LogoValidationResult, LogoData, BgRemovalConfig } from './logo';
+export type { LogoFormat, LogoSource, LogoMetadata, LogoValidationIssue, LogoValidationConfig, LogoValidationResult, LogoData, BgRemovalConfig } from './logo';
 export { DEFAULT_VALIDATION_CONFIG, DEFAULT_BG_REMOVAL_CONFIG } from './logo';
 export type {
   CanvasTransform,
@@ -10,7 +10,6 @@ export type {
   LegacyPrintArea,
   ArticleView,
   Article,
-  LogoSource,
   CoordinateImageSize,
   MaxColours,
   DecorationState,
