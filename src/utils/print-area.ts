@@ -1,28 +1,9 @@
 import type { ArticleView, CoordinateImageSize, PrintArea } from '../types/editor';
+import { isPixelPrintArea, normalizePrintArea } from './canvas-helpers';
 
-/**
- * Print areas are defined in relative 0-1 coordinates, but supplier catalogs deliver
- * pixel coordinates relative to a source image. Relative coordinates are never above 1,
- * so any coordinate greater than 1 means the area is still in pixels.
- */
-export function isPixelPrintArea(area: PrintArea): boolean {
-  return [area.topLeft, area.topRight, area.bottomRight, area.bottomLeft].some(p => p.x > 1 || p.y > 1);
-}
-
-/** Converts a pixel print area to relative 0-1 coordinates. Relative areas pass through. */
-export function normalizePrintArea(area: PrintArea, imageWidth: number, imageHeight: number): PrintArea {
-  if (!isPixelPrintArea(area)) return area;
-  if (imageWidth <= 0 || imageHeight <= 0) return area;
-
-  const normalized: PrintArea = {
-    topLeft: { x: area.topLeft.x / imageWidth, y: area.topLeft.y / imageHeight },
-    topRight: { x: area.topRight.x / imageWidth, y: area.topRight.y / imageHeight },
-    bottomRight: { x: area.bottomRight.x / imageWidth, y: area.bottomRight.y / imageHeight },
-    bottomLeft: { x: area.bottomLeft.x / imageWidth, y: area.bottomLeft.y / imageHeight },
-  };
-  if (area.bulge != null && area.bulge !== 0) normalized.bulge = area.bulge;
-  return normalized;
-}
+// The pixel/relative conversion itself lives in canvas-helpers; this module adds the
+// view-level resolution on top of it.
+export { isPixelPrintArea, normalizePrintArea };
 
 /** Loads the natural dimensions of an image, or null when it cannot be loaded. */
 export function loadImageDimensions(url: string): Promise<{ width: number; height: number } | null> {
@@ -60,7 +41,9 @@ export async function resolveViewPrintArea(view: ArticleView): Promise<PrintArea
   if (area == null || !isPixelPrintArea(area)) return area;
 
   const dimensions = (await loadImageDimensions(view.image)) ?? fallbackDimensions(view.coordinateImageSize);
-  if (dimensions == null) return area;
+  // Returning the pixel area would place logos and guides using nonsense geometry —
+  // callers treat a PrintArea as 0-1. No print area is the honest answer.
+  if (dimensions == null) return null;
 
   return normalizePrintArea(area, dimensions.width, dimensions.height);
 }

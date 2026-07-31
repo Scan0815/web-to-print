@@ -1,6 +1,7 @@
 import type { jsPDF as JsPDFType } from 'jspdf';
 import { LogoData, Article, PrintArea, ArticleEditorState, DecorationState, ArticleView } from '../types';
 import { printAreaToPixelCorners, upscaleSvgDataUrl } from './canvas-helpers';
+import { computeContainFit } from './html-render-helpers';
 
 export interface PdfExportConfig {
   pageFormat: 'a4' | 'letter';
@@ -93,6 +94,33 @@ export function buildPdfConfig(partial?: Partial<PdfExportConfig>): PdfExportCon
   return { ...DEFAULT_PDF_CONFIG, ...partial };
 }
 
+/** Draws a two-column label/value table and returns the y below it. */
+function renderRows(
+  doc: JsPDFType,
+  rows: [string, string][],
+  x: number,
+  y: number,
+  options: { rowHeight: number; labelWidth: number; fontSize: number; maxWidth?: number },
+): number {
+  doc.setFontSize(options.fontSize);
+
+  rows.forEach((row, i) => {
+    const rowY = y + i * options.rowHeight;
+    doc.setFont('helvetica', 'bold');
+    doc.text(row[0], x, rowY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(row[1], x + options.labelWidth, rowY, options.maxWidth !== undefined ? { maxWidth: options.maxWidth } : undefined);
+  });
+
+  return y + rows.length * options.rowHeight;
+}
+
+/** Scales an image to fill the content width without exceeding the available height. */
+function fitImage(contentWidth: number, maxHeight: number, aspectRatio: number): { width: number; height: number } {
+  const { fittedW, fittedH } = computeContainFit(contentWidth, maxHeight, aspectRatio, 1);
+  return { width: fittedW, height: fittedH };
+}
+
 /** Format a file size in bytes as a human-readable string. */
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -117,15 +145,7 @@ function renderLogoPage(doc: JsPDFType, logo: LogoData, rasterLogoDataUrl: strin
   const logoY = margin + 16;
   const maxLogoH = pageH * 0.5;
 
-  const aspectRatio = logo.metadata.width / Math.max(logo.metadata.height, 1);
-  let imgW = contentW;
-  let imgH = imgW / aspectRatio;
-
-  if (imgH > maxLogoH) {
-    imgH = maxLogoH;
-    imgW = imgH * aspectRatio;
-  }
-
+  const { width: imgW, height: imgH } = fitImage(contentW, maxLogoH, logo.metadata.width / Math.max(logo.metadata.height, 1));
   const imgX = (pageW - imgW) / 2;
   doc.addImage(rasterLogoDataUrl, logoFormat, imgX, logoY, imgW, imgH);
 
@@ -141,17 +161,7 @@ function renderLogoPage(doc: JsPDFType, logo: LogoData, rasterLogoDataUrl: strin
     ['File Name', meta.fileName],
   ];
 
-  doc.setFontSize(10);
-  const rowH = 7;
-  const col1W = 30;
-
-  rows.forEach((row, i) => {
-    const y = tableY + i * rowH;
-    doc.setFont('helvetica', 'bold');
-    doc.text(row[0], margin, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(row[1], margin + col1W, y);
-  });
+  renderRows(doc, rows, margin, tableY, { rowHeight: 7, labelWidth: 30, fontSize: 10 });
 
   // Separator line above the table
   doc.setDrawColor(200, 200, 200);
@@ -227,36 +237,18 @@ function renderProductPage(
 
   if (view?.maxColours) detailRows.push(['Max Colors', `${view.maxColours}`]);
 
-  const detailRowH = 6;
-  const detailCol1W = 30;
   const detailTableY = margin + 16;
-
-  doc.setFontSize(9);
-  detailRows.forEach((row, i) => {
-    const y = detailTableY + i * detailRowH;
-    doc.setFont('helvetica', 'bold');
-    doc.text(row[0], margin, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(row[1], margin + detailCol1W, y);
-  });
+  const tableBottom = renderRows(doc, detailRows, margin, detailTableY, { rowHeight: 6, labelWidth: 30, fontSize: 9 });
 
   doc.setDrawColor(200, 200, 200);
   doc.setLineWidth(0.3);
-  doc.line(margin, detailTableY + detailRows.length * detailRowH + 2, margin + contentW, detailTableY + detailRows.length * detailRowH + 2);
+  doc.line(margin, tableBottom + 2, margin + contentW, tableBottom + 2);
 
   const mockupFormat = dataUrlToImageFormat(mockupDataUrl);
-  const mockupY = detailTableY + detailRows.length * detailRowH + 6;
+  const mockupY = tableBottom + 6;
   const maxMockupH = pageH - mockupY - margin;
 
-  const aspectRatio = canvasW / Math.max(canvasH, 1);
-  let imgW = contentW;
-  let imgH = imgW / aspectRatio;
-
-  if (imgH > maxMockupH) {
-    imgH = maxMockupH;
-    imgW = imgH * aspectRatio;
-  }
-
+  const { width: imgW, height: imgH } = fitImage(contentW, maxMockupH, canvasW / Math.max(canvasH, 1));
   const imgX = (pageW - imgW) / 2;
   doc.addImage(mockupDataUrl, mockupFormat, imgX, mockupY, imgW, imgH);
 
@@ -382,9 +374,8 @@ function renderLogoSourcePage(doc: JsPDFType, source: LogoSourcePage, rasterData
   doc.text(`Logo source ${index + 1}`, pageW / 2, margin + 8, { align: 'center' });
 
   const imgY = margin + 16;
-  const maxImgH = pageH * 0.5;
-  let imgW = contentW;
-  let imgH = maxImgH;
+  const imgH = pageH * 0.5;
+  const imgW = contentW;
 
   doc.addImage(rasterDataUrl, dataUrlToImageFormat(rasterDataUrl), (pageW - imgW) / 2, imgY, imgW, imgH, undefined, 'FAST');
 
@@ -396,15 +387,7 @@ function renderLogoSourcePage(doc: JsPDFType, source: LogoSourcePage, rasterData
     rows.push(['Note', 'Source is SVG; rasterized here. Request the vector file from the customer.']);
   }
 
-  const tableY = imgY + imgH + 10;
-  doc.setFontSize(10);
-  rows.forEach((row, i) => {
-    const y = tableY + i * 7;
-    doc.setFont('helvetica', 'bold');
-    doc.text(row[0], margin, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(row[1], margin + 30, y, { maxWidth: contentW - 30 });
-  });
+  renderRows(doc, rows, margin, imgY + imgH + 10, { rowHeight: 7, labelWidth: 30, fontSize: 10, maxWidth: contentW - 30 });
 
   renderProofNotice(doc, config);
 }
@@ -445,33 +428,17 @@ function renderDecorationPage(
     rows.push(['Warning', issue.message]);
   }
 
-  const rowH = 6;
-  const tableY = margin + 16;
-  doc.setFontSize(9);
-  rows.forEach((row, i) => {
-    const y = tableY + i * rowH;
-    doc.setFont('helvetica', 'bold');
-    doc.text(row[0], margin, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(row[1], margin + 30, y, { maxWidth: contentW - 30 });
-  });
+  const tableEnd = renderRows(doc, rows, margin, margin + 16, { rowHeight: 6, labelWidth: 30, fontSize: 9, maxWidth: contentW - 30 });
 
   doc.setDrawColor(200, 200, 200);
   doc.setLineWidth(0.3);
-  const tableBottom = tableY + rows.length * rowH + 2;
+  const tableBottom = tableEnd + 2;
   doc.line(margin, tableBottom, margin + contentW, tableBottom);
 
   const mockupY = tableBottom + 6;
   const maxMockupH = pageH - mockupY - margin - 6;
-  const aspectRatio = mockup.width / Math.max(mockup.height, 1);
-  let imgW = contentW;
-  let imgH = imgW / aspectRatio;
 
-  if (imgH > maxMockupH) {
-    imgH = maxMockupH;
-    imgW = imgH * aspectRatio;
-  }
-
+  const { width: imgW, height: imgH } = fitImage(contentW, maxMockupH, mockup.width / Math.max(mockup.height, 1));
   const imgX = (pageW - imgW) / 2;
   doc.addImage(mockup.dataUrl, dataUrlToImageFormat(mockup.dataUrl), imgX, mockupY, imgW, imgH);
 
@@ -505,13 +472,25 @@ export async function exportArticlePdf(
     throw new Error('No designed decorations to export.');
   }
 
+  const missingMockups = decorations.filter(d => mockups[d.viewId] === undefined).map(d => d.viewId);
+  if (missingMockups.length > 0) {
+    throw new Error(`Missing mockups for decoration(s): ${missingMockups.join(', ')}.`);
+  }
+
   const sources = collectLogoSources(decorations);
   const rasterSources = await Promise.all(sources.map(s => rasterizeDataUrl(s.dataUrl)));
 
   const doc = new JsPDF({ orientation: cfg.orientation, unit: 'mm', format: cfg.pageFormat });
 
+  // A fresh jsPDF document already has one page, so the first render uses it as is.
+  let pagesRendered = 0;
+  const startPage = () => {
+    if (pagesRendered > 0) doc.addPage();
+    pagesRendered++;
+  };
+
   sources.forEach((source, i) => {
-    if (i > 0) doc.addPage();
+    startPage();
     renderLogoSourcePage(doc, source, rasterSources[i], i, cfg);
   });
 
@@ -519,9 +498,7 @@ export async function exportArticlePdf(
 
   for (const decoration of decorations) {
     const mockup = mockups[decoration.viewId];
-    if (mockup === undefined) continue;
-
-    if (doc.getNumberOfPages() > 0) doc.addPage();
+    startPage();
 
     const logoPages = decoration.state.logos
       .map(logo => pageOfSource.get(logo.source?.dataUrl ?? logo.dataUrl))

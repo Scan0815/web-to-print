@@ -7,6 +7,8 @@ import { generatePreviewDataUrl } from '../../utils/image-preview';
 import { trimSvgWhitespace, parseSvgDimensions } from '../../utils/canvas-helpers';
 
 interface BgRemovalChoice {
+  /** The uploaded file, kept for the print shop regardless of which variant is chosen. */
+  source: LogoSource;
   originalDataUrl: string;
   removedBgDataUrl: string | null;
   removedBgWidth: number | null;
@@ -88,8 +90,10 @@ export class WtpLogoUpload {
       if (result.valid) {
         const rawDataUrl = await this.fileToDataUrl(file);
         let dataUrl: string;
-        let source: LogoSource | undefined;
         const metadata = result.metadata;
+        // The print shop needs what the customer uploaded, not what the editor made of
+        // it — every format derives its canvas representation, so keep the original.
+        const source: LogoSource = { dataUrl: rawDataUrl, mimeType: file.type, fileName: file.name, fileSize: file.size };
 
         if (metadata.format === 'pdf' || metadata.format === 'ai') {
           // The canvas cannot draw a PDF: rasterize page 1 and keep the original for print.
@@ -98,12 +102,9 @@ export class WtpLogoUpload {
             dataUrl = rendered.dataUrl;
             metadata.width = rendered.width;
             metadata.height = rendered.height;
-            source = { dataUrl: rawDataUrl, mimeType: file.type, fileName: file.name, fileSize: file.size };
           } catch (e) {
             const message = e instanceof Error ? e.message : 'Could not read the file.';
-            const issues = [{ code: 'PDF_RENDER_FAILED', severity: 'error' as const, message }];
-            this.rejections = [...this.rejections, { fileName: file.name, issues }];
-            this.wtpLogoRejected.emit({ file, issues });
+            this.reject(file, [{ code: 'PDF_RENDER_FAILED', severity: 'error', message }]);
             continue;
           }
         } else if (metadata.format === 'svg') {
@@ -118,7 +119,7 @@ export class WtpLogoUpload {
         }
 
         if (this.enableBackgroundRemoval && this.isRasterFormat(metadata.format)) {
-          this.addPendingChoice(dataUrl, metadata, file);
+          this.addPendingChoice(dataUrl, metadata, file, source);
         } else {
           const logoData = await this.buildLogoData(dataUrl, metadata, source);
           this.previews = [...this.previews, logoData];
@@ -127,8 +128,7 @@ export class WtpLogoUpload {
           this.wtpLogoSelected.emit(logoData);
         }
       } else {
-        this.rejections = [...this.rejections, { fileName: file.name, issues: result.issues }];
-        this.wtpLogoRejected.emit({ file, issues: result.issues });
+        this.reject(file, result.issues);
       }
     }
 
@@ -136,8 +136,14 @@ export class WtpLogoUpload {
     this.wtpLogoProcessing.emit(false);
   }
 
-  private addPendingChoice(originalDataUrl: string, metadata: LogoMetadata, file: File) {
+  private reject(file: File, issues: LogoValidationIssue[]) {
+    this.rejections = [...this.rejections, { fileName: file.name, issues }];
+    this.wtpLogoRejected.emit({ file, issues });
+  }
+
+  private addPendingChoice(originalDataUrl: string, metadata: LogoMetadata, file: File, source: LogoSource) {
     const choice: BgRemovalChoice = {
+      source,
       originalDataUrl,
       removedBgDataUrl: null,
       removedBgWidth: null,
@@ -173,7 +179,7 @@ export class WtpLogoUpload {
     const metadata = useRemoved && choice.removedBgWidth !== null && choice.removedBgHeight !== null
       ? { ...choice.metadata, width: choice.removedBgWidth, height: choice.removedBgHeight }
       : choice.metadata;
-    const logoData = await this.buildLogoData(dataUrl, metadata);
+    const logoData = await this.buildLogoData(dataUrl, metadata, choice.source);
     this.previews = [...this.previews, logoData];
     this.selectedIndex = this.previews.length - 1;
     this.wtpLogoValidated.emit(logoData);

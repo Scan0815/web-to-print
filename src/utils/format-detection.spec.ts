@@ -108,8 +108,16 @@ describe('PDF and AI detection', () => {
     expect(mimeToFormat('application/pdf')).toBe('pdf');
   });
 
-  it('maps Illustrator mime types', () => {
+  it('maps the Illustrator mime type', () => {
     expect(mimeToFormat('application/illustrator')).toBe('ai');
-    expect(mimeToFormat('application/postscript')).toBe('ai');
+  });
+
+  it('does not treat PostScript as Illustrator — EPS is not renderable', () => {
+    expect(mimeToFormat('application/postscript')).toBe('unknown');
+  });
+
+  it('leaves .eps files unknown so they are rejected outright', async () => {
+    const eps = new File([new Uint8Array([0x25, 0x21, 0x50, 0x53])], 'logo.eps', { type: 'application/postscript' });
+    expect(await detectFileFormat(eps)).toBe('unknown');
   });
 });

@@ -1,7 +1,7 @@
 // Mock jspdf since it requires browser globals (atob/btoa) unavailable in JSDOM
 vi.mock('jspdf', () => ({ jsPDF: class {} }));
 
-import { dataUrlToImageFormat, isSvgDataUrl, buildPdfConfig, PdfExportConfig, rasterizeDataUrl, exportProductPdf, collectLogoSources, selectPrintableDecorations } from './pdf-export';
+import { dataUrlToImageFormat, isSvgDataUrl, buildPdfConfig, PdfExportConfig, rasterizeDataUrl, exportProductPdf, exportArticlePdf, collectLogoSources, selectPrintableDecorations } from './pdf-export';
 import { LogoData, Article, ArticleEditorState, DecorationState, EditorState, PlacedLogo } from '../types';
 
 function editorState(logos: PlacedLogo[] = [], texts: EditorState['texts'] = []): EditorState {
@@ -167,6 +167,104 @@ describe('pdf-export', () => {
 
     it('returns nothing when no logos are placed', () => {
       expect(collectLogoSources([decoration('front', 'Front', 'designed')])).toEqual([]);
+    });
+  });
+
+  describe('exportArticlePdf', () => {
+    const PNG = 'data:image/png;base64,AAA';
+
+    /** Minimal jsPDF stand-in that records the page structure. */
+    function installFakeJsPDF(): { pages: string[][]; saved: string[] } {
+      const record = { pages: [[]] as string[][], saved: [] as string[] };
+      let current = 0;
+
+      class FakeDoc {
+        internal = { pageSize: { getWidth: () => 210, getHeight: () => 297 } };
+        addPage() {
+          record.pages.push([]);
+          current = record.pages.length - 1;
+        }
+        getNumberOfPages() {
+          return record.pages.length;
+        }
+        text(value: string) {
+          record.pages[current].push(value);
+        }
+        addImage() {}
+        setFontSize() {}
+        setFont() {}
+        setDrawColor() {}
+        setTextColor() {}
+        setLineWidth() {}
+        setLineDashPattern() {}
+        line() {}
+        save(name: string) {
+          record.saved.push(name);
+        }
+      }
+
+      (window as unknown as Record<string, unknown>)['jspdf'] = { jsPDF: FakeDoc };
+      return record;
+    }
+
+    afterEach(() => {
+      delete (window as unknown as Record<string, unknown>)['jspdf'];
+    });
+
+    const article: Article = {
+      id: 'A-1',
+      name: 'Test Article',
+      description: '',
+      views: [
+        { id: 'front', image: '', label: 'Front', printArea: null },
+        { id: 'back', image: '', label: 'Back', printArea: null },
+      ],
+    };
+
+    const mockups = {
+      front: { dataUrl: PNG, width: 800, height: 600 },
+      back: { dataUrl: PNG, width: 800, height: 600 },
+    };
+
+    function state(decorations: DecorationState[]): ArticleEditorState {
+      return { version: 2, articleId: 'A-1', decorations };
+    }
+
+    it('emits one logo page and one page per designed decoration', async () => {
+      const record = installFakeJsPDF();
+      const logo: PlacedLogo = { id: 'l1', dataUrl: PNG };
+
+      await exportArticlePdf(
+        state([decoration('front', 'Front', 'designed', [logo]), decoration('back', 'Back', 'designed', [logo])]),
+        article,
+        mockups,
+      );
+
+      expect(record.pages.length).toBe(3);
+      expect(record.saved).toEqual(['A-1.pdf']);
+    });
+
+    it('does not leave a blank first page when no logo was placed', async () => {
+      const record = installFakeJsPDF();
+
+      await exportArticlePdf(state([decoration('front', 'Front', 'designed')]), article, mockups);
+
+      expect(record.pages.length).toBe(1);
+      expect(record.pages[0].some(text => text.includes('Front'))).toBe(true);
+    });
+
+    it('throws when a designed decoration has no mockup', async () => {
+      installFakeJsPDF();
+
+      await expect(
+        exportArticlePdf(state([decoration('front', 'Front', 'designed'), decoration('back', 'Back', 'designed')]), article, { front: mockups.front }),
+      ).rejects.toThrow(/back/);
+    });
+
+    it('throws when nothing was designed', async () => {
+      installFakeJsPDF();
+
+      await expect(exportArticlePdf(state([decoration('front', 'Front', 'empty')]), article, mockups)).rejects.toThrow(/No designed decorations/);
     });
   });
 

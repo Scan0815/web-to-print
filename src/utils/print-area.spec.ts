@@ -99,7 +99,7 @@ describe('resolveViewPrintArea', () => {
     expect(resolved?.topLeft.y).toBeCloseTo(255 / 1600, 6);
   });
 
-  it('returns the pixel area unchanged when nothing can resolve the dimensions', async () => {
-    expect(await resolveViewPrintArea(view({}))).toBe(PIXEL_AREA);
+  it('returns null rather than unresolved pixel coordinates', async () => {
+    expect(await resolveViewPrintArea(view({}))).toBeNull();
   });
 });

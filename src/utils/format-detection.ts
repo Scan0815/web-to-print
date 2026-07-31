@@ -18,7 +18,6 @@ export function mimeToFormat(mime: string): LogoFormat {
     'image/avif': 'avif',
     'application/pdf': 'pdf',
     'application/illustrator': 'ai',
-    'application/postscript': 'ai',
   };
   return map[mime] ?? 'unknown';
 }
@@ -48,7 +47,8 @@ export async function detectFileFormat(file: File): Promise<LogoFormat> {
   if (magicFormat === 'pdf' && file.name.toLowerCase().endsWith('.ai')) return 'ai';
   if (magicFormat !== null) return magicFormat;
 
-  // An .ai file without PDF compatibility has no usable header
+  // An .ai file without PDF compatibility has no usable header. EPS shares the
+  // application/postscript mime type but is not renderable, so it stays unknown.
   if (file.name.toLowerCase().endsWith('.ai')) return 'ai';
 
   // Check for SVG by reading text content

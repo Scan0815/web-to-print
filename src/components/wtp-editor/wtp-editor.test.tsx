@@ -306,6 +306,49 @@ describe('wtp-editor browser', () => {
     expect(envelope.decorations.find(d => d.viewId === 'back')?.status).toBe('designed');
   });
 
+  it('does not inherit state from a previous article that reuses view ids', async () => {
+    const { root, setProps, waitForChanges } = await mount(<wtp-editor views={VIEWS} article-id="A-1"></wtp-editor>);
+    const el = root as EditorElement;
+
+    await el.addText('Belongs to A-1');
+
+    // Same view ids, different article — the old design must not leak in
+    await setProps({ articleId: 'A-2' });
+    await waitForChanges();
+
+    const envelope = await el.exportState();
+    expect(envelope.articleId).toBe('A-2');
+    expect(envelope.decorations.every(d => d.status === 'empty')).toBe(true);
+  });
+
+  it('restores logos, previews and warnings from a loaded envelope', async () => {
+    const first = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
+    const source = first.root as EditorElement;
+
+    await source.setActiveView('back'); // maxColours: 1 -> produces a warning
+    const logoId = await source.addLogo({ dataUrl: LOGO_DATA_URL, metadata: LOGO_METADATA });
+    await source.setActiveView('front');
+    const saved = await source.exportState();
+    first.unmount();
+
+    expect(saved.decorations.find(d => d.viewId === 'back')?.issues.length).toBeGreaterThan(0);
+
+    const { root } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
+    const el = root as EditorElement;
+    await el.loadState(saved);
+
+    const restored = await el.exportState();
+    const back = restored.decorations.find(d => d.viewId === 'back');
+    expect(back?.status).toBe('designed');
+    expect(back?.issues.length).toBeGreaterThan(0);
+    expect(back?.previewDataUrl).toContain('data:image/png');
+
+    // The restored logo must still be usable, not just serialized
+    const restoredLogoId = back?.state.logos[0]?.id ?? logoId;
+    const applied = await el.applyLogoToAllViews(restoredLogoId);
+    expect(applied).toContain('wrap');
+  });
+
   // --- Apply to all decorations ---
 
   it('places a logo on every empty decoration', async () => {

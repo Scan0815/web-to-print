@@ -170,6 +170,7 @@ export function isPixelPrintArea(pa: PrintArea): boolean {
 /** Normalize a PrintArea from pixel coordinates to 0–1 relative values. Already-normalized areas are returned unchanged. */
 export function normalizePrintArea(pa: PrintArea, imageWidth: number, imageHeight: number): PrintArea {
   if (!isPixelPrintArea(pa)) return pa;
+  if (imageWidth <= 0 || imageHeight <= 0) return pa;
   return pixelCornersToPrintArea(
     [pa.topLeft, pa.topRight, pa.bottomRight, pa.bottomLeft],
     imageWidth,

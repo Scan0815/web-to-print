@@ -62,6 +62,8 @@ export class WtpEditor {
   @Prop() showViewStrip: boolean = true;
   /** Show print area overlay and bounding box for debugging. */
   @Prop() debug: boolean = false;
+  /** Suppresses the debug overlay during exports without touching the @Prop (which re-renders). */
+  private suppressDebug: boolean = false;
   /** Override any of the user-facing toolbar strings. Missing keys fall back to English defaults. */
   @Prop() labels: Partial<EditorLabels> = {};
 
@@ -102,11 +104,21 @@ export class WtpEditor {
   private viewIssues: Map<string, LogoValidationIssue[]> = new Map();
   /** Source data of every placed logo, so it can be copied to other decorations. */
   private placedLogoData: Map<string, LogoData> = new Map();
+  /** Identifies the article the per-view state belongs to. */
+  private loadedArticleKey: string = '';
+  /** Serializes canvas transitions — two overlapping switches would flush into the wrong view. */
+  private transition: Promise<void> = Promise.resolve();
 
   componentWillLoad() {
     const views = this.getViews();
     this.assertValidViews(views);
     this.currentViewId = this.resolveInitialViewId(views);
+    this.loadedArticleKey = this.buildArticleKey(views);
+  }
+
+  /** Articles are told apart by id plus their decoration ids — view ids alone repeat across articles. */
+  private buildArticleKey(views: ArticleView[]): string {
+    return `${this.articleId}|${views.map(v => v.id).join(',')}`;
   }
 
   private assertValidViews(views: ArticleView[]): void {
@@ -197,20 +209,25 @@ export class WtpEditor {
     void this.setActiveView(next);
   }
 
+  @Watch('articleId')
+  onArticleIdChange() {
+    this.onViewsChange();
+  }
+
   @Watch('views')
   onViewsChange() {
     const views = this.getViews();
     this.assertValidViews(views);
 
-    // A new set of decorations means a different article: drop the old per-view state
-    // and open the new default decoration.
-    if (!views.some(v => v.id === this.currentViewId)) {
-      this.viewStates.clear();
-      this.viewIssues.clear();
-      this.viewPreviews = {};
+    // A different article means the old per-view state is meaningless — even when the
+    // new decorations happen to reuse an id like "front".
+    const key = this.buildArticleKey(views);
+    if (key !== this.loadedArticleKey) {
+      this.loadedArticleKey = key;
+      this.resetViewState();
       this.currentViewId = this.resolveInitialViewId(views);
       this.activeViewId = this.currentViewId;
-      void this.activateView(this.getActiveView());
+      this.enqueue(() => this.activateView(this.getActiveView()));
     }
 
     void this.resolvePrintAreas();
@@ -347,6 +364,7 @@ export class WtpEditor {
     if (obj !== undefined) {
       this.canvas.remove(obj);
       this.objectMap.delete(id);
+      this.placedLogoData.delete(id);
       this.canvas.renderAll();
       this.emitStateChanged();
     }
@@ -366,16 +384,48 @@ export class WtpEditor {
     if (target === undefined) throw new Error(`wtp-editor: unknown view id "${viewId}".`);
     if (target.id === this.currentViewId) return;
 
-    this.flushActiveView(true);
-
-    this.currentViewId = target.id;
-    this.activeViewId = target.id;
-    this.selectedObjectId = null;
-    this.selectedObjectType = null;
-
-    await this.activateView(target);
-
+    await this.visitView(target, { withPreview: true });
     this.wtpEditorViewChanged.emit({ viewId: target.id, index: views.indexOf(target) });
+  }
+
+  /**
+   * Puts a decoration on the canvas. Bulk operations use this directly so one logical
+   * action does not emit a view-change event or re-encode a thumbnail per hop.
+   */
+  private async visitView(target: ArticleView, options: { withPreview: boolean }): Promise<void> {
+    await this.enqueue(async () => {
+      if (target.id === this.currentViewId) return;
+
+      this.flushActiveView(options.withPreview);
+
+      this.currentViewId = target.id;
+      this.activeViewId = target.id;
+      this.selectedObjectId = null;
+      this.selectedObjectType = null;
+
+      await this.activateView(target);
+    });
+  }
+
+  /**
+   * Runs canvas transitions one after another. Overlapping switches would otherwise
+   * flush the canvas that is still on screen into the state of the view being opened.
+   */
+  private enqueue(work: () => Promise<void>): Promise<void> {
+    this.transition = this.transition.then(work, work);
+    return this.transition;
+  }
+
+  private resetViewState(): void {
+    this.viewStates.clear();
+    this.viewIssues.clear();
+    this.placedLogoData.clear();
+    this.viewPreviews = {};
+  }
+
+  private async visitViewById(viewId: string, options: { withPreview: boolean }): Promise<void> {
+    const target = this.getViews().find(v => v.id === viewId);
+    if (target !== undefined) await this.visitView(target, options);
   }
 
   /**
@@ -398,14 +448,12 @@ export class WtpEditor {
       const isEmpty = stored === undefined || (stored.logos.length === 0 && stored.texts.length === 0);
       if (!isEmpty) continue;
 
-      await this.setActiveView(view.id);
+      await this.visitView(view, { withPreview: false });
       await this.addLogo(source);
       applied.push(view.id);
     }
 
-    if (this.currentViewId !== originalViewId) {
-      await this.setActiveView(originalViewId);
-    }
+    await this.visitViewById(originalViewId, { withPreview: false });
 
     return applied;
   }
@@ -422,11 +470,11 @@ export class WtpEditor {
     const mockups: Record<string, { dataUrl: string; width: number; height: number }> = {};
 
     for (const view of targets) {
-      if (view.id !== this.currentViewId) await this.setActiveView(view.id);
+      await this.visitView(view, { withPreview: false });
       mockups[view.id] = await this.exportImageHighRes('png', 1, multiplier);
     }
 
-    if (this.currentViewId !== originalViewId) await this.setActiveView(originalViewId);
+    await this.visitViewById(originalViewId, { withPreview: false });
 
     return mockups;
   }
@@ -455,18 +503,52 @@ export class WtpEditor {
     if (this.canvas === undefined) throw new Error('Canvas not initialized');
 
     if (this.isArticleState(state)) {
-      this.viewStates.clear();
+      this.resetViewState();
+      const previews: Record<string, string> = {};
+
       for (const decoration of state.decorations) {
         this.viewStates.set(decoration.viewId, decoration.state);
+        this.viewIssues.set(decoration.viewId, decoration.issues);
+        if (decoration.previewDataUrl !== undefined) previews[decoration.viewId] = decoration.previewDataUrl;
+        this.rememberPlacedLogos(decoration.state);
       }
-      await this.activateView(this.getActiveView());
+
+      this.viewPreviews = previews;
+      await this.enqueue(() => this.activateView(this.getActiveView()));
       return;
     }
 
     // Legacy v1 state belongs to the default view.
-    this.viewStates.clear();
+    this.resetViewState();
     this.viewStates.set(this.getActiveView().id, state);
+    this.rememberPlacedLogos(state);
     await this.loadEditorState(state);
+  }
+
+  /**
+   * Restores the logo lookup from a loaded state. Only what the envelope carries is
+   * known — the upload metadata is not persisted, so it is reconstructed from the
+   * source file information where available.
+   */
+  private rememberPlacedLogos(state: EditorState): void {
+    for (const logo of state.logos) {
+      this.placedLogoData.set(logo.id, {
+        dataUrl: logo.dataUrl,
+        ...(logo.previewDataUrl !== undefined ? { previewDataUrl: logo.previewDataUrl } : {}),
+        ...(logo.source !== undefined ? { source: logo.source } : {}),
+        metadata: {
+          format: 'unknown',
+          width: 0,
+          height: 0,
+          dpiX: null,
+          dpiY: null,
+          fileSize: logo.source?.fileSize ?? 0,
+          fileName: logo.source?.fileName ?? '',
+          mimeType: logo.source?.mimeType ?? '',
+          hasTransparency: false,
+        },
+      });
+    }
   }
 
   private isArticleState(state: ArticleEditorState | EditorState): state is ArticleEditorState {
@@ -614,6 +696,14 @@ export class WtpEditor {
     this.canvas.requestRenderAll();
   }
 
+  /** Cross-origin product images taint the canvas; explain that instead of leaking the DOM error. */
+  private asExportError(e: unknown): Error {
+    if (e instanceof DOMException && e.name === 'SecurityError') {
+      return new Error('Cannot export: product image is cross-origin. Use a CORS proxy or serve images from the same domain.');
+    }
+    return e instanceof Error ? e : new Error(String(e));
+  }
+
   /** Export the canvas as a data URL image. */
   @Method()
   async exportImage(format: 'png' | 'jpeg' = 'png', quality: number = 1): Promise<string> {
@@ -621,10 +711,7 @@ export class WtpEditor {
     try {
       return this.canvas.toDataURL({ multiplier: 1, format, quality });
     } catch (e) {
-      if (e instanceof DOMException && e.name === 'SecurityError') {
-        throw new Error('Cannot export: product image is cross-origin. Use a CORS proxy or serve images from the same domain.');
-      }
-      throw e;
+      throw this.asExportError(e);
     }
   }
 
@@ -638,30 +725,18 @@ export class WtpEditor {
     // Hide selection handles
     this.canvas.discardActiveObject();
 
-    // Temporarily disable debug overlay during export
-    const wasDebug = this.debug;
-    this.debug = false;
+    this.suppressDebug = true;
     this.canvas.renderAll();
 
-    let dataUrl: string;
     try {
-      dataUrl = this.canvas.toDataURL({ multiplier, format, quality });
+      const dataUrl = this.canvas.toDataURL({ multiplier, format, quality });
+      return { dataUrl, width: this.canvas.getWidth(), height: this.canvas.getHeight() };
     } catch (e) {
-      this.debug = wasDebug;
+      throw this.asExportError(e);
+    } finally {
+      this.suppressDebug = false;
       this.canvas.renderAll();
-      if (e instanceof DOMException && e.name === 'SecurityError') {
-        throw new Error('Cannot export: product image is cross-origin. Use a CORS proxy or serve images from the same domain.');
-      }
-      throw e;
     }
-    const width = this.canvas.getWidth();
-    const height = this.canvas.getHeight();
-
-    // Restore debug state
-    this.debug = wasDebug;
-    this.canvas.renderAll();
-
-    return { dataUrl, width, height };
   }
 
   /** Get a list of all objects on the canvas with their IDs and types. */
@@ -748,8 +823,10 @@ export class WtpEditor {
 
   /** Draw print area outline and bounding box on the canvas when debug mode is active. */
   private drawDebugOverlay() {
+    if (!this.debug || this.suppressDebug || this.canvas === undefined) return;
+
     const printArea = this.getActivePrintArea();
-    if (!this.debug || this.canvas === undefined || printArea === undefined) return;
+    if (printArea === undefined) return;
 
     const ctx = this.canvas.getContext() as CanvasRenderingContext2D;
     const corners = printAreaToPixelCorners(printArea, this.canvas.getWidth(), this.canvas.getHeight());
