@@ -1,5 +1,5 @@
 import type { jsPDF as JsPDFType } from 'jspdf';
-import { LogoData, Article, PrintArea } from '../types';
+import { LogoData, Article, PrintArea, ArticleEditorState, DecorationState, ArticleView } from '../types';
 import { printAreaToPixelCorners, upscaleSvgDataUrl } from './canvas-helpers';
 
 export interface PdfExportConfig {
@@ -8,6 +8,10 @@ export interface PdfExportConfig {
   marginMm: number;
   showPrintAreaGuides: boolean;
   title: string;
+  /** Restricts the export to these decoration ids — e.g. the ones actually ordered. */
+  viewIds?: string[];
+  /** Printed on every page: this document is a proof, not print data. */
+  proofNotice: string;
 }
 
 const DEFAULT_PDF_CONFIG: PdfExportConfig = {
@@ -16,6 +20,7 @@ const DEFAULT_PDF_CONFIG: PdfExportConfig = {
   marginMm: 15,
   showPrintAreaGuides: true,
   title: 'Logo Print Specification',
+  proofNotice: 'Proof / placement reference — not print data (RGB, no bleed or crop marks).',
 };
 
 /**
@@ -295,6 +300,235 @@ export async function exportProductPdf(
   // Page 2: Product mockup
   doc.addPage();
   renderProductPage(doc, article, viewIndex, productMockupDataUrl, canvasWidth, canvasHeight, cfg);
+
+  doc.save(`${article.id}.pdf`);
+}
+
+// --- Multi-decoration export -------------------------------------------------
+
+/** Rendered mockup of one decoration, produced by the editor. */
+export interface DecorationMockup {
+  dataUrl: string;
+  width: number;
+  height: number;
+}
+
+/** A distinct logo file, plus the decorations it is used on. */
+export interface LogoSourcePage {
+  /** Deduplication key — the source data URL. */
+  key: string;
+  dataUrl: string;
+  fileName?: string;
+  mimeType?: string;
+  fileSize?: number;
+  /** Labels of the decorations using this logo. */
+  usedBy: string[];
+}
+
+/**
+ * Collects every distinct logo across the designed decorations. The print shop pulls
+ * the logo out of the PDF, so identical logos are emitted once but different ones must
+ * all be present.
+ */
+export function collectLogoSources(decorations: DecorationState[]): LogoSourcePage[] {
+  const pages = new Map<string, LogoSourcePage>();
+
+  for (const decoration of decorations) {
+    for (const logo of decoration.state.logos) {
+      const key = logo.source?.dataUrl ?? logo.dataUrl;
+      const existing = pages.get(key);
+      if (existing !== undefined) {
+        if (!existing.usedBy.includes(decoration.label)) existing.usedBy.push(decoration.label);
+        continue;
+      }
+
+      pages.set(key, {
+        key,
+        dataUrl: key,
+        ...(logo.source?.fileName !== undefined ? { fileName: logo.source.fileName } : {}),
+        ...(logo.source?.mimeType !== undefined ? { mimeType: logo.source.mimeType } : {}),
+        ...(logo.source?.fileSize !== undefined ? { fileSize: logo.source.fileSize } : {}),
+        usedBy: [decoration.label],
+      });
+    }
+  }
+
+  return [...pages.values()];
+}
+
+/** Decorations that carry a design, optionally narrowed to the ordered ones. */
+export function selectPrintableDecorations(state: ArticleEditorState, viewIds?: string[]): DecorationState[] {
+  return state.decorations.filter(d => d.status === 'designed' && (viewIds === undefined || viewIds.includes(d.viewId)));
+}
+
+function renderProofNotice(doc: JsPDFType, config: PdfExportConfig): void {
+  const pageH = doc.internal.pageSize.getHeight();
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(120, 120, 120);
+  doc.text(config.proofNotice, config.marginMm, pageH - 6);
+  doc.setTextColor(0, 0, 0);
+}
+
+/** One page per distinct logo: the source file at full quality, plus where it is used. */
+function renderLogoSourcePage(doc: JsPDFType, source: LogoSourcePage, rasterDataUrl: string, index: number, config: PdfExportConfig): void {
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = config.marginMm;
+  const contentW = pageW - 2 * margin;
+
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Logo source ${index + 1}`, pageW / 2, margin + 8, { align: 'center' });
+
+  const imgY = margin + 16;
+  const maxImgH = pageH * 0.5;
+  let imgW = contentW;
+  let imgH = maxImgH;
+
+  doc.addImage(rasterDataUrl, dataUrlToImageFormat(rasterDataUrl), (pageW - imgW) / 2, imgY, imgW, imgH, undefined, 'FAST');
+
+  const rows: [string, string][] = [['Used on', source.usedBy.join(', ')]];
+  if (source.fileName !== undefined) rows.push(['File name', source.fileName]);
+  if (source.mimeType !== undefined) rows.push(['File type', source.mimeType]);
+  if (source.fileSize !== undefined) rows.push(['File size', formatFileSize(source.fileSize)]);
+  if (isSvgDataUrl(source.dataUrl)) {
+    rows.push(['Note', 'Source is SVG; rasterized here. Request the vector file from the customer.']);
+  }
+
+  const tableY = imgY + imgH + 10;
+  doc.setFontSize(10);
+  rows.forEach((row, i) => {
+    const y = tableY + i * 7;
+    doc.setFont('helvetica', 'bold');
+    doc.text(row[0], margin, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(row[1], margin + 30, y, { maxWidth: contentW - 30 });
+  });
+
+  renderProofNotice(doc, config);
+}
+
+/** One page per decoration: mockup, print-area guide, decoration data and warnings. */
+function renderDecorationPage(
+  doc: JsPDFType,
+  article: Article,
+  decoration: DecorationState,
+  view: ArticleView | undefined,
+  mockup: DecorationMockup,
+  logoPageNumbers: number[],
+  config: PdfExportConfig,
+): void {
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = config.marginMm;
+  const contentW = pageW - 2 * margin;
+
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`${article.name} — ${decoration.label}`, pageW / 2, margin + 8, { align: 'center' });
+
+  const rows: [string, string][] = [
+    ['Article ID', article.id],
+    ['Decoration ID', decoration.viewId],
+  ];
+  if (decoration.impMethod !== undefined) rows.push(['Print method', decoration.impMethod]);
+  if (decoration.impLocation !== undefined) rows.push(['Print location', decoration.impLocation]);
+  if (decoration.impWidthMm !== undefined && decoration.impHeightMm !== undefined) {
+    rows.push(['Print area', `${decoration.impWidthMm} × ${decoration.impHeightMm} mm`]);
+  }
+  if (decoration.maxColours !== undefined) rows.push(['Max colours', `${decoration.maxColours}`]);
+  if (logoPageNumbers.length > 0) {
+    rows.push(['Logo source', logoPageNumbers.map(n => `page ${n}`).join(', ')]);
+  }
+  for (const issue of decoration.issues) {
+    rows.push(['Warning', issue.message]);
+  }
+
+  const rowH = 6;
+  const tableY = margin + 16;
+  doc.setFontSize(9);
+  rows.forEach((row, i) => {
+    const y = tableY + i * rowH;
+    doc.setFont('helvetica', 'bold');
+    doc.text(row[0], margin, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(row[1], margin + 30, y, { maxWidth: contentW - 30 });
+  });
+
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.3);
+  const tableBottom = tableY + rows.length * rowH + 2;
+  doc.line(margin, tableBottom, margin + contentW, tableBottom);
+
+  const mockupY = tableBottom + 6;
+  const maxMockupH = pageH - mockupY - margin - 6;
+  const aspectRatio = mockup.width / Math.max(mockup.height, 1);
+  let imgW = contentW;
+  let imgH = imgW / aspectRatio;
+
+  if (imgH > maxMockupH) {
+    imgH = maxMockupH;
+    imgW = imgH * aspectRatio;
+  }
+
+  const imgX = (pageW - imgW) / 2;
+  doc.addImage(mockup.dataUrl, dataUrlToImageFormat(mockup.dataUrl), imgX, mockupY, imgW, imgH);
+
+  if (config.showPrintAreaGuides && view?.printArea != null) {
+    drawPrintAreaGuide(doc, view.printArea, imgX, mockupY, imgW, imgH, mockup.width, mockup.height);
+  }
+
+  renderProofNotice(doc, config);
+}
+
+/**
+ * Generate a proof PDF covering every designed decoration of an article.
+ *
+ * Distinct logo sources come first (deduplicated), then one page per decoration with
+ * its mockup, print-area guide, decoration data and validation warnings.
+ *
+ * This document is a proof, not print data — see PdfExportConfig.proofNotice.
+ * Requires jsPDF to be loaded globally via script tag before calling this function.
+ */
+export async function exportArticlePdf(
+  state: ArticleEditorState,
+  article: Article,
+  mockups: Record<string, DecorationMockup>,
+  config?: Partial<PdfExportConfig>,
+): Promise<void> {
+  const cfg = buildPdfConfig(config);
+  const JsPDF = getJsPDF();
+
+  const decorations = selectPrintableDecorations(state, cfg.viewIds);
+  if (decorations.length === 0) {
+    throw new Error('No designed decorations to export.');
+  }
+
+  const sources = collectLogoSources(decorations);
+  const rasterSources = await Promise.all(sources.map(s => rasterizeDataUrl(s.dataUrl)));
+
+  const doc = new JsPDF({ orientation: cfg.orientation, unit: 'mm', format: cfg.pageFormat });
+
+  sources.forEach((source, i) => {
+    if (i > 0) doc.addPage();
+    renderLogoSourcePage(doc, source, rasterSources[i], i, cfg);
+  });
+
+  const pageOfSource = new Map(sources.map((source, i) => [source.key, i + 1]));
+
+  for (const decoration of decorations) {
+    const mockup = mockups[decoration.viewId];
+    if (mockup === undefined) continue;
+
+    if (doc.getNumberOfPages() > 0) doc.addPage();
+
+    const logoPages = decoration.state.logos
+      .map(logo => pageOfSource.get(logo.source?.dataUrl ?? logo.dataUrl))
+      .filter((n): n is number => n !== undefined);
+
+    renderDecorationPage(doc, article, decoration, article.views.find(v => v.id === decoration.viewId), mockup, [...new Set(logoPages)], cfg);
+  }
 
   doc.save(`${article.id}.pdf`);
 }

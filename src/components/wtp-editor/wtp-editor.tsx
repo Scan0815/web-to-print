@@ -390,6 +390,27 @@ export class WtpEditor {
     return applied;
   }
 
+  /**
+   * Renders a high-resolution mockup per decoration, keyed by view id — the input the
+   * PDF export needs. Only the editor can produce these, because each decoration has to
+   * be put on the canvas first. The originally active decoration is restored afterwards.
+   */
+  @Method()
+  async renderMockups(viewIds?: string[], multiplier: number = 3): Promise<Record<string, { dataUrl: string; width: number; height: number }>> {
+    const originalViewId = this.currentViewId;
+    const targets = this.getViews().filter(v => viewIds === undefined || viewIds.includes(v.id));
+    const mockups: Record<string, { dataUrl: string; width: number; height: number }> = {};
+
+    for (const view of targets) {
+      if (view.id !== this.currentViewId) await this.setActiveView(view.id);
+      mockups[view.id] = await this.exportImageHighRes('png', 1, multiplier);
+    }
+
+    if (this.currentViewId !== originalViewId) await this.setActiveView(originalViewId);
+
+    return mockups;
+  }
+
   /** Load a previously exported state — the v2 envelope or a legacy single-view state. */
   @Method()
   async loadState(state: ArticleEditorState | EditorState): Promise<void> {

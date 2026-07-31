@@ -1,8 +1,16 @@
 // Mock jspdf since it requires browser globals (atob/btoa) unavailable in JSDOM
 vi.mock('jspdf', () => ({ jsPDF: class {} }));
 
-import { dataUrlToImageFormat, isSvgDataUrl, buildPdfConfig, PdfExportConfig, rasterizeDataUrl, exportProductPdf } from './pdf-export';
-import { LogoData, Article } from '../types';
+import { dataUrlToImageFormat, isSvgDataUrl, buildPdfConfig, PdfExportConfig, rasterizeDataUrl, exportProductPdf, collectLogoSources, selectPrintableDecorations } from './pdf-export';
+import { LogoData, Article, ArticleEditorState, DecorationState, EditorState, PlacedLogo } from '../types';
+
+function editorState(logos: PlacedLogo[] = [], texts: EditorState['texts'] = []): EditorState {
+  return { fabricJson: '', logos, texts, productImage: null, width: 800, height: 600 };
+}
+
+function decoration(viewId: string, label: string, status: 'empty' | 'designed', logos: PlacedLogo[] = []): DecorationState {
+  return { viewId, label, status, state: editorState(logos), issues: [] };
+}
 
 describe('pdf-export', () => {
   describe('dataUrlToImageFormat', () => {
@@ -54,6 +62,7 @@ describe('pdf-export', () => {
         marginMm: 15,
         showPrintAreaGuides: true,
         title: 'Logo Print Specification',
+        proofNotice: 'Proof / placement reference — not print data (RGB, no bleed or crop marks).',
       } satisfies PdfExportConfig);
     });
 
@@ -73,6 +82,7 @@ describe('pdf-export', () => {
         marginMm: 10,
         showPrintAreaGuides: false,
         title: 'Custom Title',
+        proofNotice: 'Internal proof',
       };
       const cfg = buildPdfConfig(custom);
       expect(cfg).toEqual(custom);
@@ -105,6 +115,58 @@ describe('pdf-export', () => {
       // rasterizeDataUrl in a way that's reliable under JSDOM/mock-doc.
       const svg = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>');
       await expect(rasterizeDataUrl(svg)).rejects.toThrow();
+    });
+  });
+
+  describe('selectPrintableDecorations', () => {
+    const state: ArticleEditorState = {
+      version: 2,
+      articleId: 'A-1',
+      decorations: [decoration('front', 'Front', 'designed'), decoration('back', 'Back', 'empty'), decoration('wrap', 'Wrap', 'designed')],
+    };
+
+    it('keeps only designed decorations', () => {
+      expect(selectPrintableDecorations(state).map(d => d.viewId)).toEqual(['front', 'wrap']);
+    });
+
+    it('narrows to the requested decoration ids', () => {
+      expect(selectPrintableDecorations(state, ['wrap']).map(d => d.viewId)).toEqual(['wrap']);
+    });
+
+    it('ignores requested ids that are not designed', () => {
+      expect(selectPrintableDecorations(state, ['back'])).toEqual([]);
+    });
+  });
+
+  describe('collectLogoSources', () => {
+    const logoA: PlacedLogo = { id: 'l1', dataUrl: 'data:image/png;base64,AAA' };
+    const logoB: PlacedLogo = { id: 'l2', dataUrl: 'data:image/png;base64,BBB' };
+
+    it('emits one page per distinct logo', () => {
+      const sources = collectLogoSources([decoration('front', 'Front', 'designed', [logoA]), decoration('back', 'Back', 'designed', [logoB])]);
+      expect(sources.length).toBe(2);
+    });
+
+    it('deduplicates the same logo used on several decorations', () => {
+      const sources = collectLogoSources([decoration('front', 'Front', 'designed', [logoA]), decoration('back', 'Back', 'designed', [logoA])]);
+      expect(sources.length).toBe(1);
+      expect(sources[0].usedBy).toEqual(['Front', 'Back']);
+    });
+
+    it('prefers the uploaded original over the canvas representation', () => {
+      const withSource: PlacedLogo = {
+        id: 'l3',
+        dataUrl: 'data:image/png;base64,RASTERIZED',
+        source: { dataUrl: 'data:image/svg+xml;base64,ORIGINAL', mimeType: 'image/svg+xml', fileName: 'logo.svg', fileSize: 2048 },
+      };
+      const sources = collectLogoSources([decoration('front', 'Front', 'designed', [withSource])]);
+      expect(sources[0].dataUrl).toBe('data:image/svg+xml;base64,ORIGINAL');
+      expect(sources[0].fileName).toBe('logo.svg');
+      expect(sources[0].fileSize).toBe(2048);
+    });
+
+    it('returns nothing when no logos are placed', () => {
+      expect(collectLogoSources([decoration('front', 'Front', 'designed')])).toEqual([]);
     });
   });
 

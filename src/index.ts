@@ -32,7 +32,10 @@ export { DEFAULT_VALIDATION_CONFIG, DEFAULT_BG_REMOVAL_CONFIG } from './types';
 
 export { isPixelPrintArea, normalizePrintArea, resolveViewPrintArea } from './utils/print-area';
 
-export type { PdfExportConfig } from './utils/pdf-export';
-export { exportProductPdf } from './utils/pdf-export';
+export type { PdfExportConfig, DecorationMockup, LogoSourcePage } from './utils/pdf-export';
+export { exportProductPdf, exportArticlePdf, collectLogoSources, selectPrintableDecorations } from './utils/pdf-export';
+
+export type { ObjectBounds, DecorationValidationInput } from './utils/decoration-validation';
+export { validateDecoration } from './utils/decoration-validation';
 
 export type * from './components.d.ts';

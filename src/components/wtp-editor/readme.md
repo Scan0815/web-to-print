@@ -176,6 +176,25 @@ Type: `Promise<void>`
 
 
 
+### `renderMockups(viewIds?: string[], multiplier?: number) => Promise<Record<string, { dataUrl: string; width: number; height: number; }>>`
+
+Renders a high-resolution mockup per decoration, keyed by view id — the input the
+PDF export needs. Only the editor can produce these, because each decoration has to
+be put on the canvas first. The originally active decoration is restored afterwards.
+
+#### Parameters
+
+| Name         | Type       | Description |
+| ------------ | ---------- | ----------- |
+| `viewIds`    | `string[]` |             |
+| `multiplier` | `number`   |             |
+
+#### Returns
+
+Type: `Promise<Record<string, { dataUrl: string; width: number; height: number; }>>`
+
+
+
 ### `resetCanvas() => Promise<void>`
 
 Clear all user objects from the canvas, keeping the instance alive.
