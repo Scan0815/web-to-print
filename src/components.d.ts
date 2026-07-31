@@ -143,7 +143,7 @@ export namespace Components {
         "bgRemovalConfig": Partial<BgRemovalConfig>;
         /**
           * Validation rules for uploaded logos.
-          * @default DEFAULT_VALIDATION_CONFIG
+          * @default {   minDpi: 300,   maxFileSize: 50 * 1024 * 1024, // 50MB   minWidth: 100,   minHeight: 100,   allowedFormats: ['png', 'jpeg', 'svg', 'tiff', 'avif'], }
          */
         "config": LogoValidationConfig;
         /**
@@ -407,7 +407,7 @@ declare namespace LocalJSX {
         "bgRemovalConfig"?: Partial<BgRemovalConfig>;
         /**
           * Validation rules for uploaded logos.
-          * @default DEFAULT_VALIDATION_CONFIG
+          * @default {   minDpi: 300,   maxFileSize: 50 * 1024 * 1024, // 50MB   minWidth: 100,   minHeight: 100,   allowedFormats: ['png', 'jpeg', 'svg', 'tiff', 'avif'], }
          */
         "config"?: LogoValidationConfig;
         /**

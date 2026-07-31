@@ -1,5 +1,5 @@
 // Mock jspdf since it requires browser globals (atob/btoa) unavailable in JSDOM
-jest.mock('jspdf', () => ({ jsPDF: class {} }));
+vi.mock('jspdf', () => ({ jsPDF: class {} }));
 
 import { dataUrlToImageFormat, isSvgDataUrl, buildPdfConfig, PdfExportConfig, rasterizeDataUrl, exportProductPdf } from './pdf-export';
 import { LogoData, Article } from '../types';

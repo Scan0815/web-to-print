@@ -9,7 +9,7 @@ import { setCanvasBackground, generateObjectId, upscaleSvgDataUrl, fitLogoToPrin
   scoped: true,
 })
 export class WtpEditor {
-  @Element() el: HTMLElement;
+  @Element() el: HTMLWtpEditorElement;
 
   /** Canvas width in pixels. */
   @Prop() width: number = 800;

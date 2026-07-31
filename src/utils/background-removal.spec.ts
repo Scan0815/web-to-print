@@ -1386,27 +1386,27 @@ describe('removeBackground', () => {
     const mockBlob = new Blob(['png'], { type: 'image/png' });
 
     const mockCtx = {
-      drawImage: jest.fn(),
-      getImageData: jest.fn(() => mockImageData),
-      putImageData: jest.fn(),
+      drawImage: vi.fn(),
+      getImageData: vi.fn(() => mockImageData),
+      putImageData: vi.fn(),
     };
     const mockCanvas = {
       width: 0,
       height: 0,
-      getContext: jest.fn(() => mockCtx),
-      toBlob: jest.fn((cb: (b: Blob | null) => void) => cb(mockBlob)),
-      toDataURL: jest.fn(() => 'data:image/png;base64,abc'),
+      getContext: vi.fn(() => mockCtx),
+      toBlob: vi.fn((cb: (b: Blob | null) => void) => cb(mockBlob)),
+      toDataURL: vi.fn(() => 'data:image/png;base64,abc'),
     };
 
-    document.createElement = jest.fn((tag: string) => {
+    document.createElement = vi.fn((tag: string) => {
       if (tag === 'canvas') return mockCanvas as unknown as HTMLCanvasElement;
       return originalCreateElement.call(document, tag);
     });
 
-    URL.createObjectURL = jest.fn(() => 'blob:mock-url');
-    URL.revokeObjectURL = jest.fn();
+    URL.createObjectURL = vi.fn(() => 'blob:mock-url');
+    URL.revokeObjectURL = vi.fn();
 
-    globalThis.Image = jest.fn(() => {
+    globalThis.Image = vi.fn(function () {
       const img = { onload: null as (() => void) | null, onerror: null as (() => void) | null, src: '', naturalWidth: 4, naturalHeight: 4 };
       setTimeout(() => img.onload?.(), 0);
       return img;
@@ -1424,10 +1424,10 @@ describe('removeBackground', () => {
   });
 
   it('throws on image load failure', async () => {
-    URL.createObjectURL = jest.fn(() => 'blob:mock-url');
-    URL.revokeObjectURL = jest.fn();
+    URL.createObjectURL = vi.fn(() => 'blob:mock-url');
+    URL.revokeObjectURL = vi.fn();
 
-    globalThis.Image = jest.fn(() => {
+    globalThis.Image = vi.fn(function () {
       const img = { onload: null as (() => void) | null, onerror: null as (() => void) | null, src: '' };
       setTimeout(() => img.onerror?.(), 0);
       return img;
@@ -1449,27 +1449,27 @@ describe('removeBackground', () => {
     }
 
     const mockCtx = {
-      drawImage: jest.fn(),
-      getImageData: jest.fn(() => ({ data, width: size, height: size })),
-      putImageData: jest.fn(),
+      drawImage: vi.fn(),
+      getImageData: vi.fn(() => ({ data, width: size, height: size })),
+      putImageData: vi.fn(),
     };
     const mockCanvas = {
       width: 0,
       height: 0,
-      getContext: jest.fn(() => mockCtx),
-      toBlob: jest.fn(),
-      toDataURL: jest.fn(),
+      getContext: vi.fn(() => mockCtx),
+      toBlob: vi.fn(),
+      toDataURL: vi.fn(),
     };
 
-    document.createElement = jest.fn((tag: string) => {
+    document.createElement = vi.fn((tag: string) => {
       if (tag === 'canvas') return mockCanvas as unknown as HTMLCanvasElement;
       return originalCreateElement.call(document, tag);
     });
 
-    URL.createObjectURL = jest.fn(() => 'blob:mock-url');
-    URL.revokeObjectURL = jest.fn();
+    URL.createObjectURL = vi.fn(() => 'blob:mock-url');
+    URL.revokeObjectURL = vi.fn();
 
-    globalThis.Image = jest.fn(() => {
+    globalThis.Image = vi.fn(function () {
       const img = { onload: null as (() => void) | null, onerror: null as (() => void) | null, src: '', naturalWidth: size, naturalHeight: size };
       setTimeout(() => img.onload?.(), 0);
       return img;

@@ -1,19 +1,21 @@
-import { newE2EPage } from '@stencil/core/testing';
+import { render, h, describe, it, expect } from '@stencil/vitest';
+import type { PrintArea } from '../../types/editor';
 
-describe('wtp-print-area-editor', () => {
+type PrintAreaEditorElement = HTMLElement & {
+  getPrintArea: () => Promise<PrintArea>;
+  setPrintArea: (area: PrintArea) => Promise<void>;
+};
+
+describe('wtp-print-area-editor browser', () => {
   it('renders the component', async () => {
-    const page = await newE2EPage();
-    await page.setContent('<wtp-print-area-editor></wtp-print-area-editor>');
-    const el = await page.find('wtp-print-area-editor');
-    expect(el).not.toBeNull();
+    const { root } = await render(<wtp-print-area-editor></wtp-print-area-editor>);
+    expect(root).not.toBeNull();
   });
 
   it('getPrintArea returns default area when no printArea is set', async () => {
-    const page = await newE2EPage();
-    await page.setContent('<wtp-print-area-editor></wtp-print-area-editor>');
-    const el = await page.find('wtp-print-area-editor');
+    const { root } = await render(<wtp-print-area-editor></wtp-print-area-editor>);
 
-    const area = await el.callMethod('getPrintArea');
+    const area = await (root as PrintAreaEditorElement).getPrintArea();
     expect(area).toBeDefined();
     expect(area.topLeft).toBeDefined();
     expect(area.topRight).toBeDefined();
@@ -25,20 +27,19 @@ describe('wtp-print-area-editor', () => {
   });
 
   it('setPrintArea and getPrintArea round-trip with rectangular quad', async () => {
-    const page = await newE2EPage();
-    await page.setContent('<wtp-print-area-editor></wtp-print-area-editor>');
-    const el = await page.find('wtp-print-area-editor');
+    const { root } = await render(<wtp-print-area-editor></wtp-print-area-editor>);
+    const el = root as PrintAreaEditorElement;
 
-    const input = {
+    const input: PrintArea = {
       topLeft: { x: 0.2, y: 0.2 },
       topRight: { x: 0.8, y: 0.2 },
       bottomRight: { x: 0.8, y: 0.8 },
       bottomLeft: { x: 0.2, y: 0.8 },
       bulge: 0.3,
     };
-    await el.callMethod('setPrintArea', input);
+    await el.setPrintArea(input);
 
-    const result = await el.callMethod('getPrintArea');
+    const result = await el.getPrintArea();
     expect(result.topLeft.x).toBeCloseTo(input.topLeft.x, 2);
     expect(result.topLeft.y).toBeCloseTo(input.topLeft.y, 2);
     expect(result.topRight.x).toBeCloseTo(input.topRight.x, 2);
@@ -47,24 +48,23 @@ describe('wtp-print-area-editor', () => {
     expect(result.bottomRight.y).toBeCloseTo(input.bottomRight.y, 2);
     expect(result.bottomLeft.x).toBeCloseTo(input.bottomLeft.x, 2);
     expect(result.bottomLeft.y).toBeCloseTo(input.bottomLeft.y, 2);
-    expect(result.bulge).toBeCloseTo(input.bulge, 2);
+    expect(result.bulge).toBeCloseTo(input.bulge!, 2);
   });
 
   it('setPrintArea and getPrintArea round-trip with non-rectangular quad', async () => {
-    const page = await newE2EPage();
-    await page.setContent('<wtp-print-area-editor></wtp-print-area-editor>');
-    const el = await page.find('wtp-print-area-editor');
+    const { root } = await render(<wtp-print-area-editor></wtp-print-area-editor>);
+    const el = root as PrintAreaEditorElement;
 
-    const input = {
+    const input: PrintArea = {
       topLeft: { x: 0.3, y: 0.15 },
       topRight: { x: 0.7, y: 0.25 },
       bottomRight: { x: 0.65, y: 0.85 },
       bottomLeft: { x: 0.25, y: 0.75 },
       bulge: -0.2,
     };
-    await el.callMethod('setPrintArea', input);
+    await el.setPrintArea(input);
 
-    const result = await el.callMethod('getPrintArea');
+    const result = await el.getPrintArea();
     expect(result.topLeft.x).toBeCloseTo(input.topLeft.x, 2);
     expect(result.topLeft.y).toBeCloseTo(input.topLeft.y, 2);
     expect(result.topRight.x).toBeCloseTo(input.topRight.x, 2);
@@ -73,6 +73,6 @@ describe('wtp-print-area-editor', () => {
     expect(result.bottomRight.y).toBeCloseTo(input.bottomRight.y, 2);
     expect(result.bottomLeft.x).toBeCloseTo(input.bottomLeft.x, 2);
     expect(result.bottomLeft.y).toBeCloseTo(input.bottomLeft.y, 2);
-    expect(result.bulge).toBeCloseTo(input.bulge, 2);
+    expect(result.bulge).toBeCloseTo(input.bulge!, 2);
   });
 });

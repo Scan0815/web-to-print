@@ -24,7 +24,7 @@ interface RenderedLayer {
   scoped: true,
 })
 export class WtpLogoRenderer {
-  @Element() el: HTMLElement;
+  @Element() el: HTMLWtpLogoRendererElement;
 
   /** Product background image URL. */
   @Prop() productImage: string | undefined;

@@ -216,7 +216,7 @@ function buildBulgeControl(): Control {
   scoped: true,
 })
 export class WtpPrintAreaEditor {
-  @Element() el: HTMLElement;
+  @Element() el: HTMLWtpPrintAreaEditorElement;
 
   /** Product background image URL. */
   @Prop() productImage: string | undefined;

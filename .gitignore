@@ -28,3 +28,7 @@ UserInterfaceState.xcuserstate
 
 # Claude Code per-project instructions (private)
 CLAUDE.md
+
+# Vitest browser mode artifacts
+__screenshots__/
+.vitest-attachments/
