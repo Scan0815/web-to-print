@@ -1,5 +1,5 @@
 import type { jsPDF as JsPDFType } from 'jspdf';
-import { LogoData, Article, PrintArea, ArticleEditorState, DecorationState, ArticleView } from '../types';
+import { LogoData, LogoMetadata, Article, PrintArea, ArticleEditorState, DecorationState, ArticleView } from '../types';
 import { printAreaToPixelCorners, upscaleSvgDataUrl } from './canvas-helpers';
 import { computeContainFit } from './html-render-helpers';
 
@@ -128,47 +128,6 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-/** Render page 1: logo at full quality with metadata table. */
-function renderLogoPage(doc: JsPDFType, logo: LogoData, rasterLogoDataUrl: string, config: PdfExportConfig): void {
-  const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
-  const margin = config.marginMm;
-  const contentW = pageW - 2 * margin;
-
-  // Title
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.text(config.title, pageW / 2, margin + 8, { align: 'center' });
-
-  // Logo image — centered, filling available width while maintaining aspect ratio
-  const logoFormat = dataUrlToImageFormat(rasterLogoDataUrl);
-  const logoY = margin + 16;
-  const maxLogoH = pageH * 0.5;
-
-  const { width: imgW, height: imgH } = fitImage(contentW, maxLogoH, logo.metadata.width / Math.max(logo.metadata.height, 1));
-  const imgX = (pageW - imgW) / 2;
-  doc.addImage(rasterLogoDataUrl, logoFormat, imgX, logoY, imgW, imgH);
-
-  // Metadata table below the logo
-  const tableY = logoY + imgH + 10;
-  const meta = logo.metadata;
-  const rows: [string, string][] = [
-    ['Format', meta.format.toUpperCase()],
-    ['Dimensions', `${meta.width} x ${meta.height} px`],
-    ['DPI', meta.dpiX !== null ? `${meta.dpiX} x ${meta.dpiY ?? meta.dpiX}` : 'Not available'],
-    ['File Size', formatFileSize(meta.fileSize)],
-    ['Transparency', meta.hasTransparency ? 'Yes' : 'No'],
-    ['File Name', meta.fileName],
-  ];
-
-  renderRows(doc, rows, margin, tableY, { rowHeight: 7, labelWidth: 30, fontSize: 10 });
-
-  // Separator line above the table
-  doc.setDrawColor(200, 200, 200);
-  doc.setLineWidth(0.3);
-  doc.line(margin, tableY - 4, margin + contentW, tableY - 4);
-}
-
 /** Draw dashed print area guide overlay on the product mockup. */
 function drawPrintAreaGuide(
   doc: JsPDFType,
@@ -203,65 +162,11 @@ function drawPrintAreaGuide(
   doc.setLineDashPattern([], 0);
 }
 
-/** Render page 2: product mockup with header and print area guides. */
-function renderProductPage(
-  doc: JsPDFType,
-  article: Article,
-  viewIndex: number,
-  mockupDataUrl: string,
-  canvasW: number,
-  canvasH: number,
-  config: PdfExportConfig,
-): void {
-  const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
-  const margin = config.marginMm;
-  const contentW = pageW - 2 * margin;
-
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.text(article.name, pageW / 2, margin + 8, { align: 'center' });
-
-  // Article details table
-  const view = article.views[viewIndex];
-  const detailRows: [string, string][] = [['Article ID', article.id]];
-
-  if (view?.impMethod) detailRows.push(['Print Method', view.impMethod]);
-  if (view?.impLocation) detailRows.push(['Print Location', view.impLocation]);
-
-  if (view?.impDiameterMm && view.impDiameterMm > 0) {
-    detailRows.push(['Print Area', `\u00D8 ${view.impDiameterMm} mm`]);
-  } else if (view?.impWidthMm && view?.impHeightMm) {
-    detailRows.push(['Print Area', `${view.impWidthMm} \u00D7 ${view.impHeightMm} mm`]);
-  }
-
-  if (view?.maxColours) detailRows.push(['Max Colors', `${view.maxColours}`]);
-
-  const detailTableY = margin + 16;
-  const tableBottom = renderRows(doc, detailRows, margin, detailTableY, { rowHeight: 6, labelWidth: 30, fontSize: 9 });
-
-  doc.setDrawColor(200, 200, 200);
-  doc.setLineWidth(0.3);
-  doc.line(margin, tableBottom + 2, margin + contentW, tableBottom + 2);
-
-  const mockupFormat = dataUrlToImageFormat(mockupDataUrl);
-  const mockupY = tableBottom + 6;
-  const maxMockupH = pageH - mockupY - margin;
-
-  const { width: imgW, height: imgH } = fitImage(contentW, maxMockupH, canvasW / Math.max(canvasH, 1));
-  const imgX = (pageW - imgW) / 2;
-  doc.addImage(mockupDataUrl, mockupFormat, imgX, mockupY, imgW, imgH);
-
-  if (config.showPrintAreaGuides && view?.printArea != null) {
-    drawPrintAreaGuide(doc, view.printArea, imgX, mockupY, imgW, imgH, canvasW, canvasH);
-  }
-}
-
 /**
- * Generate and download a print-shop-ready PDF for a product.
+ * Generate and download a proof PDF for a single decoration.
  *
- * Page 1: Logo at full quality with metadata table.
- * Page 2: High-resolution product mockup with print area guides.
+ * Thin wrapper around exportArticlePdf so there is only one PDF implementation —
+ * kept for integrations written against the pre-0.2.0 single-decoration API.
  *
  * Requires jsPDF to be loaded globally via script tag before calling this function.
  */
@@ -274,26 +179,36 @@ export async function exportProductPdf(
   canvasHeight: number,
   config?: Partial<PdfExportConfig>,
 ): Promise<void> {
-  const cfg = buildPdfConfig(config);
-  const JsPDF = getJsPDF();
+  const view = article.views[viewIndex];
+  if (view === undefined) throw new Error(`Article "${article.id}" has no view at index ${viewIndex}.`);
 
-  // Rasterize SVG data URLs — jsPDF only accepts PNG/JPEG
-  const rasterLogoDataUrl = await rasterizeDataUrl(logo.dataUrl);
+  const decoration: DecorationState = {
+    viewId: view.id,
+    label: view.label,
+    ...(view.impMethod !== undefined ? { impMethod: view.impMethod } : {}),
+    ...(view.impLocation !== undefined ? { impLocation: view.impLocation } : {}),
+    ...(view.impWidthMm !== undefined ? { impWidthMm: view.impWidthMm } : {}),
+    ...(view.impHeightMm !== undefined ? { impHeightMm: view.impHeightMm } : {}),
+    ...(view.maxColours !== undefined ? { maxColours: view.maxColours } : {}),
+    status: 'designed',
+    state: {
+      fabricJson: '',
+      logos: [{ id: 'logo-1', dataUrl: logo.dataUrl, ...(logo.source !== undefined ? { source: logo.source } : {}) }],
+      texts: [],
+      productImage: view.image !== '' ? view.image : null,
+      width: canvasWidth,
+      height: canvasHeight,
+    },
+    issues: [],
+  };
 
-  const doc = new JsPDF({
-    orientation: cfg.orientation,
-    unit: 'mm',
-    format: cfg.pageFormat,
-  });
-
-  // Page 1: Logo source
-  renderLogoPage(doc, logo, rasterLogoDataUrl, cfg);
-
-  // Page 2: Product mockup
-  doc.addPage();
-  renderProductPage(doc, article, viewIndex, productMockupDataUrl, canvasWidth, canvasHeight, cfg);
-
-  doc.save(`${article.id}.pdf`);
+  await exportArticlePdf(
+    { version: 2, articleId: article.id, decorations: [decoration] },
+    article,
+    { [view.id]: { dataUrl: productMockupDataUrl, width: canvasWidth, height: canvasHeight } },
+    config,
+    { [logo.source?.dataUrl ?? logo.dataUrl]: logo.metadata },
+  );
 }
 
 // --- Multi-decoration export -------------------------------------------------
@@ -313,6 +228,8 @@ export interface LogoSourcePage {
   fileName?: string;
   mimeType?: string;
   fileSize?: number;
+  /** Upload metadata (DPI, dimensions), when the caller still has it. */
+  metadata?: LogoMetadata;
   /** Labels of the decorations using this logo. */
   usedBy: string[];
 }
@@ -322,7 +239,7 @@ export interface LogoSourcePage {
  * the logo out of the PDF, so identical logos are emitted once but different ones must
  * all be present.
  */
-export function collectLogoSources(decorations: DecorationState[]): LogoSourcePage[] {
+export function collectLogoSources(decorations: DecorationState[], metadataByKey?: Record<string, LogoMetadata>): LogoSourcePage[] {
   const pages = new Map<string, LogoSourcePage>();
 
   for (const decoration of decorations) {
@@ -337,6 +254,7 @@ export function collectLogoSources(decorations: DecorationState[]): LogoSourcePa
       pages.set(key, {
         key,
         dataUrl: key,
+        ...(metadataByKey?.[key] !== undefined ? { metadata: metadataByKey[key] } : {}),
         ...(logo.source?.fileName !== undefined ? { fileName: logo.source.fileName } : {}),
         ...(logo.source?.mimeType !== undefined ? { mimeType: logo.source.mimeType } : {}),
         ...(logo.source?.fileSize !== undefined ? { fileSize: logo.source.fileSize } : {}),
@@ -379,10 +297,17 @@ function renderLogoSourcePage(doc: JsPDFType, source: LogoSourcePage, rasterData
 
   doc.addImage(rasterDataUrl, dataUrlToImageFormat(rasterDataUrl), (pageW - imgW) / 2, imgY, imgW, imgH, undefined, 'FAST');
 
+  const meta = source.metadata;
   const rows: [string, string][] = [['Used on', source.usedBy.join(', ')]];
   if (source.fileName !== undefined) rows.push(['File name', source.fileName]);
   if (source.mimeType !== undefined) rows.push(['File type', source.mimeType]);
   if (source.fileSize !== undefined) rows.push(['File size', formatFileSize(source.fileSize)]);
+  if (meta !== undefined) {
+    rows.push(['Format', meta.format.toUpperCase()]);
+    rows.push(['Dimensions', `${meta.width} x ${meta.height} px`]);
+    rows.push(['DPI', meta.dpiX !== null ? `${meta.dpiX} x ${meta.dpiY ?? meta.dpiX}` : 'Not available']);
+    rows.push(['Transparency', meta.hasTransparency ? 'Yes' : 'No']);
+  }
   if (isSvgDataUrl(source.dataUrl)) {
     rows.push(['Note', 'Source is SVG; rasterized here. Request the vector file from the customer.']);
   }
@@ -417,7 +342,9 @@ function renderDecorationPage(
   ];
   if (decoration.impMethod !== undefined) rows.push(['Print method', decoration.impMethod]);
   if (decoration.impLocation !== undefined) rows.push(['Print location', decoration.impLocation]);
-  if (decoration.impWidthMm !== undefined && decoration.impHeightMm !== undefined) {
+  if (view?.impDiameterMm !== undefined && view.impDiameterMm > 0) {
+    rows.push(['Print area', `\u00D8 ${view.impDiameterMm} mm`]);
+  } else if (decoration.impWidthMm !== undefined && decoration.impHeightMm !== undefined) {
     rows.push(['Print area', `${decoration.impWidthMm} × ${decoration.impHeightMm} mm`]);
   }
   if (decoration.maxColours !== undefined) rows.push(['Max colours', `${decoration.maxColours}`]);
@@ -463,6 +390,7 @@ export async function exportArticlePdf(
   article: Article,
   mockups: Record<string, DecorationMockup>,
   config?: Partial<PdfExportConfig>,
+  logoMetadata?: Record<string, LogoMetadata>,
 ): Promise<void> {
   const cfg = buildPdfConfig(config);
   const JsPDF = getJsPDF();
@@ -477,7 +405,7 @@ export async function exportArticlePdf(
     throw new Error(`Missing mockups for decoration(s): ${missingMockups.join(', ')}.`);
   }
 
-  const sources = collectLogoSources(decorations);
+  const sources = collectLogoSources(decorations, logoMetadata);
   const rasterSources = await Promise.all(sources.map(s => rasterizeDataUrl(s.dataUrl)));
 
   const doc = new JsPDF({ orientation: cfg.orientation, unit: 'mm', format: cfg.pageFormat });

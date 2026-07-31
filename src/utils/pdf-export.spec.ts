@@ -170,47 +170,47 @@ describe('pdf-export', () => {
     });
   });
 
-  describe('exportArticlePdf', () => {
-    const PNG = 'data:image/png;base64,AAA';
+  const PNG = 'data:image/png;base64,AAA';
 
-    /** Minimal jsPDF stand-in that records the page structure. */
-    function installFakeJsPDF(): { pages: string[][]; saved: string[] } {
-      const record = { pages: [[]] as string[][], saved: [] as string[] };
-      let current = 0;
+  /** Minimal jsPDF stand-in that records the page structure. */
+  function installFakeJsPDF(): { pages: string[][]; saved: string[] } {
+    const record = { pages: [[]] as string[][], saved: [] as string[] };
+    let current = 0;
 
-      class FakeDoc {
-        internal = { pageSize: { getWidth: () => 210, getHeight: () => 297 } };
-        addPage() {
-          record.pages.push([]);
-          current = record.pages.length - 1;
-        }
-        getNumberOfPages() {
-          return record.pages.length;
-        }
-        text(value: string) {
-          record.pages[current].push(value);
-        }
-        addImage() {}
-        setFontSize() {}
-        setFont() {}
-        setDrawColor() {}
-        setTextColor() {}
-        setLineWidth() {}
-        setLineDashPattern() {}
-        line() {}
-        save(name: string) {
-          record.saved.push(name);
-        }
+    class FakeDoc {
+      internal = { pageSize: { getWidth: () => 210, getHeight: () => 297 } };
+      addPage() {
+        record.pages.push([]);
+        current = record.pages.length - 1;
       }
-
-      (window as unknown as Record<string, unknown>)['jspdf'] = { jsPDF: FakeDoc };
-      return record;
+      getNumberOfPages() {
+        return record.pages.length;
+      }
+      text(value: string) {
+        record.pages[current].push(value);
+      }
+      addImage() {}
+      setFontSize() {}
+      setFont() {}
+      setDrawColor() {}
+      setTextColor() {}
+      setLineWidth() {}
+      setLineDashPattern() {}
+      line() {}
+      save(name: string) {
+        record.saved.push(name);
+      }
     }
 
-    afterEach(() => {
-      delete (window as unknown as Record<string, unknown>)['jspdf'];
-    });
+    (window as unknown as Record<string, unknown>)['jspdf'] = { jsPDF: FakeDoc };
+    return record;
+  }
 
+  afterEach(() => {
+    delete (window as unknown as Record<string, unknown>)['jspdf'];
+  });
+
+  describe('exportArticlePdf', () => {
     const article: Article = {
       id: 'A-1',
       name: 'Test Article',
@@ -269,6 +269,38 @@ describe('pdf-export', () => {
   });
 
   describe('exportProductPdf', () => {
+    it('delegates to exportArticlePdf: one logo page plus one decoration page', async () => {
+      const record = installFakeJsPDF();
+      const logo: LogoData = {
+        dataUrl: 'data:image/png;base64,AAA',
+        metadata: { format: 'png', width: 100, height: 100, dpiX: 300, dpiY: 300, fileSize: 1024, hasTransparency: true, fileName: 'logo.png', mimeType: 'image/png' },
+      };
+      const article: Article = {
+        id: 'A-1',
+        name: 'Test Article',
+        description: '',
+        views: [{ id: 'front', image: '', label: 'Front', printArea: null }],
+      };
+
+      await exportProductPdf(logo, article, 0, logo.dataUrl, 800, 600);
+
+      expect(record.pages.length).toBe(2);
+      expect(record.saved).toEqual(['A-1.pdf']);
+      // The upload metadata the single-view page used to show survives the delegation
+      expect(record.pages[0].some(text => text === '300 x 300')).toBe(true);
+    });
+
+    it('rejects a view index the article does not have', async () => {
+      installFakeJsPDF();
+      const logo: LogoData = {
+        dataUrl: 'data:image/png;base64,AAA',
+        metadata: { format: 'png', width: 100, height: 100, dpiX: null, dpiY: null, fileSize: 1, hasTransparency: false, fileName: 'l.png', mimeType: 'image/png' },
+      };
+      const article: Article = { id: 'A-1', name: 'T', description: '', views: [] };
+
+      await expect(exportProductPdf(logo, article, 0, logo.dataUrl, 800, 600)).rejects.toThrow(/no view at index/);
+    });
+
     it('throws a helpful error when jsPDF is not loaded globally', async () => {
       const logo: LogoData = {
         dataUrl: 'data:image/png;base64,iVBORw0KGgo=',

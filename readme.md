@@ -259,7 +259,7 @@ Two features expect a global, which keeps them out of the bundle:
 
 | Feature | Global | Script |
 |---|---|---|
-| PDF export (`exportPdf`, `exportArticlePdf`) | `window.jspdf` | `https://unpkg.com/jspdf@4.1.0/dist/jspdf.umd.min.js` |
+| PDF export (`exportPdf`, `exportArticlePdf`, `exportProductPdf`) | `window.jspdf` | `https://unpkg.com/jspdf@4.1.0/dist/jspdf.umd.min.js` |
 | PDF/AI logo upload | `window.pdfjsLib` | `https://unpkg.com/pdfjs-dist@5/build/pdf.min.mjs` |
 
 Both throw a message naming the missing script when they are used without it.

@@ -523,8 +523,11 @@ In implementation order; each ends green.
    them. This keeps existing integrations and the v1 load path working, and cost nothing.
 2. **`pdfjs-dist` is not a dependency.** PDF/AI rendering expects `window.pdfjsLib`,
    the same contract jsPDF already had — no bundling risk, no new dependency.
-3. **`exportProductPdf` was kept as-is** next to `exportArticlePdf` rather than becoming
-   a wrapper; it still carries the richer single-logo metadata table.
+3. ~~`exportProductPdf` was kept as-is.~~ **Resolved** — it is now the thin wrapper §6.4
+   specified: it synthesizes a one-decoration envelope and delegates to
+   `exportArticlePdf`. The upload metadata (format, dimensions, DPI, transparency) it
+   used to show survives via the optional `logoMetadata` lookup on the logo source page,
+   so there is one PDF implementation and no lost information.
 4. **The editor gained `exportPdf(article, config?)`.** Importing the library's ESM
    bundle into a page that already loaded the components pulls in a **second Stencil
    runtime**, which silently breaks re-rendering. Going through the component avoids it.
