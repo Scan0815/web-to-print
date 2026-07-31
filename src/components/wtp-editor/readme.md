@@ -7,26 +7,30 @@
 
 ## Properties
 
-| Property       | Attribute       | Description                                                                                  | Type           | Default                                                           |
-| -------------- | --------------- | -------------------------------------------------------------------------------------------- | -------------- | ----------------------------------------------------------------- |
-| `debug`        | `debug`         | Show print area overlay and bounding box for debugging.                                      | `boolean`      | `false`                                                           |
-| `fonts`        | --              | Available font families for the text tool.                                                   | `string[]`     | `['Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Verdana']` |
-| `height`       | `height`        | Canvas height in pixels.                                                                     | `number`       | `600`                                                             |
-| `initialState` | `initial-state` | JSON-serialized initial editor state.                                                        | `string`       | `undefined`                                                       |
-| `labels`       | --              | Override any of the user-facing toolbar strings. Missing keys fall back to English defaults. | `EditorLabels` | `{}`                                                              |
-| `printArea`    | --              | Print area definition (0-1 relative coordinates) to constrain objects.                       | `PrintArea`    | `undefined`                                                       |
-| `productImage` | `product-image` | Product background image URL.                                                                | `string`       | `undefined`                                                       |
-| `width`        | `width`         | Canvas width in pixels.                                                                      | `number`       | `800`                                                             |
+| Property       | Attribute        | Description                                                                                                                                                                                 | Type            | Default                                                           |
+| -------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | ----------------------------------------------------------------- |
+| `activeViewId` | `active-view-id` | Id of the decoration currently being edited. Defaults to the `isDefault` view, else the first.                                                                                              | `string`        | `undefined`                                                       |
+| `articleId`    | `article-id`     | Article id written into the exported envelope.                                                                                                                                              | `string`        | `''`                                                              |
+| `debug`        | `debug`          | Show print area overlay and bounding box for debugging.                                                                                                                                     | `boolean`       | `false`                                                           |
+| `fonts`        | --               | Available font families for the text tool.                                                                                                                                                  | `string[]`      | `['Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Verdana']` |
+| `height`       | `height`         | Canvas height in pixels.                                                                                                                                                                    | `number`        | `600`                                                             |
+| `initialState` | `initial-state`  | JSON-serialized initial editor state.                                                                                                                                                       | `string`        | `undefined`                                                       |
+| `labels`       | --               | Override any of the user-facing toolbar strings. Missing keys fall back to English defaults.                                                                                                | `EditorLabels`  | `{}`                                                              |
+| `printArea`    | --               | <span style="color:red">**[DEPRECATED]**</span> Single-decoration fallback used only when `views` is empty.<br/><br/>Print area definition (0-1 relative coordinates) to constrain objects. | `PrintArea`     | `undefined`                                                       |
+| `productImage` | `product-image`  | <span style="color:red">**[DEPRECATED]**</span> Single-decoration fallback used only when `views` is empty.<br/><br/>Product background image URL.                                          | `string`        | `undefined`                                                       |
+| `views`        | --               | Decoration options (Veredelungen) of the article. Each view needs a stable `id`.                                                                                                            | `ArticleView[]` | `[]`                                                              |
+| `width`        | `width`          | Canvas width in pixels.                                                                                                                                                                     | `number`        | `800`                                                             |
 
 
 ## Events
 
-| Event                       | Description                                                   | Type                                         |
-| --------------------------- | ------------------------------------------------------------- | -------------------------------------------- |
-| `wtpEditorObjectDeselected` | Fires when the current selection is cleared.                  | `CustomEvent<void>`                          |
-| `wtpEditorObjectSelected`   | Fires when an object is selected on the canvas.               | `CustomEvent<{ id: string; type: string; }>` |
-| `wtpEditorReady`            | Fires when the canvas is initialized and ready.               | `CustomEvent<void>`                          |
-| `wtpEditorStateChanged`     | Fires when the editor state changes (object add/move/remove). | `CustomEvent<EditorState>`                   |
+| Event                       | Description                                                   | Type                                              |
+| --------------------------- | ------------------------------------------------------------- | ------------------------------------------------- |
+| `wtpEditorObjectDeselected` | Fires when the current selection is cleared.                  | `CustomEvent<void>`                               |
+| `wtpEditorObjectSelected`   | Fires when an object is selected on the canvas.               | `CustomEvent<{ id: string; type: string; }>`      |
+| `wtpEditorReady`            | Fires when the canvas is initialized and ready.               | `CustomEvent<void>`                               |
+| `wtpEditorStateChanged`     | Fires when the editor state changes (object add/move/remove). | `CustomEvent<ArticleEditorState>`                 |
+| `wtpEditorViewChanged`      | Fires when the edited decoration changes.                     | `CustomEvent<{ viewId: string; index: number; }>` |
 
 
 ## Methods
@@ -101,13 +105,13 @@ Type: `Promise<{ dataUrl: string; width: number; height: number; }>`
 
 
 
-### `exportState() => Promise<EditorState>`
+### `exportState() => Promise<ArticleEditorState>`
 
-Export the current editor state as a serializable object.
+Export the state of every decoration as a versioned envelope.
 
 #### Returns
 
-Type: `Promise<EditorState>`
+Type: `Promise<ArticleEditorState>`
 
 
 
@@ -121,15 +125,15 @@ Type: `Promise<{ id: string; type: string; }[]>`
 
 
 
-### `loadState(state: EditorState) => Promise<void>`
+### `loadState(state: ArticleEditorState | EditorState) => Promise<void>`
 
-Load a previously exported editor state.
+Load a previously exported state — the v2 envelope or a legacy single-view state.
 
 #### Parameters
 
-| Name    | Type          | Description |
-| ------- | ------------- | ----------- |
-| `state` | `EditorState` |             |
+| Name    | Type                                | Description |
+| ------- | ----------------------------------- | ----------- |
+| `state` | `EditorState \| ArticleEditorState` |             |
 
 #### Returns
 
@@ -156,6 +160,22 @@ Type: `Promise<void>`
 ### `resetCanvas() => Promise<void>`
 
 Clear all user objects from the canvas, keeping the instance alive.
+
+#### Returns
+
+Type: `Promise<void>`
+
+
+
+### `setActiveView(viewId: string) => Promise<void>`
+
+Switch to another decoration, storing the current one first.
+
+#### Parameters
+
+| Name     | Type     | Description |
+| -------- | -------- | ----------- |
+| `viewId` | `string` |             |
 
 #### Returns
 

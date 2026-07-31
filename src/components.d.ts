@@ -5,14 +5,18 @@
  * It contains typing information for all components that exist in this project.
  */
 import { HTMLStencilElement, JSXBase } from "@stencil/core/internal";
-import { BgRemovalConfig, EditorLabels, EditorState, LogoData, LogoUploadLabels, LogoValidationConfig, LogoValidationIssue, PlacedLogo, PrintArea } from "./types";
+import { ArticleEditorState, ArticleView, BgRemovalConfig, EditorLabels, EditorState, LogoData, LogoUploadLabels, LogoValidationConfig, LogoValidationIssue, PlacedLogo, PrintArea } from "./types";
 import { FabricObject, IText } from "fabric";
 import { RenderLayer } from "./utils/html-render-helpers";
-export { BgRemovalConfig, EditorLabels, EditorState, LogoData, LogoUploadLabels, LogoValidationConfig, LogoValidationIssue, PlacedLogo, PrintArea } from "./types";
+export { ArticleEditorState, ArticleView, BgRemovalConfig, EditorLabels, EditorState, LogoData, LogoUploadLabels, LogoValidationConfig, LogoValidationIssue, PlacedLogo, PrintArea } from "./types";
 export { FabricObject, IText } from "fabric";
 export { RenderLayer } from "./utils/html-render-helpers";
 export namespace Components {
     interface WtpEditor {
+        /**
+          * Id of the decoration currently being edited. Defaults to the `isDefault` view, else the first.
+         */
+        "activeViewId": string | undefined;
         /**
           * Add a logo image to the canvas and return its object ID.
          */
@@ -21,6 +25,11 @@ export namespace Components {
           * Add a text object to the canvas and return its object ID.
          */
         "addText": (text: string, options?: { fontFamily?: string; fontSize?: number; fill?: string; }) => Promise<string>;
+        /**
+          * Article id written into the exported envelope.
+          * @default ''
+         */
+        "articleId": string;
         /**
           * Show print area overlay and bounding box for debugging.
           * @default false
@@ -35,9 +44,9 @@ export namespace Components {
          */
         "exportImageHighRes": (format?: "png" | "jpeg", quality?: number, multiplier?: number) => Promise<{ dataUrl: string; width: number; height: number; }>;
         /**
-          * Export the current editor state as a serializable object.
+          * Export the state of every decoration as a versioned envelope.
          */
-        "exportState": () => Promise<EditorState>;
+        "exportState": () => Promise<ArticleEditorState>;
         /**
           * Available font families for the text tool.
           * @default ['Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Verdana']
@@ -62,15 +71,17 @@ export namespace Components {
          */
         "labels": Partial<EditorLabels>;
         /**
-          * Load a previously exported editor state.
+          * Load a previously exported state — the v2 envelope or a legacy single-view state.
          */
-        "loadState": (state: EditorState) => Promise<void>;
+        "loadState": (state: ArticleEditorState | EditorState) => Promise<void>;
         /**
           * Print area definition (0-1 relative coordinates) to constrain objects.
+          * @deprecated Single-decoration fallback used only when `views` is empty.
          */
         "printArea": PrintArea | undefined;
         /**
           * Product background image URL.
+          * @deprecated Single-decoration fallback used only when `views` is empty.
          */
         "productImage": string | undefined;
         /**
@@ -82,9 +93,18 @@ export namespace Components {
          */
         "resetCanvas": () => Promise<void>;
         /**
+          * Switch to another decoration, storing the current one first.
+         */
+        "setActiveView": (viewId: string) => Promise<void>;
+        /**
           * Update the text content of a text object by its ID.
          */
         "updateText": (id: string, text: string) => Promise<void>;
+        /**
+          * Decoration options (Veredelungen) of the article. Each view needs a stable `id`.
+          * @default []
+         */
+        "views": ArticleView[];
         /**
           * Canvas width in pixels.
           * @default 800
@@ -215,7 +235,8 @@ export interface WtpPrintAreaEditorCustomEvent<T> extends CustomEvent<T> {
 declare global {
     interface HTMLWtpEditorElementEventMap {
         "wtpEditorReady": void;
-        "wtpEditorStateChanged": EditorState;
+        "wtpEditorStateChanged": ArticleEditorState;
+        "wtpEditorViewChanged": { viewId: string; index: number };
         "wtpEditorObjectSelected": { id: string; type: string };
         "wtpEditorObjectDeselected": void;
     }
@@ -298,6 +319,15 @@ declare global {
 declare namespace LocalJSX {
     interface WtpEditor {
         /**
+          * Id of the decoration currently being edited. Defaults to the `isDefault` view, else the first.
+         */
+        "activeViewId"?: string | undefined;
+        /**
+          * Article id written into the exported envelope.
+          * @default ''
+         */
+        "articleId"?: string;
+        /**
           * Show print area overlay and bounding box for debugging.
           * @default false
          */
@@ -336,15 +366,26 @@ declare namespace LocalJSX {
         /**
           * Fires when the editor state changes (object add/move/remove).
          */
-        "onWtpEditorStateChanged"?: (event: WtpEditorCustomEvent<EditorState>) => void;
+        "onWtpEditorStateChanged"?: (event: WtpEditorCustomEvent<ArticleEditorState>) => void;
+        /**
+          * Fires when the edited decoration changes.
+         */
+        "onWtpEditorViewChanged"?: (event: WtpEditorCustomEvent<{ viewId: string; index: number }>) => void;
         /**
           * Print area definition (0-1 relative coordinates) to constrain objects.
+          * @deprecated Single-decoration fallback used only when `views` is empty.
          */
         "printArea"?: PrintArea | undefined;
         /**
           * Product background image URL.
+          * @deprecated Single-decoration fallback used only when `views` is empty.
          */
         "productImage"?: string | undefined;
+        /**
+          * Decoration options (Veredelungen) of the article. Each view needs a stable `id`.
+          * @default []
+         */
+        "views"?: ArticleView[];
         /**
           * Canvas width in pixels.
           * @default 800
@@ -475,6 +516,8 @@ declare namespace LocalJSX {
     interface WtpEditorAttributes {
         "width": number;
         "height": number;
+        "articleId": string;
+        "activeViewId": string | undefined;
         "productImage": string | undefined;
         "initialState": string | undefined;
         "debug": boolean;

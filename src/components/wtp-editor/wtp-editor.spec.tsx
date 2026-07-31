@@ -1,5 +1,5 @@
 import { render, h, describe, it, expect } from '@stencil/vitest';
-import type { PrintArea } from '../../types/editor';
+import type { ArticleView, PrintArea } from '../../types/editor';
 
 type EditorElement = HTMLElement & {
   width: number;
@@ -88,6 +88,21 @@ describe('wtp-editor', () => {
     await waitForChanges();
 
     expect((root as EditorElement).printArea).toEqual(printArea);
+  });
+
+  // --- View validation ---
+
+  it('rejects views without a stable id', async () => {
+    const views = [{ image: '', label: 'Front', printArea: null }] as ArticleView[];
+    await expect(render(<wtp-editor views={views}></wtp-editor>)).rejects.toThrow(/stable `id`/);
+  });
+
+  it('rejects duplicate view ids', async () => {
+    const views: ArticleView[] = [
+      { id: 'front', image: '', label: 'Front', printArea: null },
+      { id: 'front', image: '', label: 'Front again', printArea: null },
+    ];
+    await expect(render(<wtp-editor views={views}></wtp-editor>)).rejects.toThrow(/duplicate ids/);
   });
 
   // --- Labels prop tests ---

@@ -1,7 +1,23 @@
 import { Component, h, Prop, State, Method, Event, EventEmitter, Watch, Element } from '@stencil/core';
 import { Canvas, FabricObject, FabricImage, IText } from 'fabric';
-import { PlacedLogo, PlacedText, EditorState, LogoData, CanvasTransform, PrintArea, EditorLabels, DEFAULT_EDITOR_LABELS } from '../../types';
+import {
+  PlacedLogo,
+  PlacedText,
+  EditorState,
+  LogoData,
+  CanvasTransform,
+  PrintArea,
+  EditorLabels,
+  DEFAULT_EDITOR_LABELS,
+  ArticleView,
+  ArticleEditorState,
+  DecorationState,
+} from '../../types';
 import { setCanvasBackground, generateObjectId, upscaleSvgDataUrl, fitLogoToPrintArea, printAreaToPixelCorners } from '../../utils/canvas-helpers';
+import { resolveViewPrintArea } from '../../utils/print-area';
+
+/** Id of the implicit view used when the host supplies productImage/printArea instead of views. */
+const LEGACY_VIEW_ID = 'default';
 
 @Component({
   tag: 'wtp-editor',
@@ -15,13 +31,25 @@ export class WtpEditor {
   @Prop() width: number = 800;
   /** Canvas height in pixels. */
   @Prop() height: number = 600;
-  /** Product background image URL. */
+  /** Decoration options (Veredelungen) of the article. Each view needs a stable `id`. */
+  @Prop() views: ArticleView[] = [];
+  /** Article id written into the exported envelope. */
+  @Prop() articleId: string = '';
+  /** Id of the decoration currently being edited. Defaults to the `isDefault` view, else the first. */
+  @Prop({ mutable: true }) activeViewId: string | undefined;
+  /**
+   * Product background image URL.
+   * @deprecated Single-decoration fallback used only when `views` is empty.
+   */
   @Prop() productImage: string | undefined;
   /** JSON-serialized initial editor state. */
   @Prop() initialState: string | undefined;
   /** Available font families for the text tool. */
   @Prop() fonts: string[] = ['Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Verdana'];
-  /** Print area definition (0-1 relative coordinates) to constrain objects. */
+  /**
+   * Print area definition (0-1 relative coordinates) to constrain objects.
+   * @deprecated Single-decoration fallback used only when `views` is empty.
+   */
   @Prop() printArea: PrintArea | undefined;
   /** Show print area overlay and bounding box for debugging. */
   @Prop() debug: boolean = false;
@@ -36,11 +64,14 @@ export class WtpEditor {
   @State() selectedObjectType: string | null = null;
   @State() selectedFont: string = 'Arial';
   @State() selectedTextColor: string = '#000000';
+  @State() currentViewId: string = LEGACY_VIEW_ID;
 
   /** Fires when the canvas is initialized and ready. */
   @Event() wtpEditorReady: EventEmitter<void>;
   /** Fires when the editor state changes (object add/move/remove). */
-  @Event() wtpEditorStateChanged: EventEmitter<EditorState>;
+  @Event() wtpEditorStateChanged: EventEmitter<ArticleEditorState>;
+  /** Fires when the edited decoration changes. */
+  @Event() wtpEditorViewChanged: EventEmitter<{ viewId: string; index: number }>;
   /** Fires when an object is selected on the canvas. */
   @Event() wtpEditorObjectSelected: EventEmitter<{ id: string; type: string }>;
   /** Fires when the current selection is cleared. */
@@ -52,9 +83,61 @@ export class WtpEditor {
   private previewUrlMap: Map<string, string> = new Map();
   /** Resolves when the current background image has been loaded and the canvas resized. */
   private backgroundReady: Promise<void> = Promise.resolve();
+  /** Canvas state of every view that has been left at least once. */
+  private viewStates: Map<string, EditorState> = new Map();
+  /** Print areas normalized to 0-1, keyed by view id. */
+  private resolvedPrintAreas: Map<string, PrintArea | null> = new Map();
+
+  componentWillLoad() {
+    const views = this.getViews();
+    for (const view of views) {
+      if (view.id === undefined || view.id === '') {
+        throw new Error('wtp-editor: every entry in `views` needs a stable `id`.');
+      }
+    }
+    const ids = new Set(views.map(v => v.id));
+    if (ids.size !== views.length) {
+      throw new Error('wtp-editor: `views` contains duplicate ids.');
+    }
+    this.currentViewId = this.resolveInitialViewId(views);
+  }
 
   componentDidLoad() {
     this.initCanvas();
+  }
+
+  private resolveInitialViewId(views: ArticleView[]): string {
+    if (this.activeViewId !== undefined && views.some(v => v.id === this.activeViewId)) return this.activeViewId;
+    return views.find(v => v.isDefault === true)?.id ?? views[0].id;
+  }
+
+  /** The article's decorations, or a single implicit view for the deprecated single-decoration props. */
+  private getViews(): ArticleView[] {
+    if (this.views.length > 0) return this.views;
+    return [
+      {
+        id: LEGACY_VIEW_ID,
+        image: this.productImage ?? '',
+        label: 'Default',
+        printArea: this.printArea ?? null,
+      },
+    ];
+  }
+
+  private getActiveView(): ArticleView {
+    const views = this.getViews();
+    return views.find(v => v.id === this.currentViewId) ?? views[0];
+  }
+
+  /** Print area of the active view, normalized to 0-1 where possible. */
+  private getActivePrintArea(): PrintArea | undefined {
+    const view = this.getActiveView();
+    const resolved = this.resolvedPrintAreas.get(view.id);
+    return (resolved ?? view.printArea) ?? undefined;
+  }
+
+  private getActiveImage(): string {
+    return this.getActiveView().image;
   }
 
   disconnectedCallback() {
@@ -75,8 +158,9 @@ export class WtpEditor {
   onSizeChange() {
     if (this.canvas !== undefined) {
       this.canvas.setDimensions({ width: this.width, height: this.height });
-      if (this.productImage !== undefined && this.productImage !== '') {
-        this.backgroundReady = setCanvasBackground(this.canvas, this.productImage);
+      const image = this.getActiveImage();
+      if (image !== '') {
+        this.backgroundReady = setCanvasBackground(this.canvas, image);
       }
       this.canvas.renderAll();
     }
@@ -84,6 +168,29 @@ export class WtpEditor {
 
   @Watch('debug')
   onDebugChange() {
+    this.canvas?.renderAll();
+  }
+
+  @Watch('activeViewId')
+  onActiveViewIdChange(next: string | undefined) {
+    if (next === undefined || next === this.currentViewId) return;
+    if (!this.getViews().some(v => v.id === next)) return;
+    void this.setActiveView(next);
+  }
+
+  @Watch('views')
+  onViewsChange() {
+    void this.resolvePrintAreas();
+  }
+
+  /** Normalizes every view's print area to 0-1, loading images only when needed. */
+  private async resolvePrintAreas(): Promise<void> {
+    await Promise.all(
+      this.getViews().map(async view => {
+        const resolved = await resolveViewPrintArea(view);
+        this.resolvedPrintAreas.set(view.id, resolved);
+      }),
+    );
     this.canvas?.renderAll();
   }
 
@@ -114,9 +221,10 @@ export class WtpEditor {
     const canvasWidth = this.canvas.getWidth();
     const canvasHeight = this.canvas.getHeight();
 
-    if (this.printArea !== undefined) {
+    const activePrintArea = this.getActivePrintArea();
+    if (activePrintArea !== undefined) {
       // Fit logo into the print area: 0-1 coords map directly to canvas pixels
-      const transform = fitLogoToPrintArea(img.width ?? 100, img.height ?? 100, this.printArea, canvasWidth, canvasHeight);
+      const transform = fitLogoToPrintArea(img.width ?? 100, img.height ?? 100, activePrintArea, canvasWidth, canvasHeight);
       img.set({
         left: transform.x,
         top: transform.y,
@@ -169,8 +277,9 @@ export class WtpEditor {
     let centerX = this.canvas.getWidth() / 2;
     let centerY = this.canvas.getHeight() / 2;
 
-    if (this.printArea !== undefined) {
-      const corners = printAreaToPixelCorners(this.printArea, this.canvas.getWidth(), this.canvas.getHeight());
+    const textPrintArea = this.getActivePrintArea();
+    if (textPrintArea !== undefined) {
+      const corners = printAreaToPixelCorners(textPrintArea, this.canvas.getWidth(), this.canvas.getHeight());
       centerX = (corners[0].x + corners[1].x + corners[2].x + corners[3].x) / 4;
       centerY = (corners[0].y + corners[1].y + corners[2].y + corners[3].y) / 4;
     }
@@ -209,15 +318,86 @@ export class WtpEditor {
     }
   }
 
-  /** Export the current editor state as a serializable object. */
+  /** Export the state of every decoration as a versioned envelope. */
   @Method()
-  async exportState(): Promise<EditorState> {
-    return this.buildEditorState();
+  async exportState(): Promise<ArticleEditorState> {
+    return this.buildArticleState();
   }
 
-  /** Load a previously exported editor state. */
+  /** Switch to another decoration, storing the current one first. */
   @Method()
-  async loadState(state: EditorState): Promise<void> {
+  async setActiveView(viewId: string): Promise<void> {
+    const views = this.getViews();
+    const target = views.find(v => v.id === viewId);
+    if (target === undefined) throw new Error(`wtp-editor: unknown view id "${viewId}".`);
+    if (target.id === this.currentViewId) return;
+
+    this.flushActiveView();
+
+    this.currentViewId = target.id;
+    this.activeViewId = target.id;
+    this.selectedObjectId = null;
+    this.selectedObjectType = null;
+
+    await this.activateView(target);
+
+    this.wtpEditorViewChanged.emit({ viewId: target.id, index: views.indexOf(target) });
+  }
+
+  /** Load a previously exported state — the v2 envelope or a legacy single-view state. */
+  @Method()
+  async loadState(state: ArticleEditorState | EditorState): Promise<void> {
+    if (this.canvas === undefined) throw new Error('Canvas not initialized');
+
+    if (this.isArticleState(state)) {
+      this.viewStates.clear();
+      for (const decoration of state.decorations) {
+        this.viewStates.set(decoration.viewId, decoration.state);
+      }
+      await this.activateView(this.getActiveView());
+      return;
+    }
+
+    // Legacy v1 state belongs to the default view.
+    this.viewStates.clear();
+    this.viewStates.set(this.getActiveView().id, state);
+    await this.loadEditorState(state);
+  }
+
+  private isArticleState(state: ArticleEditorState | EditorState): state is ArticleEditorState {
+    return (state as ArticleEditorState).version === 2 && Array.isArray((state as ArticleEditorState).decorations);
+  }
+
+  /** Restore a single view's canvas state, or start it empty. */
+  private async activateView(view: ArticleView): Promise<void> {
+    if (this.canvas === undefined) return;
+
+    const stored = this.viewStates.get(view.id);
+    if (stored !== undefined) {
+      await this.loadEditorState(stored);
+      return;
+    }
+
+    this.canvas.clear();
+    this.objectMap.clear();
+    this.previewUrlMap.clear();
+    this.canvas.setDimensions({ width: this.width, height: this.height });
+    this.canvas.backgroundColor = '#ffffff';
+
+    if (view.image !== '') {
+      this.backgroundReady = setCanvasBackground(this.canvas, view.image);
+      await this.backgroundReady;
+    }
+    this.canvas.renderAll();
+  }
+
+  /** Store the canvas state of the currently edited view. */
+  private flushActiveView(): void {
+    if (this.canvas === undefined) return;
+    this.viewStates.set(this.currentViewId, this.buildEditorState());
+  }
+
+  private async loadEditorState(state: EditorState): Promise<void> {
     if (this.canvas === undefined) throw new Error('Canvas not initialized');
 
     // Clear canvas
@@ -385,16 +565,19 @@ export class WtpEditor {
 
     this.canvas.on('after:render', () => this.drawDebugOverlay());
 
+    // Normalize pixel print areas before anything is placed on the canvas
+    void this.resolvePrintAreas();
+
     // Load initial state if provided
     if (this.initialState !== undefined && this.initialState !== '') {
       try {
-        const state = JSON.parse(this.initialState) as EditorState;
+        const state = JSON.parse(this.initialState) as ArticleEditorState | EditorState;
         this.loadState(state);
       } catch {
         // Invalid JSON, ignore
       }
-    } else if (this.productImage !== undefined && this.productImage !== '') {
-      this.backgroundReady = setCanvasBackground(this.canvas, this.productImage);
+    } else if (this.getActiveImage() !== '') {
+      this.backgroundReady = setCanvasBackground(this.canvas, this.getActiveImage());
     }
 
     this.wtpEditorReady.emit();
@@ -403,10 +586,11 @@ export class WtpEditor {
 
   /** Draw print area outline and bounding box on the canvas when debug mode is active. */
   private drawDebugOverlay() {
-    if (!this.debug || this.canvas === undefined || this.printArea === undefined) return;
+    const printArea = this.getActivePrintArea();
+    if (!this.debug || this.canvas === undefined || printArea === undefined) return;
 
     const ctx = this.canvas.getContext() as CanvasRenderingContext2D;
-    const corners = printAreaToPixelCorners(this.printArea, this.canvas.getWidth(), this.canvas.getHeight());
+    const corners = printAreaToPixelCorners(printArea, this.canvas.getWidth(), this.canvas.getHeight());
 
     ctx.save();
 
@@ -466,8 +650,9 @@ export class WtpEditor {
    * system instead of using an axis-aligned bounding box.
    */
   private getPrintAreaFrame(): { cx: number; cy: number; halfW: number; halfH: number; cos: number; sin: number } | null {
-    if (this.printArea === undefined || this.canvas === undefined) return null;
-    const corners = printAreaToPixelCorners(this.printArea, this.canvas.getWidth(), this.canvas.getHeight());
+    const printArea = this.getActivePrintArea();
+    if (printArea === undefined || this.canvas === undefined) return null;
+    const corners = printAreaToPixelCorners(printArea, this.canvas.getWidth(), this.canvas.getHeight());
     const [tl, tr, br, bl] = corners;
 
     const cx = (tl.x + tr.x + br.x + bl.x) / 4;
@@ -607,17 +792,59 @@ export class WtpEditor {
     }
 
     return {
-      fabricJson: this.canvas !== undefined ? JSON.stringify(this.canvas.toJSON()) : '',
+      // `_objectId` must be serialized explicitly — toJSON() drops custom properties,
+      // which would leave the object map empty after a reload.
+      fabricJson: this.canvas !== undefined ? JSON.stringify(this.canvas.toObject(['_objectId']) as unknown) : '',
       logos,
       texts,
-      productImage: this.productImage ?? null,
+      productImage: this.getActiveImage() !== '' ? this.getActiveImage() : null,
+      width: this.width,
+      height: this.height,
+    };
+  }
+
+  /**
+   * Builds the versioned envelope for every decoration. The active view is flushed
+   * first — otherwise the decoration the customer is working on would be reported
+   * as empty.
+   */
+  private buildArticleState(): ArticleEditorState {
+    this.flushActiveView();
+
+    const decorations: DecorationState[] = this.getViews().map(view => {
+      const state = this.viewStates.get(view.id) ?? this.emptyEditorState(view);
+      const designed = state.logos.length > 0 || state.texts.length > 0;
+
+      return {
+        viewId: view.id,
+        label: view.label,
+        ...(view.impMethod !== undefined ? { impMethod: view.impMethod } : {}),
+        ...(view.impLocation !== undefined ? { impLocation: view.impLocation } : {}),
+        ...(view.impWidthMm !== undefined ? { impWidthMm: view.impWidthMm } : {}),
+        ...(view.impHeightMm !== undefined ? { impHeightMm: view.impHeightMm } : {}),
+        ...(view.maxColours !== undefined ? { maxColours: view.maxColours } : {}),
+        status: designed ? 'designed' : 'empty',
+        state,
+        issues: [],
+      };
+    });
+
+    return { version: 2, articleId: this.articleId, decorations };
+  }
+
+  private emptyEditorState(view: ArticleView): EditorState {
+    return {
+      fabricJson: '',
+      logos: [],
+      texts: [],
+      productImage: view.image !== '' ? view.image : null,
       width: this.width,
       height: this.height,
     };
   }
 
   private emitStateChanged() {
-    this.wtpEditorStateChanged.emit(this.buildEditorState());
+    this.wtpEditorStateChanged.emit(this.buildArticleState());
   }
 
   private handleAddText = () => {

@@ -1,4 +1,5 @@
 import { render, h, describe, it, expect, afterEach } from '@stencil/vitest';
+import type { ArticleEditorState, ArticleView } from '../../types/editor';
 
 // Fabric.js rewraps the <canvas> element, so a leftover editor breaks Stencil's
 // vdom patching for the next test. Unmount after every test.
@@ -18,10 +19,19 @@ afterEach(() => {
 type EditorElement = HTMLElement & {
   addText: (text: string) => Promise<string>;
   removeObject: (id: string) => Promise<void>;
-  exportState: () => Promise<{ width: number; height: number; texts: { text: string }[]; fabricJson: string }>;
+  exportState: () => Promise<ArticleEditorState>;
+  loadState: (state: ArticleEditorState) => Promise<void>;
+  setActiveView: (viewId: string) => Promise<void>;
   exportImage: (format: string) => Promise<string>;
   getObjects: () => Promise<{ id: string; type: string }[]>;
+  views: ArticleView[];
 };
+
+const VIEWS: ArticleView[] = [
+  { id: 'front', image: '', label: 'Front', printArea: null, impMethod: 'Tampondruck', maxColours: 4 },
+  { id: 'back', image: '', label: 'Back', printArea: null, impMethod: 'Siebdruck', maxColours: 1 },
+  { id: 'wrap', image: '', label: 'Wrap', printArea: null, maxColours: 'full color' },
+];
 
 describe('wtp-editor browser', () => {
   it('renders', async () => {
@@ -75,25 +85,148 @@ describe('wtp-editor browser', () => {
     expect((await el.getObjects()).length).toBe(0);
   });
 
-  it('exportState returns valid state', async () => {
-    const { root } = await mount(<wtp-editor width={400} height={300}></wtp-editor>);
+  it('exportState returns a v2 envelope for the implicit view', async () => {
+    const { root } = await mount(<wtp-editor width={400} height={300} article-id="A-1"></wtp-editor>);
     const el = root as EditorElement;
 
     await el.addText('State Test');
-    const state = await el.exportState();
+    const envelope = await el.exportState();
 
-    expect(state).toBeTruthy();
-    expect(state.width).toBe(400);
-    expect(state.height).toBe(300);
-    expect(state.texts.length).toBe(1);
-    expect(state.texts[0].text).toBe('State Test');
-    expect(state.fabricJson).toBeTruthy();
+    expect(envelope.version).toBe(2);
+    expect(envelope.articleId).toBe('A-1');
+    expect(envelope.decorations.length).toBe(1);
+
+    const decoration = envelope.decorations[0];
+    expect(decoration.status).toBe('designed');
+    expect(decoration.state.width).toBe(400);
+    expect(decoration.state.height).toBe(300);
+    expect(decoration.state.texts.length).toBe(1);
+    expect(decoration.state.texts[0].text).toBe('State Test');
+    expect(decoration.state.fabricJson).toBeTruthy();
   });
 
   it('exportImage returns a data URL', async () => {
     const { root } = await mount(<wtp-editor width={100} height={100}></wtp-editor>);
     const dataUrl = await (root as EditorElement).exportImage('png');
     expect(dataUrl).toContain('data:image/png');
+  });
+
+  // --- Multi-decoration behaviour ---
+
+  it('exportState reports every view with its status', async () => {
+    const { root } = await mount(<wtp-editor views={VIEWS} article-id="A-1"></wtp-editor>);
+    const el = root as EditorElement;
+
+    await el.addText('Front only');
+    const envelope = await el.exportState();
+
+    expect(envelope.decorations.map(d => d.viewId)).toEqual(['front', 'back', 'wrap']);
+    expect(envelope.decorations.map(d => d.status)).toEqual(['designed', 'empty', 'empty']);
+  });
+
+  it('exportState flushes the active view without a prior switch', async () => {
+    const { root } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
+    const el = root as EditorElement;
+
+    await el.setActiveView('back');
+    await el.addText('Back only');
+
+    const envelope = await el.exportState();
+    expect(envelope.decorations.find(d => d.viewId === 'back')?.status).toBe('designed');
+    expect(envelope.decorations.find(d => d.viewId === 'front')?.status).toBe('empty');
+  });
+
+  it('keeps each view own objects when switching back and forth', async () => {
+    const { root } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
+    const el = root as EditorElement;
+
+    await el.addText('Front text');
+    await el.setActiveView('back');
+    expect((await el.getObjects()).length).toBe(0);
+
+    await el.addText('Back text');
+    await el.setActiveView('front');
+
+    const objects = await el.getObjects();
+    expect(objects.length).toBe(1);
+
+    const envelope = await el.exportState();
+    expect(envelope.decorations.find(d => d.viewId === 'front')?.state.texts[0].text).toBe('Front text');
+    expect(envelope.decorations.find(d => d.viewId === 'back')?.state.texts[0].text).toBe('Back text');
+  });
+
+  it('carries decoration metadata into the envelope', async () => {
+    const { root } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
+    const envelope = await (root as EditorElement).exportState();
+
+    const wrap = envelope.decorations.find(d => d.viewId === 'wrap');
+    expect(wrap?.label).toBe('Wrap');
+    expect(wrap?.maxColours).toBe('full color');
+    expect(envelope.decorations.find(d => d.viewId === 'front')?.impMethod).toBe('Tampondruck');
+  });
+
+  it('starts on the isDefault view instead of the first one', async () => {
+    const views: ArticleView[] = [
+      { id: 'front', image: '', label: 'Front', printArea: null },
+      { id: 'back', image: '', label: 'Back', printArea: null, isDefault: true },
+    ];
+    const { root } = await mount(<wtp-editor views={views}></wtp-editor>);
+    const el = root as EditorElement;
+
+    await el.addText('Goes to back');
+    const envelope = await el.exportState();
+
+    expect(envelope.decorations.find(d => d.viewId === 'back')?.status).toBe('designed');
+    expect(envelope.decorations.find(d => d.viewId === 'front')?.status).toBe('empty');
+  });
+
+  it('emits wtpEditorViewChanged on switch', async () => {
+    const { root, spyOnEvent } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
+    const spy = spyOnEvent('wtpEditorViewChanged');
+
+    await (root as EditorElement).setActiveView('wrap');
+
+    expect(spy).toHaveReceivedEventDetail({ viewId: 'wrap', index: 2 });
+  });
+
+  it('rejects an unknown view id', async () => {
+    const { root } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
+    await expect((root as EditorElement).setActiveView('nope')).rejects.toThrow(/unknown view id/);
+  });
+
+  it('restores a v2 envelope into the matching views', async () => {
+    const first = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
+    const el = first.root as EditorElement;
+
+    await el.setActiveView('back');
+    await el.addText('Persisted');
+    const saved = await el.exportState();
+    first.unmount();
+
+    const second = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
+    const restored = second.root as EditorElement;
+    await restored.loadState(saved);
+
+    const envelope = await restored.exportState();
+    expect(envelope.decorations.find(d => d.viewId === 'back')?.state.texts[0].text).toBe('Persisted');
+    expect(envelope.decorations.find(d => d.viewId === 'back')?.status).toBe('designed');
+  });
+
+  it('loads a legacy v1 state into the default view', async () => {
+    // Produce a realistic v1 state: the flat EditorState the editor wrote before 0.2.0.
+    const source = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
+    await (source.root as EditorElement).addText('Legacy');
+    const legacy = (await (source.root as EditorElement).exportState()).decorations[0].state;
+    source.unmount();
+
+    const { root } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
+    const el = root as EditorElement;
+
+    await el.loadState(legacy as unknown as ArticleEditorState);
+
+    const envelope = await el.exportState();
+    expect(envelope.decorations.find(d => d.viewId === 'front')?.state.texts[0].text).toBe('Legacy');
+    expect(envelope.decorations.find(d => d.viewId === 'back')?.status).toBe('empty');
   });
 
   it('Add Text button adds text via toolbar', async () => {
