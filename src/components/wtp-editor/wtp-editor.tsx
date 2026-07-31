@@ -355,7 +355,7 @@ export class WtpEditor {
   /** Export the state of every decoration as a versioned envelope. */
   @Method()
   async exportState(): Promise<ArticleEditorState> {
-    return this.buildArticleState();
+    return this.buildArticleState(true);
   }
 
   /** Switch to another decoration, storing the current one first. */
@@ -366,7 +366,7 @@ export class WtpEditor {
     if (target === undefined) throw new Error(`wtp-editor: unknown view id "${viewId}".`);
     if (target.id === this.currentViewId) return;
 
-    this.flushActiveView();
+    this.flushActiveView(true);
 
     this.currentViewId = target.id;
     this.activeViewId = target.id;
@@ -496,13 +496,17 @@ export class WtpEditor {
     this.canvas.renderAll();
   }
 
-  /** Store the canvas state of the currently edited view, plus a fresh thumbnail. */
-  private flushActiveView(): void {
+  /**
+   * Stores the canvas state of the currently edited view. The thumbnail is only
+   * refreshed when explicitly asked for: `text:changed` fires per keystroke, and a
+   * toDataURL of a 2400px product image per character is far too expensive.
+   */
+  private flushActiveView(withPreview: boolean = false): void {
     if (this.canvas === undefined) return;
     const state = this.buildEditorState();
     this.viewStates.set(this.currentViewId, state);
     this.viewIssues.set(this.currentViewId, this.validateActiveView(state));
-    this.capturePreview(this.currentViewId);
+    if (withPreview) this.capturePreview(this.currentViewId);
   }
 
   /**
@@ -968,8 +972,8 @@ export class WtpEditor {
    * first — otherwise the decoration the customer is working on would be reported
    * as empty.
    */
-  private buildArticleState(): ArticleEditorState {
-    this.flushActiveView();
+  private buildArticleState(withPreview: boolean = false): ArticleEditorState {
+    this.flushActiveView(withPreview);
 
     const decorations: DecorationState[] = this.getViews().map(view => {
       const state = this.viewStates.get(view.id) ?? this.emptyEditorState(view);

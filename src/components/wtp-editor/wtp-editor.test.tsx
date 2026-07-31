@@ -41,6 +41,7 @@ type EditorElement = HTMLElement & {
   exportState: () => Promise<ArticleEditorState>;
   loadState: (state: ArticleEditorState) => Promise<void>;
   setActiveView: (viewId: string) => Promise<void>;
+  activeViewId: string;
   exportImage: (format: string) => Promise<string>;
   getObjects: () => Promise<{ id: string; type: string }[]>;
   views: ArticleView[];
@@ -262,6 +263,47 @@ describe('wtp-editor browser', () => {
     const envelope = await el.exportState();
     expect(envelope.decorations.map(d => d.viewId)).toEqual(['front', 'back', 'wrap']);
     expect(envelope.decorations.every(d => d.status === 'designed')).toBe(true);
+  });
+
+  it('does not re-render a thumbnail on every keystroke', async () => {
+    const { root } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
+    const el = root as EditorElement;
+
+    const canvas = root.querySelector('canvas') as HTMLCanvasElement;
+    let toDataUrlCalls = 0;
+    const original = canvas.toDataURL.bind(canvas);
+    canvas.toDataURL = (...args: Parameters<HTMLCanvasElement['toDataURL']>) => {
+      toDataUrlCalls++;
+      return original(...args);
+    };
+
+    // Every state change (addText fires one) must not cost a full canvas encode
+    await el.addText('a');
+    await el.addText('b');
+    await el.addText('c');
+
+    expect(toDataUrlCalls).toBe(0);
+  });
+
+  it('survives views, activeViewId and loadState arriving in the same tick', async () => {
+    // The demo's "reopen an edited article" path: three canvas-touching calls at once.
+    const first = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
+    const source = first.root as EditorElement;
+    await source.setActiveView('back');
+    await source.addText('Saved text');
+    const saved = await source.exportState();
+    first.unmount();
+
+    const { root } = await mount(<wtp-editor></wtp-editor>);
+    const el = root as EditorElement;
+
+    el.views = VIEWS;
+    el.activeViewId = 'back';
+    await el.loadState(saved);
+
+    const envelope = await el.exportState();
+    expect(envelope.decorations.find(d => d.viewId === 'back')?.state.texts[0]?.text).toBe('Saved text');
+    expect(envelope.decorations.find(d => d.viewId === 'back')?.status).toBe('designed');
   });
 
   // --- Apply to all decorations ---
