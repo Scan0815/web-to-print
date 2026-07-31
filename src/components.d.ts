@@ -26,6 +26,10 @@ export namespace Components {
          */
         "addText": (text: string, options?: { fontFamily?: string; fontSize?: number; fill?: string; }) => Promise<string>;
         /**
+          * Places the given logo on every decoration that is still empty, fitted to that decoration's own print area. Decorations that already carry a design are left alone. Returns the ids of the views that received the logo.
+         */
+        "applyLogoToAllViews": (logoId: string) => Promise<string[]>;
+        /**
           * Article id written into the exported envelope.
           * @default ''
          */

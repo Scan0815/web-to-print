@@ -12,9 +12,11 @@ import {
   ArticleView,
   ArticleEditorState,
   DecorationState,
+  LogoValidationIssue,
 } from '../../types';
 import { setCanvasBackground, generateObjectId, upscaleSvgDataUrl, fitLogoToPrintArea, printAreaToPixelCorners } from '../../utils/canvas-helpers';
 import { resolveViewPrintArea } from '../../utils/print-area';
+import { validateDecoration, type ObjectBounds } from '../../utils/decoration-validation';
 
 /** Id of the implicit view used when the host supplies productImage/printArea instead of views. */
 const LEGACY_VIEW_ID = 'default';
@@ -94,6 +96,10 @@ export class WtpEditor {
   private viewStates: Map<string, EditorState> = new Map();
   /** Print areas normalized to 0-1, keyed by view id. */
   private resolvedPrintAreas: Map<string, PrintArea | null> = new Map();
+  /** Validation findings of every view, refreshed whenever a view is flushed. */
+  private viewIssues: Map<string, LogoValidationIssue[]> = new Map();
+  /** Source data of every placed logo, so it can be copied to other decorations. */
+  private placedLogoData: Map<string, LogoData> = new Map();
 
   componentWillLoad() {
     const views = this.getViews();
@@ -260,6 +266,7 @@ export class WtpEditor {
 
     (img as FabricObject & { _objectId?: string })._objectId = id;
     this.objectMap.set(id, img);
+    this.placedLogoData.set(id, logoData);
     if (logoData.previewDataUrl !== undefined) {
       this.previewUrlMap.set(id, logoData.previewDataUrl);
     }
@@ -351,6 +358,38 @@ export class WtpEditor {
     this.wtpEditorViewChanged.emit({ viewId: target.id, index: views.indexOf(target) });
   }
 
+  /**
+   * Places the given logo on every decoration that is still empty, fitted to that
+   * decoration's own print area. Decorations that already carry a design are left alone.
+   * Returns the ids of the views that received the logo.
+   */
+  @Method()
+  async applyLogoToAllViews(logoId: string): Promise<string[]> {
+    const source = this.placedLogoData.get(logoId);
+    if (source === undefined) throw new Error(`wtp-editor: unknown logo id "${logoId}".`);
+
+    const originalViewId = this.currentViewId;
+    const applied: string[] = [];
+
+    for (const view of this.getViews()) {
+      if (view.id === originalViewId) continue;
+
+      const stored = this.viewStates.get(view.id);
+      const isEmpty = stored === undefined || (stored.logos.length === 0 && stored.texts.length === 0);
+      if (!isEmpty) continue;
+
+      await this.setActiveView(view.id);
+      await this.addLogo(source);
+      applied.push(view.id);
+    }
+
+    if (this.currentViewId !== originalViewId) {
+      await this.setActiveView(originalViewId);
+    }
+
+    return applied;
+  }
+
   /** Load a previously exported state — the v2 envelope or a legacy single-view state. */
   @Method()
   async loadState(state: ArticleEditorState | EditorState): Promise<void> {
@@ -401,8 +440,34 @@ export class WtpEditor {
   /** Store the canvas state of the currently edited view, plus a fresh thumbnail. */
   private flushActiveView(): void {
     if (this.canvas === undefined) return;
-    this.viewStates.set(this.currentViewId, this.buildEditorState());
+    const state = this.buildEditorState();
+    this.viewStates.set(this.currentViewId, state);
+    this.viewIssues.set(this.currentViewId, this.validateActiveView(state));
     this.capturePreview(this.currentViewId);
+  }
+
+  /**
+   * Runs the per-decoration checks for the view on the canvas right now. Bounds come
+   * from Fabric, so this only works while the view is active — which is why the result
+   * is cached per view.
+   */
+  private validateActiveView(state: EditorState): LogoValidationIssue[] {
+    if (this.canvas === undefined) return [];
+
+    const bounds: ObjectBounds[] = [];
+    for (const obj of this.objectMap.values()) {
+      const rect = obj.getBoundingRect();
+      bounds.push({ left: rect.left, top: rect.top, width: rect.width, height: rect.height });
+    }
+
+    return validateDecoration({
+      view: this.getActiveView(),
+      state,
+      bounds,
+      printArea: this.getActivePrintArea() ?? null,
+      canvasWidth: this.canvas.getWidth(),
+      canvasHeight: this.canvas.getHeight(),
+    });
   }
 
   /**
@@ -860,7 +925,7 @@ export class WtpEditor {
         status: designed ? 'designed' : 'empty',
         state,
         ...(this.viewPreviews[view.id] !== undefined ? { previewDataUrl: this.viewPreviews[view.id] } : {}),
-        issues: [],
+        issues: this.viewIssues.get(view.id) ?? [],
       };
     });
 
@@ -913,6 +978,10 @@ export class WtpEditor {
         this.emitStateChanged();
       }
     }
+  };
+
+  private handleApplyToAll = () => {
+    if (this.selectedObjectId !== null) void this.applyLogoToAllViews(this.selectedObjectId);
   };
 
   private handleDeleteSelected = () => {
@@ -990,6 +1059,16 @@ export class WtpEditor {
 
           {this.selectedObjectType === 'i-text' && (
             <input class="color-input" type="color" value={this.selectedTextColor} onInput={this.handleColorChange} title={labels.colorPickerTooltip} />
+          )}
+
+          {this.selectedObjectType === 'image' && this.getViews().length > 1 && (
+            <button class="toolbar-btn" onClick={this.handleApplyToAll} title={labels.applyToAllTooltip}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="12" height="12" rx="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+              <span>{labels.applyToAllButton}</span>
+            </button>
           )}
 
           <div class="toolbar-separator" />

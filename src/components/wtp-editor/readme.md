@@ -69,6 +69,24 @@ Type: `Promise<string>`
 
 
 
+### `applyLogoToAllViews(logoId: string) => Promise<string[]>`
+
+Places the given logo on every decoration that is still empty, fitted to that
+decoration's own print area. Decorations that already carry a design are left alone.
+Returns the ids of the views that received the logo.
+
+#### Parameters
+
+| Name     | Type     | Description |
+| -------- | -------- | ----------- |
+| `logoId` | `string` |             |
+
+#### Returns
+
+Type: `Promise<string[]>`
+
+
+
 ### `exportImage(format?: "png" | "jpeg", quality?: number) => Promise<string>`
 
 Export the canvas as a data URL image.

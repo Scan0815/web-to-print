@@ -1,5 +1,22 @@
 import { render, h, describe, it, expect, afterEach } from '@stencil/vitest';
 import type { ArticleEditorState, ArticleView } from '../../types/editor';
+import type { LogoData, LogoMetadata } from '../../types/logo';
+
+/** 4x4 transparent PNG. */
+const LOGO_DATA_URL =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAFElEQVR42mNkYPhfz0AEYBxVSF+FAP5FDvcfRYWgAAAAAElFTkSuQmCC';
+
+const LOGO_METADATA: LogoMetadata = {
+  format: 'png',
+  width: 4,
+  height: 4,
+  dpiX: 300,
+  dpiY: 300,
+  fileSize: 128,
+  fileName: 'logo.png',
+  mimeType: 'image/png',
+  hasTransparency: true,
+};
 
 // Fabric.js rewraps the <canvas> element, so a leftover editor breaks Stencil's
 // vdom patching for the next test. Unmount after every test.
@@ -18,6 +35,8 @@ afterEach(() => {
 
 type EditorElement = HTMLElement & {
   addText: (text: string) => Promise<string>;
+  addLogo: (logo: LogoData) => Promise<string>;
+  applyLogoToAllViews: (logoId: string) => Promise<string[]>;
   removeObject: (id: string) => Promise<void>;
   exportState: () => Promise<ArticleEditorState>;
   loadState: (state: ArticleEditorState) => Promise<void>;
@@ -227,6 +246,69 @@ describe('wtp-editor browser', () => {
     const envelope = await el.exportState();
     expect(envelope.decorations.find(d => d.viewId === 'front')?.state.texts[0].text).toBe('Legacy');
     expect(envelope.decorations.find(d => d.viewId === 'back')?.status).toBe('empty');
+  });
+
+  // --- Apply to all decorations ---
+
+  it('places a logo on every empty decoration', async () => {
+    const { root } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
+    const el = root as EditorElement;
+
+    const logoId = await el.addLogo({ dataUrl: LOGO_DATA_URL, metadata: LOGO_METADATA });
+    const applied = await el.applyLogoToAllViews(logoId);
+
+    expect(applied.sort()).toEqual(['back', 'wrap']);
+
+    const envelope = await el.exportState();
+    expect(envelope.decorations.map(d => d.status)).toEqual(['designed', 'designed', 'designed']);
+  });
+
+  it('leaves decorations that already carry a design untouched', async () => {
+    const { root } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
+    const el = root as EditorElement;
+
+    await el.setActiveView('back');
+    await el.addText('Back text');
+    await el.setActiveView('front');
+
+    const logoId = await el.addLogo({ dataUrl: LOGO_DATA_URL, metadata: LOGO_METADATA });
+    const applied = await el.applyLogoToAllViews(logoId);
+
+    expect(applied).toEqual(['wrap']);
+
+    const envelope = await el.exportState();
+    expect(envelope.decorations.find(d => d.viewId === 'back')?.state.logos.length).toBe(0);
+  });
+
+  it('rejects an unknown logo id', async () => {
+    const { root } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
+    await expect((root as EditorElement).applyLogoToAllViews('nope')).rejects.toThrow(/unknown logo id/);
+  });
+
+  // --- Per-decoration validation ---
+
+  it('reports a single-colour decoration carrying a logo', async () => {
+    const { root } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
+    const el = root as EditorElement;
+
+    await el.setActiveView('back'); // maxColours: 1
+    await el.addLogo({ dataUrl: LOGO_DATA_URL, metadata: LOGO_METADATA });
+
+    const envelope = await el.exportState();
+    const codes = envelope.decorations.find(d => d.viewId === 'back')?.issues.map(i => i.code);
+    expect(codes).toContain('singleColourPrint');
+  });
+
+  it('keeps all findings non-blocking', async () => {
+    const { root } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
+    const el = root as EditorElement;
+
+    await el.addText('Front');
+    const envelope = await el.exportState();
+
+    for (const decoration of envelope.decorations) {
+      expect(decoration.issues.every(i => i.severity === 'warning')).toBe(true);
+    }
   });
 
   // --- Decoration strip ---
