@@ -5,6 +5,10 @@
 <!-- Auto Generated Below -->
 
 
+## Overview
+
+Logo upload with drag-and-drop, format detection and print validation.
+
 ## Properties
 
 | Property                  | Attribute                   | Description                                                                          | Type                   | Default                                                                                                                                                                 |
@@ -27,6 +31,13 @@
 | `wtpLogoRejected`   | Fires when a logo fails validation.                              | `CustomEvent<{ file: File; issues: LogoValidationIssue[]; }>` |
 | `wtpLogoSelected`   | Fires when a logo is selected from the preview gallery.          | `CustomEvent<LogoData>`                                       |
 | `wtpLogoValidated`  | Fires when a logo passes validation and is ready for use.        | `CustomEvent<LogoData>`                                       |
+
+
+## Slots
+
+| Slot       | Description                                                                                                                |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `"prompt"` | Replaces the default drop-zone prompt (icon, headline and hint). The fallback content is shown when nothing is slotted in. |
 
 
 ## Shadow Parts

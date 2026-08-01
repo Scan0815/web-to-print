@@ -18,6 +18,12 @@ interface BgRemovalChoice {
   errorMessage: string | null;
 }
 
+/**
+ * Logo upload with drag-and-drop, format detection and print validation.
+ *
+ * @slot prompt - Replaces the default drop-zone prompt (icon, headline and hint).
+ *   The fallback content is shown when nothing is slotted in.
+ */
 @Component({
   tag: 'wtp-logo-upload',
   styleUrl: 'wtp-logo-upload.scss',

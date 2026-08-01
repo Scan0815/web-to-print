@@ -164,6 +164,9 @@ export namespace Components {
          */
         "width": number;
     }
+    /**
+     * Logo upload with drag-and-drop, format detection and print validation.
+     */
     interface WtpLogoUpload {
         /**
           * Accepted file MIME types for the file input.
@@ -297,6 +300,9 @@ declare global {
         "wtpLogoProcessing": boolean;
         "wtpLogoSelected": LogoData;
     }
+    /**
+     * Logo upload with drag-and-drop, format detection and print validation.
+     */
     interface HTMLWtpLogoUploadElement extends Components.WtpLogoUpload, HTMLStencilElement {
         addEventListener<K extends keyof HTMLWtpLogoUploadElementEventMap>(type: K, listener: (this: HTMLWtpLogoUploadElement, ev: WtpLogoUploadCustomEvent<HTMLWtpLogoUploadElementEventMap[K]>) => any, options?: boolean | AddEventListenerOptions): void;
         addEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
@@ -454,6 +460,9 @@ declare namespace LocalJSX {
          */
         "width"?: number;
     }
+    /**
+     * Logo upload with drag-and-drop, format detection and print validation.
+     */
     interface WtpLogoUpload {
         /**
           * Accepted file MIME types for the file input.
@@ -579,6 +588,9 @@ declare module "@stencil/core" {
         interface IntrinsicElements {
             "wtp-editor": LocalJSX.IntrinsicElements["wtp-editor"] & JSXBase.HTMLAttributes<HTMLWtpEditorElement>;
             "wtp-logo-renderer": LocalJSX.IntrinsicElements["wtp-logo-renderer"] & JSXBase.HTMLAttributes<HTMLWtpLogoRendererElement>;
+            /**
+             * Logo upload with drag-and-drop, format detection and print validation.
+             */
             "wtp-logo-upload": LocalJSX.IntrinsicElements["wtp-logo-upload"] & JSXBase.HTMLAttributes<HTMLWtpLogoUploadElement>;
             "wtp-print-area-editor": LocalJSX.IntrinsicElements["wtp-print-area-editor"] & JSXBase.HTMLAttributes<HTMLWtpPrintAreaEditorElement>;
         }
