@@ -42,6 +42,10 @@ async function extractDpi(file: File, format: LogoFormat): Promise<{ dpiX: numbe
 }
 
 async function extractImageDimensions(file: File, format: LogoFormat): Promise<{ width: number; height: number }> {
+  // PDF/AI dimensions come from rasterizing page 1 in the upload component. Running
+  // ExifReader and an <img> load over a multi-MB PDF here only wastes two full reads.
+  if (format === 'pdf' || format === 'ai') return { width: 0, height: 0 };
+
   if (format === 'svg') {
     const text = await file.text();
     const match = text.match(/viewBox=["'](\d+[\s,]+\d+[\s,]+(\d+(?:\.\d+)?)[\s,]+(\d+(?:\.\d+)?))["']/);

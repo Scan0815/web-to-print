@@ -534,7 +534,13 @@ In implementation order; each ends green.
    Found by testing the demo in a real browser.
 5. **The demo keeps a small local print-area normalization** for the catalog cards, for
    the same reason — the editor itself uses the library utility.
-6. **Colour validation is text-only.** Counting colours in an arbitrary customer logo is
+6. **Colour validation is text-only.** Its messages go through `labels.issues`, so a
+   consumer can translate them; each finding also carries a stable `code`.
+7. **`wtpEditorStateChanged` carries no `fabricJson` for the active decoration.**
+   `text:changed` fires per keystroke, and serializing the canvas embeds every logo src.
+   `exportState()` remains the persistable envelope.
+
+Original note on colour validation: Counting colours in an arbitrary customer logo is
    not reliable, so single-colour methods ask the customer to confirm monochrome instead
    of guessing.
 

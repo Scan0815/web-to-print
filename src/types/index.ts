@@ -15,5 +15,5 @@ export type {
   DecorationState,
   ArticleEditorState,
 } from './editor';
-export type { LogoUploadLabels, EditorLabels } from './labels';
-export { DEFAULT_LOGO_UPLOAD_LABELS, DEFAULT_EDITOR_LABELS } from './labels';
+export type { LogoUploadLabels, EditorLabels, DecorationIssueLabels } from './labels';
+export { DEFAULT_LOGO_UPLOAD_LABELS, DEFAULT_EDITOR_LABELS, DEFAULT_DECORATION_ISSUE_LABELS } from './labels';

@@ -7,23 +7,57 @@ export function generateObjectId(): string {
 
 const IMAGE_PROXY_BASE = 'http://localhost:3001';
 
+/**
+ * Which loading strategy worked for a URL, so switching back and forth between
+ * decorations does not repeat a failing CORS request and a proxy connection that is
+ * refused in production.
+ */
+type ImageStrategy = 'cors' | 'proxy' | 'plain';
+const imageStrategies: Map<string, ImageStrategy> = new Map();
+
+function proxyUrlFor(url: string): string {
+  return `${IMAGE_PROXY_BASE}/?url=${encodeURIComponent(url)}`;
+}
+
+async function loadWithStrategy(url: string, strategy: ImageStrategy): Promise<FabricImage> {
+  if (strategy === 'cors') return FabricImage.fromURL(url, { crossOrigin: 'anonymous' });
+  if (strategy === 'proxy') return FabricImage.fromURL(proxyUrlFor(url), { crossOrigin: 'anonymous' });
+  return FabricImage.fromURL(url);
+}
+
 /** Load a FabricImage from a URL, trying CORS → local proxy → plain load (tainted). */
 async function loadFabricImage(url: string): Promise<FabricImage> {
   // Data URLs and blob URLs are always same-origin
   if (url.startsWith('data:') || url.startsWith('blob:')) {
     return FabricImage.fromURL(url);
   }
-  // Try direct CORS
-  try {
-    return await FabricImage.fromURL(url, { crossOrigin: 'anonymous' });
-  } catch { /* CORS rejected */ }
-  // Try local image proxy
-  try {
-    const proxyUrl = `${IMAGE_PROXY_BASE}/?url=${encodeURIComponent(url)}`;
-    return await FabricImage.fromURL(proxyUrl, { crossOrigin: 'anonymous' });
-  } catch { /* proxy not available */ }
+
+  const known = imageStrategies.get(url);
+  if (known !== undefined) {
+    try {
+      return await loadWithStrategy(url, known);
+    } catch {
+      // The remembered route stopped working — fall through and probe again.
+      imageStrategies.delete(url);
+    }
+  }
+
+  for (const strategy of ['cors', 'proxy'] as const) {
+    try {
+      const img = await loadWithStrategy(url, strategy);
+      imageStrategies.set(url, strategy);
+      return img;
+    } catch { /* try the next route */ }
+  }
+
   // Fallback: load without CORS (canvas will be tainted, export blocked)
+  imageStrategies.set(url, 'plain');
   return FabricImage.fromURL(url);
+}
+
+/** Forgets the remembered loading routes. Exposed for tests. */
+export function clearImageStrategyCache(): void {
+  imageStrategies.clear();
 }
 
 export async function setCanvasBackground(

@@ -194,7 +194,7 @@ Interactive canvas editor with a built-in toolbar for adding text, changing font
 | Event | Detail | Description |
 |---|---|---|
 | `wtpEditorReady` | `void` | Fires when the canvas is initialized |
-| `wtpEditorStateChanged` | `ArticleEditorState` | Fires on any object change (add/move/remove) |
+| `wtpEditorStateChanged` | `ArticleEditorState` | Fires on any object change (add/move/remove). The active decoration's `state.fabricJson` is empty — serializing the canvas on every keystroke is too expensive. Call `exportState()` for the persistable envelope |
 | `wtpEditorViewChanged` | `{ viewId: string; index: number }` | Fires when the edited decoration changes |
 | `wtpEditorObjectSelected` | `{ id: string; type: string }` | Fires when an object is selected |
 | `wtpEditorObjectDeselected` | `void` | Fires when the selection is cleared |
@@ -251,7 +251,8 @@ stays in the shop — the editor deliberately has no "selected" flag.
 
 **Validation never blocks.** `DecorationState.issues` carries warnings (print-area
 overflow, colour limits, single-colour methods); the shop decides whether one stops
-checkout.
+checkout. The messages are translatable via `labels.issues` (see `DecorationIssueLabels`);
+each finding also carries a stable `code` if you would rather render your own text.
 
 ## External dependencies at runtime
 
@@ -311,6 +312,7 @@ import type {
   ArticleEditorState,   // { version: 2, articleId, decorations }
   LogoUploadLabels,     // Strings used by <wtp-logo-upload>
   EditorLabels,         // Strings used by <wtp-editor>
+  DecorationIssueLabels,// Messages for the per-decoration validation findings
 } from 'web-to-print';
 
 import {
@@ -318,6 +320,7 @@ import {
   DEFAULT_BG_REMOVAL_CONFIG,
   DEFAULT_LOGO_UPLOAD_LABELS,
   DEFAULT_EDITOR_LABELS,
+  DEFAULT_DECORATION_ISSUE_LABELS,
 } from 'web-to-print';
 ```
 
@@ -448,6 +451,7 @@ import {
   EditorLabels,
   DEFAULT_LOGO_UPLOAD_LABELS,
   DEFAULT_EDITOR_LABELS,
+  DEFAULT_DECORATION_ISSUE_LABELS,
 } from 'web-to-print';
 
 const myLabels: LogoUploadLabels = {

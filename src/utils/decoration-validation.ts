@@ -1,5 +1,6 @@
 import type { ArticleView, EditorState, PrintArea } from '../types/editor';
 import type { LogoValidationIssue } from '../types/logo';
+import { DEFAULT_DECORATION_ISSUE_LABELS, type DecorationIssueLabels } from '../types/labels';
 import { printAreaToPixelCorners } from './canvas-helpers';
 
 /** Axis-aligned bounds of a placed object, in canvas pixels. */
@@ -18,6 +19,8 @@ export interface DecorationValidationInput {
   printArea: PrintArea | null;
   canvasWidth: number;
   canvasHeight: number;
+  /** Overrides for the finding messages; missing keys fall back to English defaults. */
+  labels?: Partial<DecorationIssueLabels>;
 }
 
 /** Half a pixel of slack so a perfectly fitted logo is not reported as overflowing. */
@@ -31,6 +34,7 @@ const OVERFLOW_TOLERANCE_PX = 0.5;
 export function validateDecoration(input: DecorationValidationInput): LogoValidationIssue[] {
   const issues: LogoValidationIssue[] = [];
   const { view, state, bounds, printArea, canvasWidth, canvasHeight } = input;
+  const labels: DecorationIssueLabels = { ...DEFAULT_DECORATION_ISSUE_LABELS, ...input.labels };
 
   const hasContent = state.logos.length > 0 || state.texts.length > 0;
   if (!hasContent) return issues;
@@ -54,7 +58,7 @@ export function validateDecoration(input: DecorationValidationInput): LogoValida
       issues.push({
         code: 'printAreaOverflow',
         severity: 'warning',
-        message: `An element reaches outside the print area of "${view.label}".`,
+        message: labels.printAreaOverflow(view.label),
       });
     }
   }
@@ -63,16 +67,16 @@ export function validateDecoration(input: DecorationValidationInput): LogoValida
     issues.push({
       code: 'missingPrintArea',
       severity: 'warning',
-      message: `"${view.label}" has no print area, so placement cannot be verified.`,
+      message: labels.missingPrintArea(view.label),
     });
   }
 
-  issues.push(...validateColours(view, state));
+  issues.push(...validateColours(view, state, labels));
 
   return issues;
 }
 
-function validateColours(view: ArticleView, state: EditorState): LogoValidationIssue[] {
+function validateColours(view: ArticleView, state: EditorState, labels: DecorationIssueLabels): LogoValidationIssue[] {
   const maxColours = view.maxColours;
   if (maxColours === undefined || maxColours === 'full color') return [];
 
@@ -83,7 +87,7 @@ function validateColours(view: ArticleView, state: EditorState): LogoValidationI
     issues.push({
       code: 'colourLimit',
       severity: 'warning',
-      message: `"${view.label}" allows ${maxColours} print colour(s), but ${textColours.size} text colours are used.`,
+      message: labels.colourLimit(view.label, maxColours, textColours.size),
     });
   }
 
@@ -93,7 +97,7 @@ function validateColours(view: ArticleView, state: EditorState): LogoValidationI
     issues.push({
       code: 'singleColourPrint',
       severity: 'warning',
-      message: `"${view.label}" prints in one colour — make sure the logo is monochrome.`,
+      message: labels.singleColourPrint(view.label),
     });
   }
 

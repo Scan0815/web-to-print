@@ -612,6 +612,7 @@ export class WtpEditor {
       printArea: this.getActivePrintArea() ?? null,
       canvasWidth: this.canvas.getWidth(),
       canvasHeight: this.canvas.getHeight(),
+      labels: this.getLabels().issues,
     });
   }
 
@@ -1004,7 +1005,11 @@ export class WtpEditor {
     };
   }
 
-  private buildEditorState(): EditorState {
+  /**
+   * @param withFabricJson Serializing the whole canvas costs a multi-MB base64 string
+   *   (every logo src is included). Only the persistence paths need it.
+   */
+  private buildEditorState(withFabricJson: boolean = true): EditorState {
     const logos: PlacedLogo[] = [];
     const texts: PlacedText[] = [];
 
@@ -1035,7 +1040,7 @@ export class WtpEditor {
     return {
       // `_objectId` must be serialized explicitly — toJSON() drops custom properties,
       // which would leave the object map empty after a reload.
-      fabricJson: this.canvas !== undefined ? JSON.stringify(this.canvas.toObject(['_objectId']) as unknown) : '',
+      fabricJson: withFabricJson && this.canvas !== undefined ? JSON.stringify(this.canvas.toObject(['_objectId']) as unknown) : '',
       logos,
       texts,
       productImage: this.getActiveImage() !== '' ? this.getActiveImage() : null,
@@ -1051,9 +1056,25 @@ export class WtpEditor {
    */
   private buildArticleState(withPreview: boolean = false): ArticleEditorState {
     this.flushActiveView(withPreview);
+    return this.composeArticleState();
+  }
 
+  /**
+   * The envelope for the change event: the active decoration is read straight off the
+   * canvas without serializing it or writing it back. `text:changed` fires per keystroke,
+   * and the stored state is what persistence uses anyway.
+   */
+  private buildLiveArticleState(): ArticleEditorState {
+    const liveState = this.canvas !== undefined ? this.buildEditorState(false) : undefined;
+    const liveIssues = liveState !== undefined ? this.validateActiveView(liveState) : undefined;
+    return this.composeArticleState(liveState, liveIssues);
+  }
+
+  private composeArticleState(liveState?: EditorState, liveIssues?: LogoValidationIssue[]): ArticleEditorState {
     const decorations: DecorationState[] = this.getViews().map(view => {
-      const state = this.viewStates.get(view.id) ?? this.emptyEditorState(view);
+      const isActive = view.id === this.currentViewId;
+      const state = (isActive ? liveState : undefined) ?? this.viewStates.get(view.id) ?? this.emptyEditorState(view);
+      const issues = (isActive ? liveIssues : undefined) ?? this.viewIssues.get(view.id) ?? [];
       const designed = state.logos.length > 0 || state.texts.length > 0;
 
       return {
@@ -1067,7 +1088,7 @@ export class WtpEditor {
         status: designed ? 'designed' : 'empty',
         state,
         ...(this.viewPreviews[view.id] !== undefined ? { previewDataUrl: this.viewPreviews[view.id] } : {}),
-        issues: this.viewIssues.get(view.id) ?? [],
+        issues,
       };
     });
 
@@ -1086,7 +1107,7 @@ export class WtpEditor {
   }
 
   private emitStateChanged() {
-    this.wtpEditorStateChanged.emit(this.buildArticleState());
+    this.wtpEditorStateChanged.emit(this.buildLiveArticleState());
   }
 
   private handleAddText = () => {

@@ -265,6 +265,24 @@ describe('wtp-editor browser', () => {
     expect(envelope.decorations.every(d => d.status === 'designed')).toBe(true);
   });
 
+  it('keeps the change event cheap: no canvas serialization per edit', async () => {
+    const { root, spyOnEvent } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
+    const el = root as EditorElement;
+    const spy = spyOnEvent('wtpEditorStateChanged');
+
+    await el.addText('Live');
+
+    const emitted = spy.lastEvent?.detail as ArticleEditorState;
+    const active = emitted.decorations.find(d => d.viewId === 'front');
+    expect(active?.status).toBe('designed');
+    expect(active?.state.texts[0].text).toBe('Live');
+    // The heavy part is left out — exportState() is the persistable envelope
+    expect(active?.state.fabricJson).toBe('');
+
+    const exported = await el.exportState();
+    expect(exported.decorations.find(d => d.viewId === 'front')?.state.fabricJson).not.toBe('');
+  });
+
   it('does not re-render a thumbnail on every keystroke', async () => {
     const { root } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
     const el = root as EditorElement;

@@ -43,6 +43,24 @@ export const DEFAULT_LOGO_UPLOAD_LABELS: LogoUploadLabels = {
   rejectionDpiUnit: 'DPI',
 };
 
+/**
+ * Messages for the per-decoration validation findings. Each receives the context the
+ * check produced, so a consumer can translate without re-deriving anything.
+ */
+export interface DecorationIssueLabels {
+  printAreaOverflow: (decoration: string) => string;
+  missingPrintArea: (decoration: string) => string;
+  colourLimit: (decoration: string, allowed: number, used: number) => string;
+  singleColourPrint: (decoration: string) => string;
+}
+
+export const DEFAULT_DECORATION_ISSUE_LABELS: DecorationIssueLabels = {
+  printAreaOverflow: decoration => `An element reaches outside the print area of "${decoration}".`,
+  missingPrintArea: decoration => `"${decoration}" has no print area, so placement cannot be verified.`,
+  colourLimit: (decoration, allowed, used) => `"${decoration}" allows ${allowed} print colour(s), but ${used} text colours are used.`,
+  singleColourPrint: decoration => `"${decoration}" prints in one colour — make sure the logo is monochrome.`,
+};
+
 export interface EditorLabels {
   addTextButton: string;
   addTextTooltip: string;
@@ -54,6 +72,7 @@ export interface EditorLabels {
   viewDesignedBadge: string;
   applyToAllButton: string;
   applyToAllTooltip: string;
+  issues: DecorationIssueLabels;
 }
 
 export const DEFAULT_EDITOR_LABELS: EditorLabels = {
@@ -67,4 +86,5 @@ export const DEFAULT_EDITOR_LABELS: EditorLabels = {
   viewDesignedBadge: 'Designed',
   applyToAllButton: 'Apply to all',
   applyToAllTooltip: 'Place this logo on every empty decoration',
+  issues: DEFAULT_DECORATION_ISSUE_LABELS,
 };
