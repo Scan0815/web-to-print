@@ -539,6 +539,21 @@ In implementation order; each ends green.
 7. **`wtpEditorStateChanged` carries no `fabricJson` for the active decoration.**
    `text:changed` fires per keystroke, and serializing the canvas embeds every logo src.
    `exportState()` remains the persistable envelope.
+8. **`initialLogo` lands in the decoration the editor *opens on*, not literally the
+   `isDefault` one.** They are the same view in every normal flow (§4.1). They differ only
+   when the host also passes `activeViewId`, and then silently designing a decoration the
+   host did not open would be the greater surprise. It is also re-placed after an article
+   reset, not only at startup: hosts assign `views`/`articleId` after mount, and that
+   reset clears the canvas.
+9. **The DPI check reads upload metadata, so it only covers logos placed in the current
+   session.** The v2 envelope persists `LogoSource` (§3.2) but not `LogoMetadata`, so a
+   reloaded cart has no DPI to judge. Persisting metadata would be a v3 concern; the
+   finding is simply absent rather than wrong.
+10. **Both geometry checks work in the print area's own frame**, not against its
+    axis-aligned bounding box. A print area is printed straight and the editor rotates
+    elements to match a tilted one, so a box comparison reports up to 141% of the real
+    size — it would warn on every element the editor itself just fitted, and contradict
+    the drag clamp, which already clamps in that same local frame.
 
 Original note on colour validation: Counting colours in an arbitrary customer logo is
    not reliable, so single-colour methods ask the customer to confirm monochrome instead

@@ -43,8 +43,10 @@ type EditorElement = HTMLElement & {
   setActiveView: (viewId: string) => Promise<void>;
   activeViewId: string;
   exportImage: (format: string) => Promise<string>;
+  exportViewImage: (viewId: string, format?: string, quality?: number) => Promise<string>;
   getObjects: () => Promise<{ id: string; type: string }[]>;
   views: ArticleView[];
+  articleId: string;
 };
 
 const VIEWS: ArticleView[] = [
@@ -477,6 +479,117 @@ describe('wtp-editor browser', () => {
 
     const envelope = await el.exportState();
     expect(envelope.decorations.find(d => d.viewId === 'front')?.previewDataUrl).toContain('data:image/png');
+  });
+
+  it('places initialLogo in the decoration it opens on and nowhere else', async () => {
+    const { root } = await mount(<wtp-editor views={VIEWS} initialLogo={{ dataUrl: LOGO_DATA_URL, metadata: LOGO_METADATA }}></wtp-editor>);
+    const el = root as EditorElement;
+
+    // The placement runs off the ready event, so give the image decode a turn.
+    await new Promise(r => setTimeout(r, 200));
+
+    const envelope = await el.exportState();
+    const byId = Object.fromEntries(envelope.decorations.map(d => [d.viewId, d]));
+    expect(byId['front'].status).toBe('designed');
+    expect(byId['front'].state.logos.length).toBe(1);
+    expect(byId['back'].status).toBe('empty');
+    expect(byId['wrap'].status).toBe('empty');
+  });
+
+  it('honours isDefault when placing initialLogo', async () => {
+    const views: ArticleView[] = [
+      { id: 'front', image: '', label: 'Front', printArea: null },
+      { id: 'back', image: '', label: 'Back', printArea: null, isDefault: true },
+    ];
+    const { root } = await mount(<wtp-editor views={views} initialLogo={{ dataUrl: LOGO_DATA_URL, metadata: LOGO_METADATA }}></wtp-editor>);
+    await new Promise(r => setTimeout(r, 200));
+
+    const envelope = await (root as EditorElement).exportState();
+    expect(envelope.decorations.find(d => d.viewId === 'back')?.status).toBe('designed');
+    expect(envelope.decorations.find(d => d.viewId === 'front')?.status).toBe('empty');
+  });
+
+  it('keeps initialLogo when views are assigned after mount', async () => {
+    // How hosts actually wire this up (see src/index.html): the element is created first
+    // and the article is assigned as a property once it has been fetched.
+    const { root, waitForChanges } = await mount(<wtp-editor initialLogo={{ dataUrl: LOGO_DATA_URL, metadata: LOGO_METADATA }}></wtp-editor>);
+    const el = root as EditorElement;
+
+    el.views = VIEWS;
+    el.articleId = 'A-1';
+    await waitForChanges();
+    await new Promise(r => setTimeout(r, 300));
+
+    const envelope = await el.exportState();
+    expect(envelope.decorations.find(d => d.viewId === 'front')?.status).toBe('designed');
+    expect(envelope.decorations.find(d => d.viewId === 'back')?.status).toBe('empty');
+  });
+
+  it('exportViewImage renders an inactive decoration and restores the active one', async () => {
+    const { root } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
+    const el = root as EditorElement;
+
+    await el.addText('Front text');
+    await el.setActiveView('back');
+    await el.addText('Back text');
+
+    const frontImage = await el.exportViewImage('front');
+    expect(frontImage).toContain('data:image/png');
+
+    // The customer was working on "back" — that must still be what is on screen.
+    expect(el.activeViewId).toBe('back');
+    const objects = await el.getObjects();
+    expect(objects.length).toBe(1);
+  });
+
+  it('does not warn about a logo the editor itself fitted into a tilted print area', async () => {
+    // Every other view in this file has printArea: null, so the geometry checks never
+    // ran against a real canvas. A 45° area is the case where a world-space bounding box
+    // reports 141% of the real size and warns on a perfect fit.
+    const tilted: ArticleView[] = [
+      {
+        id: 'front',
+        image: '',
+        label: 'Front',
+        printArea: { topLeft: { x: 0.5, y: 0.25 }, topRight: { x: 0.75, y: 0.5 }, bottomRight: { x: 0.5, y: 0.75 }, bottomLeft: { x: 0.25, y: 0.5 } },
+        impWidthMm: 100,
+        impHeightMm: 100,
+      },
+    ];
+
+    const { root } = await mount(<wtp-editor views={tilted}></wtp-editor>);
+    await (root as EditorElement).addLogo({ dataUrl: LOGO_DATA_URL, metadata: LOGO_METADATA });
+
+    const envelope = await (root as EditorElement).exportState();
+    const codes = envelope.decorations[0].issues.map(i => i.code);
+    expect(codes).not.toContain('sizeOverflow');
+    expect(codes).not.toContain('printAreaOverflow');
+  });
+
+  it('reports a perfectly fitted logo in an axis-aligned print area as clean', async () => {
+    // Guards the tolerances: the logo is fitted to exactly 100% of the area, so anything
+    // getBoundingRect adds for strokes or controls would tip both checks into a warning.
+    const sized: ArticleView[] = [
+      {
+        id: 'front',
+        image: '',
+        label: 'Front',
+        printArea: { topLeft: { x: 0.25, y: 0.25 }, topRight: { x: 0.75, y: 0.25 }, bottomRight: { x: 0.75, y: 0.75 }, bottomLeft: { x: 0.25, y: 0.75 } },
+        impWidthMm: 100,
+        impHeightMm: 100,
+      },
+    ];
+
+    const { root } = await mount(<wtp-editor views={sized}></wtp-editor>);
+    await (root as EditorElement).addLogo({ dataUrl: LOGO_DATA_URL, metadata: LOGO_METADATA });
+
+    const envelope = await (root as EditorElement).exportState();
+    expect(envelope.decorations[0].issues.map(i => i.code)).toEqual([]);
+  });
+
+  it('exportViewImage rejects an unknown decoration', async () => {
+    const { root } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
+    await expect((root as EditorElement).exportViewImage('nope')).rejects.toThrow(/unknown view id/);
   });
 
   it('Add Text button adds text via toolbar', async () => {

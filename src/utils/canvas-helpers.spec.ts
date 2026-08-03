@@ -1,4 +1,4 @@
-import { generateObjectId, fitLogoToPrintArea, printAreaToPixelCorners, pixelCornersToPrintArea, legacyToPrintArea, defaultPrintArea, trimSvgWhitespace, isPixelPrintArea, normalizePrintArea, parseSvgDimensions, upscaleSvgDataUrl } from './canvas-helpers';
+import { generateObjectId, fitLogoToPrintArea, printAreaPixelSize, printAreaToPixelCorners, pixelCornersToPrintArea, legacyToPrintArea, defaultPrintArea, trimSvgWhitespace, isPixelPrintArea, normalizePrintArea, parseSvgDimensions, upscaleSvgDataUrl } from './canvas-helpers';
 import { PrintArea, LegacyPrintArea } from '../types';
 
 // Canvas helpers rely on Fabric.js which requires a real canvas context.
@@ -253,6 +253,29 @@ describe('normalizePrintArea', () => {
     };
     const result = normalizePrintArea(pa, 2400, 1200);
     expect(result).toBe(pa);
+  });
+});
+
+describe('printAreaPixelSize', () => {
+  it('measures an axis-aligned area', () => {
+    const area: PrintArea = {
+      topLeft: { x: 0.25, y: 0.25 },
+      topRight: { x: 0.75, y: 0.25 },
+      bottomRight: { x: 0.75, y: 0.75 },
+      bottomLeft: { x: 0.25, y: 0.75 },
+    };
+    expect(printAreaPixelSize(area, 400, 400)).toEqual({ width: 200, height: 200 });
+  });
+
+  it('averages opposite edges of a tapered area', () => {
+    // Top edge spans 100px, bottom edge 200px — the effective width is the average.
+    const tapered: PrintArea = {
+      topLeft: { x: 0.375, y: 0 },
+      topRight: { x: 0.625, y: 0 },
+      bottomRight: { x: 0.75, y: 1 },
+      bottomLeft: { x: 0.25, y: 1 },
+    };
+    expect(printAreaPixelSize(tapered, 400, 400).width).toBe(150);
   });
 });
 

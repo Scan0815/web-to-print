@@ -52,6 +52,10 @@ export interface DecorationIssueLabels {
   missingPrintArea: (decoration: string) => string;
   colourLimit: (decoration: string, allowed: number, used: number) => string;
   singleColourPrint: (decoration: string) => string;
+  /** Placed element is physically larger than the decoration's declared mm size. */
+  sizeOverflow: (decoration: string, usedWidthMm: number, usedHeightMm: number, maxWidthMm: number, maxHeightMm: number) => string;
+  /** An uploaded logo's resolution is below the recommended print threshold. */
+  lowDpi: (decoration: string, fileName: string, dpi: number, minDpi: number) => string;
 }
 
 export const DEFAULT_DECORATION_ISSUE_LABELS: DecorationIssueLabels = {
@@ -59,6 +63,9 @@ export const DEFAULT_DECORATION_ISSUE_LABELS: DecorationIssueLabels = {
   missingPrintArea: decoration => `"${decoration}" has no print area, so placement cannot be verified.`,
   colourLimit: (decoration, allowed, used) => `"${decoration}" allows ${allowed} print colour(s), but ${used} text colours are used.`,
   singleColourPrint: decoration => `"${decoration}" prints in one colour — make sure the logo is monochrome.`,
+  sizeOverflow: (decoration, usedWidthMm, usedHeightMm, maxWidthMm, maxHeightMm) =>
+    `An element on "${decoration}" measures ${usedWidthMm} × ${usedHeightMm} mm, above the printable ${maxWidthMm} × ${maxHeightMm} mm.`,
+  lowDpi: (decoration, fileName, dpi, minDpi) => `"${fileName}" on "${decoration}" has ${dpi} DPI, below the recommended ${minDpi} DPI for printing.`,
 };
 
 export interface EditorLabels {

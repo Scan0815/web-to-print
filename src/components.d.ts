@@ -58,6 +58,10 @@ export namespace Components {
          */
         "exportState": () => Promise<ArticleEditorState>;
         /**
+          * Renders one decoration to an image, whether or not it is the one on screen. The decoration is put on the canvas, exported, and the original one restored — so a host building its own switcher can render a thumbnail for any decoration.  The round trip goes through the same path as a manual switch, so it clears the current selection when the requested decoration is not the active one.
+         */
+        "exportViewImage": (viewId: string, format?: "png" | "jpeg", quality?: number) => Promise<string>;
+        /**
           * Available font families for the text tool.
           * @default ['Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Verdana']
          */
@@ -71,6 +75,10 @@ export namespace Components {
           * @default 600
          */
         "height": number;
+        /**
+          * Logo the customer already picked in the catalog, placed once when the editor initializes. It lands in the decoration the editor opens on and nowhere else: `status: 'designed'` is what the shop charges for, so auto-filling every decoration would order — and bill — positions the customer never chose. `applyLogoToAllViews` is the one visible click that extends it. Ignored when `initialState` is set.
+         */
+        "initialLogo": LogoData | undefined;
         /**
           * JSON-serialized initial editor state.
          */
@@ -367,6 +375,10 @@ declare namespace LocalJSX {
           * @default 600
          */
         "height"?: number;
+        /**
+          * Logo the customer already picked in the catalog, placed once when the editor initializes. It lands in the decoration the editor opens on and nowhere else: `status: 'designed'` is what the shop charges for, so auto-filling every decoration would order — and bill — positions the customer never chose. `applyLogoToAllViews` is the one visible click that extends it. Ignored when `initialState` is set.
+         */
+        "initialLogo"?: LogoData | undefined;
         /**
           * JSON-serialized initial editor state.
          */

@@ -2,6 +2,7 @@ import type { jsPDF as JsPDFType } from 'jspdf';
 import { LogoData, LogoMetadata, Article, PrintArea, ArticleEditorState, DecorationState, ArticleView } from '../types';
 import { printAreaToPixelCorners, upscaleSvgDataUrl } from './canvas-helpers';
 import { computeContainFit } from './html-render-helpers';
+import { loadImageDimensions, resolveViewPrintArea } from './print-area';
 
 export interface PdfExportConfig {
   pageFormat: 'a4' | 'letter';
@@ -241,16 +242,24 @@ export interface LogoSourcePage {
  */
 export function collectLogoSources(decorations: DecorationState[], metadataByKey?: Record<string, LogoMetadata>): LogoSourcePage[] {
   const pages = new Map<string, LogoSourcePage>();
+  // Decoration labels are display names and repeat across an article ("Front" twice for
+  // two print methods). Identity is the view id, so dedup on that and disambiguate the
+  // label only when it collides.
+  const viewIdsPerPage = new Map<string, Set<string>>();
 
   for (const decoration of decorations) {
     for (const logo of decoration.state.logos) {
       const key = logo.source?.dataUrl ?? logo.dataUrl;
       const existing = pages.get(key);
       if (existing !== undefined) {
-        if (!existing.usedBy.includes(decoration.label)) existing.usedBy.push(decoration.label);
+        const seen = viewIdsPerPage.get(key) as Set<string>;
+        if (seen.has(decoration.viewId)) continue;
+        seen.add(decoration.viewId);
+        existing.usedBy.push(existing.usedBy.includes(decoration.label) ? `${decoration.label} (${decoration.viewId})` : decoration.label);
         continue;
       }
 
+      viewIdsPerPage.set(key, new Set([decoration.viewId]));
       pages.set(key, {
         key,
         dataUrl: key,
@@ -264,6 +273,18 @@ export function collectLogoSources(decorations: DecorationState[], metadataByKey
   }
 
   return [...pages.values()];
+}
+
+/**
+ * Aspect ratio of a logo source, so its page can show the artwork undistorted.
+ * Measuring the raster is authoritative; the upload metadata is the fallback for
+ * environments without an `Image` constructor. Returns null when neither is available.
+ */
+async function measureAspectRatio(rasterDataUrl: string, metadata: LogoMetadata | undefined): Promise<number | null> {
+  const measured = await loadImageDimensions(rasterDataUrl);
+  if (measured !== null && measured.width > 0 && measured.height > 0) return measured.width / measured.height;
+  if (metadata !== undefined && metadata.width > 0 && metadata.height > 0) return metadata.width / metadata.height;
+  return null;
 }
 
 /** Decorations that carry a design, optionally narrowed to the ordered ones. */
@@ -281,7 +302,14 @@ function renderProofNotice(doc: JsPDFType, config: PdfExportConfig): void {
 }
 
 /** One page per distinct logo: the source file at full quality, plus where it is used. */
-function renderLogoSourcePage(doc: JsPDFType, source: LogoSourcePage, rasterDataUrl: string, index: number, config: PdfExportConfig): void {
+function renderLogoSourcePage(
+  doc: JsPDFType,
+  source: LogoSourcePage,
+  rasterDataUrl: string,
+  aspectRatio: number | null,
+  index: number,
+  config: PdfExportConfig,
+): void {
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const margin = config.marginMm;
@@ -292,8 +320,10 @@ function renderLogoSourcePage(doc: JsPDFType, source: LogoSourcePage, rasterData
   doc.text(`Logo source ${index + 1}`, pageW / 2, margin + 8, { align: 'center' });
 
   const imgY = margin + 16;
-  const imgH = pageH * 0.5;
-  const imgW = contentW;
+  const boxH = pageH * 0.5;
+  // The print shop pulls the logo off this page — stretching it to fill a fixed box
+  // would misrepresent the artwork. Without measurable dimensions, fall back to the box.
+  const { width: imgW, height: imgH } = aspectRatio !== null ? fitImage(contentW, boxH, aspectRatio) : { width: contentW, height: boxH };
 
   doc.addImage(rasterDataUrl, dataUrlToImageFormat(rasterDataUrl), (pageW - imgW) / 2, imgY, imgW, imgH, undefined, 'FAST');
 
@@ -312,7 +342,9 @@ function renderLogoSourcePage(doc: JsPDFType, source: LogoSourcePage, rasterData
     rows.push(['Note', 'Source is SVG; rasterized here. Request the vector file from the customer.']);
   }
 
-  renderRows(doc, rows, margin, imgY + imgH + 10, { rowHeight: 7, labelWidth: 30, fontSize: 10, maxWidth: contentW - 30 });
+  // Anchored to the reserved box, not the fitted image, so the table sits in the same
+  // place on every source page regardless of the logo's shape.
+  renderRows(doc, rows, margin, imgY + boxH + 10, { rowHeight: 7, labelWidth: 30, fontSize: 10, maxWidth: contentW - 30 });
 
   renderProofNotice(doc, config);
 }
@@ -323,6 +355,7 @@ function renderDecorationPage(
   article: Article,
   decoration: DecorationState,
   view: ArticleView | undefined,
+  printArea: PrintArea | null,
   mockup: DecorationMockup,
   logoPageNumbers: number[],
   config: PdfExportConfig,
@@ -369,8 +402,8 @@ function renderDecorationPage(
   const imgX = (pageW - imgW) / 2;
   doc.addImage(mockup.dataUrl, dataUrlToImageFormat(mockup.dataUrl), imgX, mockupY, imgW, imgH);
 
-  if (config.showPrintAreaGuides && view?.printArea != null) {
-    drawPrintAreaGuide(doc, view.printArea, imgX, mockupY, imgW, imgH, mockup.width, mockup.height);
+  if (config.showPrintAreaGuides && printArea != null) {
+    drawPrintAreaGuide(doc, printArea, imgX, mockupY, imgW, imgH, mockup.width, mockup.height);
   }
 
   renderProofNotice(doc, config);
@@ -407,6 +440,19 @@ export async function exportArticlePdf(
 
   const sources = collectLogoSources(decorations, logoMetadata);
   const rasterSources = await Promise.all(sources.map(s => rasterizeDataUrl(s.dataUrl)));
+  const rasterRatios = await Promise.all(sources.map((s, i) => measureAspectRatio(rasterSources[i], s.metadata)));
+
+  // A PrintArea is 0-1 by contract, but catalogs deliver pixel coordinates. The editor
+  // normalizes for its own canvas; the article handed to this function has not been
+  // touched, so the guide would be drawn from pixel values read as fractions.
+  const printAreas = new Map<string, PrintArea | null>(
+    await Promise.all(
+      decorations.map(async (d): Promise<[string, PrintArea | null]> => {
+        const view = article.views.find(v => v.id === d.viewId);
+        return [d.viewId, view === undefined ? null : await resolveViewPrintArea(view)];
+      }),
+    ),
+  );
 
   const doc = new JsPDF({ orientation: cfg.orientation, unit: 'mm', format: cfg.pageFormat });
 
@@ -419,7 +465,7 @@ export async function exportArticlePdf(
 
   sources.forEach((source, i) => {
     startPage();
-    renderLogoSourcePage(doc, source, rasterSources[i], i, cfg);
+    renderLogoSourcePage(doc, source, rasterSources[i], rasterRatios[i], i, cfg);
   });
 
   const pageOfSource = new Map(sources.map((source, i) => [source.key, i + 1]));
@@ -432,7 +478,16 @@ export async function exportArticlePdf(
       .map(logo => pageOfSource.get(logo.source?.dataUrl ?? logo.dataUrl))
       .filter((n): n is number => n !== undefined);
 
-    renderDecorationPage(doc, article, decoration, article.views.find(v => v.id === decoration.viewId), mockup, [...new Set(logoPages)], cfg);
+    renderDecorationPage(
+      doc,
+      article,
+      decoration,
+      article.views.find(v => v.id === decoration.viewId),
+      printAreas.get(decoration.viewId) ?? null,
+      mockup,
+      [...new Set(logoPages)],
+      cfg,
+    );
   }
 
   doc.save(`${article.id}.pdf`);

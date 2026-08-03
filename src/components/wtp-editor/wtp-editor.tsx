@@ -13,11 +13,12 @@ import {
   ArticleEditorState,
   DecorationState,
   LogoValidationIssue,
+  LogoMetadata,
   Article,
 } from '../../types';
 import { setCanvasBackground, generateObjectId, upscaleSvgDataUrl, fitLogoToPrintArea, printAreaToPixelCorners } from '../../utils/canvas-helpers';
-import { resolveViewPrintArea } from '../../utils/print-area';
-import { validateDecoration, type ObjectBounds } from '../../utils/decoration-validation';
+import { isPixelPrintArea, resolveViewPrintArea } from '../../utils/print-area';
+import { validateDecoration, type ObjectBounds, type ObjectSize } from '../../utils/decoration-validation';
 import { exportArticlePdf, selectPrintableDecorations, type PdfExportConfig } from '../../utils/pdf-export';
 
 /** Id of the implicit view used when the host supplies productImage/printArea instead of views. */
@@ -51,6 +52,14 @@ export class WtpEditor {
   @Prop() productImage: string | undefined;
   /** JSON-serialized initial editor state. */
   @Prop() initialState: string | undefined;
+  /**
+   * Logo the customer already picked in the catalog, placed once when the editor
+   * initializes. It lands in the decoration the editor opens on and nowhere else:
+   * `status: 'designed'` is what the shop charges for, so auto-filling every decoration
+   * would order — and bill — positions the customer never chose. `applyLogoToAllViews`
+   * is the one visible click that extends it. Ignored when `initialState` is set.
+   */
+  @Prop() initialLogo: LogoData | undefined;
   /** Available font families for the text tool. */
   @Prop() fonts: string[] = ['Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Verdana'];
   /**
@@ -100,6 +109,8 @@ export class WtpEditor {
   private viewStates: Map<string, EditorState> = new Map();
   /** Print areas normalized to 0-1, keyed by view id. */
   private resolvedPrintAreas: Map<string, PrintArea | null> = new Map();
+  /** Resolves once every view's print area has been normalized. */
+  private printAreasReady: Promise<void> = Promise.resolve();
   /** Validation findings of every view, refreshed whenever a view is flushed. */
   private viewIssues: Map<string, LogoValidationIssue[]> = new Map();
   /** Source data of every placed logo, so it can be copied to other decorations. */
@@ -163,8 +174,12 @@ export class WtpEditor {
   /** Print area of the active view, normalized to 0-1 where possible. */
   private getActivePrintArea(): PrintArea | undefined {
     const view = this.getActiveView();
-    const resolved = this.resolvedPrintAreas.get(view.id);
-    return (resolved ?? view.printArea) ?? undefined;
+    if (this.resolvedPrintAreas.has(view.id)) return this.resolvedPrintAreas.get(view.id) ?? undefined;
+
+    // Not normalized yet. A pixel area read as 0-1 would place logos and guides thousands
+    // of pixels off the canvas, so having no print area is the safer intermediate state.
+    if (view.printArea != null && isPixelPrintArea(view.printArea)) return undefined;
+    return view.printArea ?? undefined;
   }
 
   private getActiveImage(): string {
@@ -227,21 +242,26 @@ export class WtpEditor {
       this.resetViewState();
       this.currentViewId = this.resolveInitialViewId(views);
       this.activeViewId = this.currentViewId;
-      this.enqueue(() => this.activateView(this.getActiveView()));
+      void this.enqueue(async () => {
+        await this.activateView(this.getActiveView());
+        await this.placeInitialLogo();
+      });
     }
 
     void this.resolvePrintAreas();
   }
 
   /** Normalizes every view's print area to 0-1, loading images only when needed. */
-  private async resolvePrintAreas(): Promise<void> {
-    await Promise.all(
+  private resolvePrintAreas(): Promise<void> {
+    this.printAreasReady = Promise.all(
       this.getViews().map(async view => {
         const resolved = await resolveViewPrintArea(view);
         this.resolvedPrintAreas.set(view.id, resolved);
       }),
-    );
-    this.canvas?.renderAll();
+    ).then(() => {
+      this.canvas?.renderAll();
+    });
+    return this.printAreasReady;
   }
 
   @Watch('printArea')
@@ -262,8 +282,10 @@ export class WtpEditor {
   async addLogo(logoData: LogoData): Promise<string> {
     if (this.canvas === undefined) throw new Error('Canvas not initialized');
 
-    // Wait for background image to load so canvas dimensions are final
+    // Wait for background image to load so canvas dimensions are final, and for the
+    // print areas to be normalized — otherwise the logo is fitted to nothing.
     await this.backgroundReady;
+    await this.printAreasReady;
 
     const id = generateObjectId();
     const { dataUrl } = upscaleSvgDataUrl(logoData.dataUrl);
@@ -321,8 +343,10 @@ export class WtpEditor {
   async addText(text: string, options?: { fontFamily?: string; fontSize?: number; fill?: string }): Promise<string> {
     if (this.canvas === undefined) throw new Error('Canvas not initialized');
 
-    // Wait for background image to load so canvas dimensions are final
+    // Wait for background image to load so canvas dimensions are final, and for the
+    // print areas to be normalized — otherwise the text is centred on nothing.
     await this.backgroundReady;
+    await this.printAreasReady;
 
     const id = generateObjectId();
     let centerX = this.canvas.getWidth() / 2;
@@ -459,6 +483,29 @@ export class WtpEditor {
   }
 
   /**
+   * Renders one decoration to an image, whether or not it is the one on screen. The
+   * decoration is put on the canvas, exported, and the original one restored — so a host
+   * building its own switcher can render a thumbnail for any decoration.
+   *
+   * The round trip goes through the same path as a manual switch, so it clears the
+   * current selection when the requested decoration is not the active one.
+   */
+  @Method()
+  async exportViewImage(viewId: string, format: 'png' | 'jpeg' = 'png', quality: number = 1): Promise<string> {
+    const target = this.getViews().find(v => v.id === viewId);
+    if (target === undefined) throw new Error(`wtp-editor: unknown view id "${viewId}".`);
+    if (target.id === this.currentViewId) return this.exportImage(format, quality);
+
+    const originalViewId = this.currentViewId;
+    try {
+      await this.visitView(target, { withPreview: false });
+      return await this.exportImage(format, quality);
+    } finally {
+      await this.visitViewById(originalViewId, { withPreview: false });
+    }
+  }
+
+  /**
    * Renders a high-resolution mockup per decoration, keyed by view id — the input the
    * PDF export needs. Only the editor can produce these, because each decoration has to
    * be put on the canvas first. The originally active decoration is restored afterwards.
@@ -579,6 +626,29 @@ export class WtpEditor {
   }
 
   /**
+   * Places the catalog logo on the decoration the editor opens on.
+   *
+   * Runs again after an article reset rather than once at startup: hosts create the
+   * element first and assign `views`/`articleId` once the article has been fetched, and
+   * that reset clears the canvas. Placing only at startup loses the logo — nondeterministically,
+   * since it races the image decode. Re-placing is safe because a reset means a new
+   * article, so there is nothing of the customer's to overwrite.
+   *
+   * Failures are swallowed on purpose: a logo that cannot be decoded must not stop the
+   * editor from coming up — the customer can still upload another one.
+   */
+  private async placeInitialLogo(): Promise<void> {
+    if (this.initialLogo === undefined) return;
+    if (this.initialState !== undefined && this.initialState !== '') return;
+
+    try {
+      await this.addLogo(this.initialLogo);
+    } catch {
+      // Undecodable initial logo; the editor stays usable without it.
+    }
+  }
+
+  /**
    * Stores the canvas state of the currently edited view. The thumbnail is only
    * refreshed when explicitly asked for: `text:changed` fires per keystroke, and a
    * toDataURL of a 2400px product image per character is far too expensive.
@@ -600,18 +670,39 @@ export class WtpEditor {
     if (this.canvas === undefined) return [];
 
     const bounds: ObjectBounds[] = [];
+    const sizes: ObjectSize[] = [];
     for (const obj of this.objectMap.values()) {
       const rect = obj.getBoundingRect();
       bounds.push({ left: rect.left, top: rect.top, width: rect.width, height: rect.height });
+      // getBoundingRect is the world-space box, which is up to 1.41x the real size once
+      // the object is rotated to match a tilted print area. Both geometry checks work in
+      // the area's own frame instead — the same frame the drag clamp uses.
+      const center = obj.getCenterPoint();
+      sizes.push({
+        centerX: center.x,
+        centerY: center.y,
+        width: (obj.width ?? 0) * (obj.scaleX ?? 1),
+        height: (obj.height ?? 0) * (obj.scaleY ?? 1),
+        angle: obj.angle ?? 0,
+      });
+    }
+
+    // Only the logos actually on this decoration — the map is article-wide.
+    const logoMetadata: LogoMetadata[] = [];
+    for (const logo of state.logos) {
+      const metadata = this.placedLogoData.get(logo.id)?.metadata;
+      if (metadata !== undefined) logoMetadata.push(metadata);
     }
 
     return validateDecoration({
       view: this.getActiveView(),
       state,
       bounds,
+      sizes,
       printArea: this.getActivePrintArea() ?? null,
       canvasWidth: this.canvas.getWidth(),
       canvasHeight: this.canvas.getHeight(),
+      logoMetadata,
       labels: this.getLabels().issues,
     });
   }
@@ -810,12 +901,15 @@ export class WtpEditor {
     if (this.initialState !== undefined && this.initialState !== '') {
       try {
         const state = JSON.parse(this.initialState) as ArticleEditorState | EditorState;
-        this.loadState(state);
+        void this.loadState(state);
       } catch {
         // Invalid JSON, ignore
       }
-    } else if (this.getActiveImage() !== '') {
-      this.backgroundReady = setCanvasBackground(this.canvas, this.getActiveImage());
+    } else {
+      if (this.getActiveImage() !== '') {
+        this.backgroundReady = setCanvasBackground(this.canvas, this.getActiveImage());
+      }
+      void this.enqueue(() => this.placeInitialLogo());
     }
 
     this.wtpEditorReady.emit();

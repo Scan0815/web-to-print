@@ -153,6 +153,19 @@ describe('pdf-export', () => {
       expect(sources[0].usedBy).toEqual(['Front', 'Back']);
     });
 
+    it('counts a decoration once even when two share a display label', () => {
+      // Two print methods on the same spot: the shop shows both as "Front", but they are
+      // different purchasable decorations. Deduplicating on the label would hide one.
+      const sources = collectLogoSources([decoration('184932', 'Front', 'designed', [logoA]), decoration('184933', 'Front', 'designed', [logoA])]);
+      expect(sources.length).toBe(1);
+      expect(sources[0].usedBy).toEqual(['Front', 'Front (184933)']);
+    });
+
+    it('lists a decoration once when it uses the same logo twice', () => {
+      const twice = decoration('front', 'Front', 'designed', [logoA, { ...logoA, id: 'l1b' }]);
+      expect(collectLogoSources([twice])[0].usedBy).toEqual(['Front']);
+    });
+
     it('prefers the uploaded original over the canvas representation', () => {
       const withSource: PlacedLogo = {
         id: 'l3',
@@ -173,8 +186,8 @@ describe('pdf-export', () => {
   const PNG = 'data:image/png;base64,AAA';
 
   /** Minimal jsPDF stand-in that records the page structure. */
-  function installFakeJsPDF(): { pages: string[][]; saved: string[] } {
-    const record = { pages: [[]] as string[][], saved: [] as string[] };
+  function installFakeJsPDF(): { pages: string[][]; saved: string[]; lines: number[][] } {
+    const record = { pages: [[]] as string[][], saved: [] as string[], lines: [] as number[][] };
     let current = 0;
 
     class FakeDoc {
@@ -196,7 +209,9 @@ describe('pdf-export', () => {
       setTextColor() {}
       setLineWidth() {}
       setLineDashPattern() {}
-      line() {}
+      line(x1: number, y1: number, x2: number, y2: number) {
+        record.lines.push([x1, y1, x2, y2]);
+      }
       save(name: string) {
         record.saved.push(name);
       }
@@ -251,6 +266,35 @@ describe('pdf-export', () => {
 
       expect(record.pages.length).toBe(1);
       expect(record.pages[0].some(text => text.includes('Front'))).toBe(true);
+    });
+
+    it('normalizes a pixel print area before drawing the guide', async () => {
+      // The catalog delivers pixel coordinates against a 2000px source image. Drawing
+      // those as if they were 0-1 fractions puts the guide kilometres off the page.
+      const pixelArticle: Article = {
+        ...article,
+        views: [
+          {
+            id: 'front',
+            image: '',
+            label: 'Front',
+            printArea: { topLeft: { x: 500, y: 500 }, topRight: { x: 1500, y: 500 }, bottomRight: { x: 1500, y: 1500 }, bottomLeft: { x: 500, y: 1500 } },
+            coordinateImageSize: { width: 2000, height: 2000, longestSide: 'width' },
+          },
+        ],
+      };
+
+      const record = installFakeJsPDF();
+      await exportArticlePdf(state([decoration('front', 'Front', 'designed')]), pixelArticle, mockups);
+
+      // The page draws the table separator first, then the four guide edges.
+      expect(record.lines.length).toBe(5);
+      for (const [x1, y1, x2, y2] of record.lines.slice(-4)) {
+        expect(x1).toBeGreaterThanOrEqual(0);
+        expect(x2).toBeLessThanOrEqual(210);
+        expect(y1).toBeGreaterThanOrEqual(0);
+        expect(y2).toBeLessThanOrEqual(297);
+      }
     });
 
     it('throws when a designed decoration has no mockup', async () => {

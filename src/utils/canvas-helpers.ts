@@ -224,6 +224,22 @@ export function defaultPrintArea(): PrintArea {
 }
 
 /**
+ * Effective pixel size of a print area, from the average of its opposite edges.
+ * A print area is any quadrilateral, so a rotated or slightly tapered area has no
+ * single width — averaging the two opposite edges is what the placement math uses.
+ */
+export function printAreaPixelSize(printArea: PrintArea, canvasWidth: number, canvasHeight: number): { width: number; height: number } {
+  const [tl, tr, br, bl] = printAreaToPixelCorners(printArea, canvasWidth, canvasHeight);
+
+  const topLen = Math.hypot(tr.x - tl.x, tr.y - tl.y);
+  const botLen = Math.hypot(br.x - bl.x, br.y - bl.y);
+  const leftLen = Math.hypot(bl.x - tl.x, bl.y - tl.y);
+  const rightLen = Math.hypot(br.x - tr.x, br.y - tr.y);
+
+  return { width: (topLen + botLen) / 2, height: (leftLen + rightLen) / 2 };
+}
+
+/**
  * Compute a CanvasTransform to fit a logo within a 4-corner print area.
  * Uses the centroid for position, average edge lengths for dimensions,
  * and the bottom edge angle for rotation.
@@ -241,14 +257,7 @@ export function fitLogoToPrintArea(
   const cx = (tl.x + tr.x + br.x + bl.x) / 4;
   const cy = (tl.y + tr.y + br.y + bl.y) / 4;
 
-  // Average edge lengths for effective width/height
-  const topLen = Math.hypot(tr.x - tl.x, tr.y - tl.y);
-  const botLen = Math.hypot(br.x - bl.x, br.y - bl.y);
-  const leftLen = Math.hypot(bl.x - tl.x, bl.y - tl.y);
-  const rightLen = Math.hypot(br.x - tr.x, br.y - tr.y);
-
-  const avgWidth = (topLen + botLen) / 2;
-  const avgHeight = (leftLen + rightLen) / 2;
+  const { width: avgWidth, height: avgHeight } = printAreaPixelSize(printArea, canvasWidth, canvasHeight);
 
   // Angle from bottom edge
   const angle = Math.atan2(br.y - bl.y, br.x - bl.x) * 180 / Math.PI;

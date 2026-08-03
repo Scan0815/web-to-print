@@ -1,5 +1,6 @@
 import { validateDecoration } from './decoration-validation';
 import type { ArticleView, EditorState, PlacedText, PrintArea } from '../types/editor';
+import type { LogoMetadata } from '../types/logo';
 
 const PRINT_AREA: PrintArea = {
   topLeft: { x: 0.25, y: 0.25 },
@@ -25,6 +26,46 @@ describe('validateDecoration', () => {
     expect(validateDecoration({ view: view(), state: state(), bounds: [], printArea: PRINT_AREA, canvasWidth: 400, canvasHeight: 400 })).toEqual([]);
   });
 
+  // A 45° print area: the case where a world-space bounding box and the area's own frame
+  // disagree. The editor always supplies `sizes`, so this is the path it actually runs.
+  const TILTED_AREA: PrintArea = {
+    topLeft: { x: 0.5, y: 0.25 },
+    topRight: { x: 0.75, y: 0.5 },
+    bottomRight: { x: 0.5, y: 0.75 },
+    bottomLeft: { x: 0.25, y: 0.5 },
+  };
+
+  it('reports an object outside a tilted print area', () => {
+    // Centre sits ~106px along the area's local x-axis, well past its ~71px half-extent.
+    const issues = validateDecoration({
+      view: view({ printArea: TILTED_AREA }),
+      state: state({ texts: [text('#000000')] }),
+      bounds: [],
+      sizes: [{ centerX: 350, centerY: 200, width: 20, height: 20, angle: 0 }],
+      printArea: TILTED_AREA,
+      canvasWidth: 400,
+      canvasHeight: 400,
+    });
+
+    expect(issues.map(i => i.code)).toContain('printAreaOverflow');
+  });
+
+  it('accepts an object inside a tilted print area', () => {
+    const issues = validateDecoration({
+      view: view({ printArea: TILTED_AREA }),
+      state: state({ texts: [text('#000000')] }),
+      bounds: [],
+      sizes: [{ centerX: 200, centerY: 200, width: 20, height: 20, angle: 0 }],
+      printArea: TILTED_AREA,
+      canvasWidth: 400,
+      canvasHeight: 400,
+    });
+
+    expect(issues.map(i => i.code)).not.toContain('printAreaOverflow');
+  });
+
+  // Covers the bounds-only fallback for callers without sizes and angles — not the path
+  // the editor takes.
   it('reports objects reaching outside the print area', () => {
     const issues = validateDecoration({
       view: view(),
@@ -115,5 +156,142 @@ describe('validateDecoration', () => {
     });
 
     expect(issues).toEqual([]);
+  });
+
+  // The print area spans 0.25-0.75 of a 400px canvas, so it is 200px wide and tall.
+  // Declaring it as 100 x 100 mm makes the conversion exactly 0.5 mm per pixel.
+  describe('physical size', () => {
+    const sized = () => view({ impWidthMm: 100, impHeightMm: 100 });
+    const logo = { id: 'l1', dataUrl: 'data:image/png;base64,abc' };
+
+    it('warns when an element is larger than the declared print size', () => {
+      const issues = validateDecoration({
+        view: sized(),
+        state: state({ logos: [logo] }),
+        bounds: [{ left: 100, top: 100, width: 240, height: 100 }],
+        printArea: PRINT_AREA,
+        canvasWidth: 400,
+        canvasHeight: 400,
+      });
+
+      const finding = issues.find(i => i.code === 'sizeOverflow');
+      expect(finding?.severity).toBe('warning');
+      expect(finding?.message).toContain('120');
+      expect(finding?.message).toContain('100');
+    });
+
+    it('accepts an element fitted exactly to the print area', () => {
+      const issues = validateDecoration({
+        view: sized(),
+        state: state({ logos: [logo] }),
+        bounds: [{ left: 100, top: 100, width: 200, height: 200 }],
+        printArea: PRINT_AREA,
+        canvasWidth: 400,
+        canvasHeight: 400,
+      });
+
+      expect(issues.map(i => i.code)).not.toContain('sizeOverflow');
+    });
+
+    it('measures a rotated element in the print area frame, not its bounding box', () => {
+      // A 45° print area of the same 200 x 200 px, with a logo rotated to match it.
+      // The world-space bounding box would be 1.41x too large and warn on a perfect fit.
+      const tilted: PrintArea = {
+        topLeft: { x: 0.5, y: 0.25 },
+        topRight: { x: 0.75, y: 0.5 },
+        bottomRight: { x: 0.5, y: 0.75 },
+        bottomLeft: { x: 0.25, y: 0.5 },
+      };
+      const side = Math.hypot(100, 100);
+
+      const issues = validateDecoration({
+        view: view({ printArea: tilted, impWidthMm: 100, impHeightMm: 100 }),
+        state: state({ logos: [logo] }),
+        bounds: [{ left: 100, top: 100, width: 200, height: 200 }],
+        sizes: [{ centerX: 200, centerY: 200, width: side, height: side, angle: 45 }],
+        printArea: tilted,
+        canvasWidth: 400,
+        canvasHeight: 400,
+      });
+
+      expect(issues.map(i => i.code)).not.toContain('sizeOverflow');
+    });
+
+    it('still catches a rotated element that is genuinely too large', () => {
+      const issues = validateDecoration({
+        view: sized(),
+        state: state({ logos: [logo] }),
+        bounds: [{ left: 0, top: 0, width: 400, height: 400 }],
+        sizes: [{ centerX: 200, centerY: 200, width: 300, height: 200, angle: 90 }],
+        printArea: PRINT_AREA,
+        canvasWidth: 400,
+        canvasHeight: 400,
+      });
+
+      expect(issues.map(i => i.code)).toContain('sizeOverflow');
+    });
+
+    it('skips the check when the catalog declares no mm dimensions', () => {
+      const issues = validateDecoration({
+        view: view({ impWidthMm: 100 }),
+        state: state({ logos: [logo] }),
+        bounds: [{ left: 100, top: 100, width: 240, height: 240 }],
+        printArea: PRINT_AREA,
+        canvasWidth: 400,
+        canvasHeight: 400,
+      });
+
+      expect(issues.map(i => i.code)).not.toContain('sizeOverflow');
+    });
+  });
+
+  describe('resolution', () => {
+    const metadata = (overrides: Partial<LogoMetadata> = {}): LogoMetadata => ({
+      format: 'png',
+      width: 500,
+      height: 500,
+      dpiX: 72,
+      dpiY: 72,
+      fileSize: 1024,
+      fileName: 'logo.png',
+      mimeType: 'image/png',
+      hasTransparency: false,
+      ...overrides,
+    });
+
+    const withLogo = (logoMetadata: LogoMetadata[]) =>
+      validateDecoration({
+        view: view(),
+        state: state({ logos: [{ id: 'l1', dataUrl: 'data:image/png;base64,abc' }] }),
+        bounds: [{ left: 150, top: 150, width: 10, height: 10 }],
+        printArea: PRINT_AREA,
+        canvasWidth: 400,
+        canvasHeight: 400,
+        logoMetadata,
+      });
+
+    it('warns about a logo below the recommended print resolution', () => {
+      const finding = withLogo([metadata()]).find(i => i.code === 'lowDpi');
+      expect(finding?.severity).toBe('warning');
+      expect(finding?.message).toContain('logo.png');
+      expect(finding?.message).toContain('72');
+    });
+
+    it('accepts a logo at the recommended resolution', () => {
+      expect(withLogo([metadata({ dpiX: 300, dpiY: 300 })]).map(i => i.code)).not.toContain('lowDpi');
+    });
+
+    it('stays quiet when the DPI could not be determined', () => {
+      expect(withLogo([metadata({ dpiX: null, dpiY: null })]).map(i => i.code)).not.toContain('lowDpi');
+    });
+
+    it('does not judge vector sources by DPI', () => {
+      expect(withLogo([metadata({ format: 'svg', dpiX: 72 })]).map(i => i.code)).not.toContain('lowDpi');
+    });
+
+    it('uses the lower of the two axes', () => {
+      const finding = withLogo([metadata({ dpiX: 600, dpiY: 96 })]).find(i => i.code === 'lowDpi');
+      expect(finding?.message).toContain('96');
+    });
   });
 });

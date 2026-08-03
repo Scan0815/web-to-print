@@ -182,6 +182,7 @@ Interactive canvas editor with a built-in toolbar for adding text, changing font
 | `articleId` | `article-id` | `string` | `''` | Written into the exported envelope |
 | `activeViewId` | `active-view-id` | `string \| undefined` | `undefined` | Decoration currently edited. Defaults to the `isDefault` view, else the first |
 | `showViewStrip` | `show-view-strip` | `boolean` | `true` | Built-in decoration strip (hidden for a single decoration) |
+| `initialLogo` | — | `LogoData \| undefined` | `undefined` | Logo picked in the catalog, placed once into the decoration the editor opens on — and nowhere else. Ignored when `initialState` is set |
 | `productImage` | `product-image` | `string \| undefined` | `undefined` | **Deprecated** — single-decoration fallback, used only when `views` is empty |
 | `initialState` | `initial-state` | `string \| undefined` | `undefined` | JSON-serialized initial editor state |
 | `fonts` | — | `string[]` | `['Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Verdana']` | Available font families for the text tool |
@@ -216,6 +217,7 @@ Interactive canvas editor with a built-in toolbar for adding text, changing font
 | `exportPdf` | `(article: Article, config?: Partial<PdfExportConfig>) => Promise<void>` | Generate and download the proof PDF (needs jsPDF, see below) |
 | `exportImage` | `(format?: 'png' \| 'jpeg', quality?: number) => Promise<string>` | Export canvas as a data URL (1× resolution) |
 | `exportImageHighRes` | `(format?, quality?, multiplier?) => Promise<{ dataUrl, width, height }>` | High-resolution export for PDF/print (default 3× multiplier) |
+| `exportViewImage` | `(viewId: string, format?: 'png' \| 'jpeg', quality?: number) => Promise<string>` | Render one decoration, active or not, and restore the active one afterwards. Clears the selection unless the decoration is already active |
 | `getObjects` | `() => Promise<{ id: string; type: string }[]>` | List all objects on the canvas |
 
 ## Multiple decorations per article
@@ -249,10 +251,19 @@ lines.
 logo or text object. Which decorations are actually ordered is a pricing decision and
 stays in the shop — the editor deliberately has no "selected" flag.
 
-**Validation never blocks.** `DecorationState.issues` carries warnings (print-area
-overflow, colour limits, single-colour methods); the shop decides whether one stops
-checkout. The messages are translatable via `labels.issues` (see `DecorationIssueLabels`);
-each finding also carries a stable `code` if you would rather render your own text.
+**Validation never blocks.** `DecorationState.issues` carries warnings; the shop decides
+whether one stops checkout. The messages are translatable via `labels.issues` (see
+`DecorationIssueLabels`), and each finding carries a stable `code` if you would rather
+render your own text:
+
+| `code` | Meaning |
+|---|---|
+| `printAreaOverflow` | An element reaches outside the print area |
+| `missingPrintArea` | The decoration is designed but has no print area to check against |
+| `sizeOverflow` | An element is physically larger than `impWidthMm × impHeightMm`. Skipped when the catalog declares no mm dimensions |
+| `colourLimit` | More text colours than `maxColours` allows. Skipped for `'full color'` |
+| `singleColourPrint` | A one-colour method with a logo placed — the colour count of an uploaded logo cannot be measured, so the customer is asked to confirm |
+| `lowDpi` | An uploaded raster logo is below 300 DPI. Only reported for logos placed in the current session; the envelope does not persist upload metadata |
 
 ## External dependencies at runtime
 
