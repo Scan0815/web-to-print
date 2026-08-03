@@ -128,6 +128,8 @@ export class WtpEditor {
   private viewIssues: Map<string, LogoValidationIssue[]> = new Map();
   /** Source data of every placed logo, so it can be copied to other decorations. */
   private placedLogoData: Map<string, LogoData> = new Map();
+  /** Cached implicit view for the deprecated single-decoration props — see `getViews`. */
+  private legacyViews: ArticleView[] | undefined;
   /** Identifies the article the per-view state belongs to. */
   private loadedArticleKey: string = '';
   /** Serializes canvas transitions — two overlapping switches would flush into the wrong view. */
@@ -166,17 +168,27 @@ export class WtpEditor {
     return views.find(v => v.isDefault === true)?.id ?? views[0].id;
   }
 
-  /** The article's decorations, or a single implicit view for the deprecated single-decoration props. */
+  /**
+   * The article's decorations, or a single implicit view for the deprecated
+   * single-decoration props.
+   *
+   * The implicit view is cached because this runs on every render and, via
+   * `getActivePrintArea`, on every mousemove of a drag. The cache is validated against
+   * the props themselves rather than invalidated from a `@Watch`: there is then no
+   * invalidation path that can be forgotten when another prop joins the fallback.
+   */
   private getViews(): ArticleView[] {
     if (this.views.length > 0) return this.views;
-    return [
-      {
-        id: LEGACY_VIEW_ID,
-        image: this.productImage ?? '',
-        label: 'Default',
-        printArea: this.printArea ?? null,
-      },
-    ];
+
+    const image = this.productImage ?? '';
+    const printArea = this.printArea ?? null;
+    const cached = this.legacyViews?.[0];
+
+    if (cached === undefined || cached.image !== image || cached.printArea !== printArea) {
+      this.legacyViews = [{ id: LEGACY_VIEW_ID, image, label: 'Default', printArea }];
+    }
+
+    return this.legacyViews;
   }
 
   private getActiveView(): ArticleView {
@@ -279,6 +291,9 @@ export class WtpEditor {
 
   @Watch('printArea')
   async onPrintAreaChange() {
+    // The normalized area is cached per view id, so the new one has to replace it —
+    // otherwise `getActivePrintArea` keeps answering with what was resolved at init.
+    await this.resolvePrintAreas();
     // Wait for background to finish loading so canvas dimensions are final
     await this.backgroundReady;
     // Re-constrain existing user objects to the new bounds

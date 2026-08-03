@@ -587,6 +587,39 @@ describe('wtp-editor browser', () => {
     expect(envelope.decorations[0].issues.map(i => i.code)).toEqual([]);
   });
 
+  // The implicit view built from productImage/printArea is cached (it is rebuilt on every
+  // render and on every mousemove of a drag). These pin that the cache cannot go stale.
+  describe('deprecated single-decoration props', () => {
+    it('picks up a changed productImage', async () => {
+      const { root, setProps } = await mount(<wtp-editor></wtp-editor>);
+      const el = root as EditorElement;
+      await el.addText('Hello');
+
+      await setProps({ productImage: LOGO_DATA_URL });
+      await new Promise(r => setTimeout(r, 100));
+
+      const envelope = await el.exportState();
+      expect(envelope.decorations[0].state.productImage).toBe(LOGO_DATA_URL);
+    });
+
+    it('picks up a changed printArea', async () => {
+      const { root, setProps } = await mount(<wtp-editor></wtp-editor>);
+      const el = root as EditorElement;
+      await el.addText('Hello');
+
+      const before = await el.exportState();
+      expect(before.decorations[0].issues.map(i => i.code)).toContain('missingPrintArea');
+
+      await setProps({
+        printArea: { topLeft: { x: 0.25, y: 0.25 }, topRight: { x: 0.75, y: 0.25 }, bottomRight: { x: 0.75, y: 0.75 }, bottomLeft: { x: 0.25, y: 0.75 } },
+      });
+      await new Promise(r => setTimeout(r, 100));
+
+      const after = await el.exportState();
+      expect(after.decorations[0].issues.map(i => i.code)).not.toContain('missingPrintArea');
+    });
+  });
+
   it('exportViewImage rejects an unknown decoration', async () => {
     const { root } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
     await expect((root as EditorElement).exportViewImage('nope')).rejects.toThrow(/unknown view id/);
