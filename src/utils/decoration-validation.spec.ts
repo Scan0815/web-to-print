@@ -26,6 +26,43 @@ describe('validateDecoration', () => {
     expect(validateDecoration({ view: view(), state: state(), bounds: [], printArea: PRINT_AREA, canvasWidth: 400, canvasHeight: 400 })).toEqual([]);
   });
 
+  // A catalog delivers pixel coordinates that have to be normalized against the product
+  // image first. Until that finishes there is no print area to check against — but that is
+  // not the same as the decoration having none, and reporting it as such freezes a wrong
+  // finding into the decoration when the view is left.
+  describe("printArea: 'pending'", () => {
+    const pendingIssues = (overrides: Partial<Parameters<typeof validateDecoration>[0]> = {}) =>
+      validateDecoration({
+        view: view({ impWidthMm: 100, impHeightMm: 100 }),
+        state: state({ texts: [text('#000000')] }),
+        bounds: [{ left: 0, top: 0, width: 400, height: 400 }],
+        printArea: 'pending',
+        canvasWidth: 400,
+        canvasHeight: 400,
+        ...overrides,
+      }).map(i => i.code);
+
+    it('does not claim the decoration has no print area', () => {
+      expect(pendingIssues()).not.toContain('missingPrintArea');
+    });
+
+    it('withholds the geometry findings rather than guessing them', () => {
+      // The bounds above cover the whole canvas, so both would fire against a known area.
+      expect(pendingIssues()).not.toContain('printAreaOverflow');
+      expect(pendingIssues()).not.toContain('sizeOverflow');
+    });
+
+    it('still reports what does not depend on the print area', () => {
+      const withLogo = { view: view({ maxColours: 1 }), state: state({ logos: [{ id: 'l1', dataUrl: 'data:image/png;base64,abc' }] }) };
+      expect(pendingIssues(withLogo)).toContain('singleColourPrint');
+      expect(pendingIssues({ productImageFailed: true })).toContain('productImageUnavailable');
+    });
+
+    it('reports a genuinely absent print area as before', () => {
+      expect(pendingIssues({ printArea: null })).toContain('missingPrintArea');
+    });
+  });
+
   // A 45° print area: the case where a world-space bounding box and the area's own frame
   // disagree. The editor always supplies `sizes`, so this is the path it actually runs.
   const TILTED_AREA: PrintArea = {

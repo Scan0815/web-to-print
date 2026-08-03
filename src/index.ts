@@ -39,7 +39,7 @@ export { exportProductPdf, exportArticlePdf, collectLogoSources, selectPrintable
 export type { RenderedPdfPage } from './utils/pdf-render';
 export { renderPdfFirstPage, isPdfRenderingAvailable } from './utils/pdf-render';
 
-export type { ObjectBounds, ObjectSize, DecorationValidationInput } from './utils/decoration-validation';
+export type { ObjectBounds, ObjectSize, PrintAreaInput, DecorationValidationInput } from './utils/decoration-validation';
 export { validateDecoration } from './utils/decoration-validation';
 
 export { decorationMetaOf } from './utils/decoration-meta';

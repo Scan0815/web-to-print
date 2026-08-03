@@ -213,6 +213,17 @@ export class WtpEditor {
   }
 
   /**
+   * Whether `getActivePrintArea` is answering with the real thing or is still waiting for
+   * the normalization. Validation has to tell the two apart: `undefined` because the
+   * decoration has no print area is a finding, `undefined` because we do not know yet is not.
+   */
+  private isActivePrintAreaKnown(): boolean {
+    const view = this.getActiveView();
+    if (this.resolvedPrintAreas.has(view.id)) return true;
+    return view.printArea == null || !isPixelPrintArea(view.printArea);
+  }
+
+  /**
    * The single way the product image reaches the canvas. Records what is on there, and
    * never rejects: a product image the shop's file server will not serve must leave the
    * customer with a blank canvas and a working toolbar, not an editor where every
@@ -470,6 +481,9 @@ export class WtpEditor {
   /** Export the state of every decoration as a versioned envelope. */
   @Method()
   async exportState(): Promise<ArticleEditorState> {
+    // This envelope gets persisted, so its findings have to be the real ones rather than
+    // the ones skipped while the print areas were still being normalized.
+    await this.printAreasReady;
     return this.persistableArticleState(true);
   }
 
@@ -493,6 +507,10 @@ export class WtpEditor {
     await this.enqueue(async () => {
       if (target.id === this.currentViewId) return;
 
+      // The outgoing view's findings are stored here and never recomputed — it is about to
+      // stop being the active view, and the object bounds go with it. So they have to be
+      // computed against a resolved print area, not a pending one.
+      await this.printAreasReady;
       this.flushActiveView(options.withPreview);
 
       this.currentViewId = target.id;
@@ -769,7 +787,7 @@ export class WtpEditor {
       state,
       bounds,
       sizes,
-      printArea: this.getActivePrintArea() ?? null,
+      printArea: this.isActivePrintAreaKnown() ? this.getActivePrintArea() ?? null : 'pending',
       canvasWidth: this.canvas.getWidth(),
       canvasHeight: this.canvas.getHeight(),
       logoMetadata,

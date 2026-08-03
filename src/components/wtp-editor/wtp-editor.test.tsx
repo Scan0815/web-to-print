@@ -670,6 +670,28 @@ describe('wtp-editor browser', () => {
     expect(envelope.decorations[0].issues.map(i => i.code)).not.toContain('productImageUnavailable');
   });
 
+  // A pixel print area that can never be normalized — no `coordinateImageSize` to fall
+  // back on and an image that will not load. `resolveViewPrintArea` settles on "there is
+  // none", and that has to stay a reported finding: telling "not resolved yet" apart from
+  // "none" must not end up silencing the second.
+  it('still reports a print area that resolves to nothing', async () => {
+    const unresolvable: ArticleView[] = [
+      {
+        id: 'front',
+        image: 'http://127.0.0.1:9/never.png',
+        label: 'Front',
+        printArea: { topLeft: { x: 500, y: 500 }, topRight: { x: 1500, y: 500 }, bottomRight: { x: 1500, y: 1500 }, bottomLeft: { x: 500, y: 1500 } },
+      },
+    ];
+
+    const { root } = await mount(<wtp-editor views={unresolvable} article-id="A-1"></wtp-editor>);
+    const el = root as EditorElement;
+    await el.addText('Hello');
+
+    const envelope = await el.exportState();
+    expect(envelope.decorations[0].issues.map(i => i.code)).toContain('missingPrintArea');
+  });
+
   it('exportViewImage rejects an unknown decoration', async () => {
     const { root } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
     await expect((root as EditorElement).exportViewImage('nope')).rejects.toThrow(/unknown view id/);

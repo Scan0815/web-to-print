@@ -26,6 +26,17 @@ export interface ObjectSize {
   angle: number;
 }
 
+/**
+ * The decoration's print area, or why there is none to check against.
+ *
+ * `'pending'` is not the same as `null`: a catalog delivers pixel coordinates that have to
+ * be normalized against the product image first, and until that finishes the editor does
+ * not yet know the area. Collapsing the two would report `missingPrintArea` for a
+ * decoration that has a perfectly good one — and a finding computed in that window gets
+ * frozen into the decoration when the view is left.
+ */
+export type PrintAreaInput = PrintArea | null | 'pending';
+
 export interface DecorationValidationInput {
   view: ArticleView;
   state: EditorState;
@@ -37,7 +48,7 @@ export interface DecorationValidationInput {
    * as an unrotated box. `bounds` alone remains supported for callers that have nothing else.
    */
   sizes?: ObjectSize[];
-  printArea: PrintArea | null;
+  printArea: PrintAreaInput;
   canvasWidth: number;
   canvasHeight: number;
   /** Upload metadata of the logos placed on this decoration, for the DPI check. */
@@ -63,8 +74,13 @@ const SIZE_TOLERANCE_MM = 0.5;
  */
 export function validateDecoration(input: DecorationValidationInput): LogoValidationIssue[] {
   const issues: LogoValidationIssue[] = [];
-  const { view, state, bounds, printArea, canvasWidth, canvasHeight } = input;
+  const { view, state, bounds, canvasWidth, canvasHeight } = input;
   const labels: DecorationIssueLabels = { ...DEFAULT_DECORATION_ISSUE_LABELS, ...input.labels };
+
+  // Everything below the product-image check needs to know the print area. While it is
+  // still being normalized, saying nothing is the only honest answer — see PrintAreaInput.
+  const pending = input.printArea === 'pending';
+  const printArea: PrintArea | null = input.printArea === 'pending' ? null : input.printArea;
 
   // Reported even for an empty decoration: the editor degrades to a blank canvas rather
   // than failing, so this finding is the only way the host learns the mockup is missing.
@@ -81,32 +97,36 @@ export function validateDecoration(input: DecorationValidationInput): LogoValida
 
   const sizes = input.sizes;
 
-  if (printArea != null && (sizes !== undefined ? sizes.length > 0 : bounds.length > 0)) {
-    const overflowing =
-      sizes !== undefined
-        ? sizes.some(s => escapesPrintAreaFrame(s, printAreaFrame(printArea, canvasWidth, canvasHeight)))
-        : escapesPrintAreaBox(bounds, printArea, canvasWidth, canvasHeight);
+  // Only the geometry findings wait for the print area. The colour and resolution checks
+  // read the state and the upload metadata, so withholding those too would be silence for
+  // no reason.
+  if (!pending) {
+    if (printArea != null && (sizes !== undefined ? sizes.length > 0 : bounds.length > 0)) {
+      const overflowing =
+        sizes !== undefined
+          ? sizes.some(s => escapesPrintAreaFrame(s, printAreaFrame(printArea, canvasWidth, canvasHeight)))
+          : escapesPrintAreaBox(bounds, printArea, canvasWidth, canvasHeight);
 
-    if (overflowing) {
+      if (overflowing) {
+        issues.push({
+          code: 'printAreaOverflow',
+          severity: 'warning',
+          message: labels.printAreaOverflow(view.label),
+        });
+      }
+    }
+
+    if (printArea == null) {
       issues.push({
-        code: 'printAreaOverflow',
+        code: 'missingPrintArea',
         severity: 'warning',
-        message: labels.printAreaOverflow(view.label),
+        message: labels.missingPrintArea(view.label),
       });
     }
+
+    issues.push(...validatePhysicalSize(view, sizes ?? bounds.map(boxToSize), printArea, canvasWidth, canvasHeight, labels));
   }
 
-  if (printArea == null && hasContent) {
-    issues.push({
-      code: 'missingPrintArea',
-      severity: 'warning',
-      message: labels.missingPrintArea(view.label),
-    });
-  }
-
-  issues.push(
-    ...validatePhysicalSize(view, sizes ?? bounds.map(boxToSize), printArea, canvasWidth, canvasHeight, labels),
-  );
   issues.push(...validateColours(view, state, labels));
   issues.push(...validateResolution(view, input.logoMetadata ?? [], input.minDpi ?? DEFAULT_VALIDATION_CONFIG.minDpi, labels));
 

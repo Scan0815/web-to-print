@@ -555,12 +555,21 @@ In implementation order; each ends green.
     and the decoration reports `productImageUnavailable` so the host still finds out:
     `state.productImage` names an image that is not on the canvas, and that must not be
     silent.
-10b. **A view's validation findings are computed when the view is left, and not revisited.**
-    If a print area were still resolving at that moment, a stale `missingPrintArea` would
-    be frozen into that decoration. `addLogo`/`addText` await `printAreasReady`, so a view
-    cannot hold content before its area is resolved — the window is closed by construction
-    rather than by a guard. It remains open in theory for content arriving via
-    `loadState`/`initialState` followed by an immediate switch; not reproduced, not gated.
+10b. **Validation tells "no print area" apart from "not resolved yet".** A catalog ships
+    pixel coordinates that are normalized against the product image first, and content can
+    reach a decoration without waiting for that: `addLogo`/`addText` await the
+    normalization, `loadState` does not. Validating in that window reported
+    `missingPrintArea` for a decoration that has a perfectly good one — and since a view's
+    findings are computed when it is left and never recomputed, the wrong finding was
+    frozen in. `DecorationValidationInput.printArea` therefore accepts `'pending'`, which
+    withholds the geometry findings; the colour and resolution checks do not depend on the
+    print area and still run. `exportState()` and the flush on view exit additionally wait
+    for the normalization, so what gets persisted is the complete set rather than the
+    withheld one.
+
+    The editor-level race itself is not pinned by a test: how wide the window is depends on
+    how fast the browser fails an image load, and in a full test run it closes before the
+    assertion. The distinction that fixes it is unit-tested instead.
 10c. **The remembered image route expires for the tainted fallback only.** `cors` and
     `proxy` retire themselves by throwing when they stop working; `plain` never throws, it
     just taints the canvas and blocks every export. Without an expiry one CORS failure
