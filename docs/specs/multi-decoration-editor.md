@@ -549,7 +549,19 @@ In implementation order; each ends green.
    session.** The v2 envelope persists `LogoSource` (§3.2) but not `LogoMetadata`, so a
    reloaded cart has no DPI to judge. Persisting metadata would be a v3 concern; the
    finding is simply absent rather than wrong.
-10. **Both geometry checks work in the print area's own frame**, not against its
+10a. **A product image that fails to load degrades instead of throwing.** Everything that
+    waits on `backgroundReady` — `addLogo`, `addText` — used to reject with Fabric's load
+    error, so one unreachable URL made the editor unusable. The load now never rejects,
+    and the decoration reports `productImageUnavailable` so the host still finds out:
+    `state.productImage` names an image that is not on the canvas, and that must not be
+    silent.
+10b. **A view's validation findings are computed when the view is left, and not revisited.**
+    If a print area were still resolving at that moment, a stale `missingPrintArea` would
+    be frozen into that decoration. `addLogo`/`addText` await `printAreasReady`, so a view
+    cannot hold content before its area is resolved — the window is closed by construction
+    rather than by a guard. It remains open in theory for content arriving via
+    `loadState`/`initialState` followed by an immediate switch; not reproduced, not gated.
+11. **Both geometry checks work in the print area's own frame**, not against its
     axis-aligned bounding box. A print area is printed straight and the editor rotates
     elements to match a tilted one, so a box comparison reports up to 141% of the real
     size — it would warn on every element the editor itself just fitted, and contradict

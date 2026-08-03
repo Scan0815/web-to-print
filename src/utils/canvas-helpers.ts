@@ -89,6 +89,12 @@ export function clearImageStrategyCache(): void {
   imageStrategies.clear();
 }
 
+/** Removes the product image, leaving the customer's objects in place. */
+export function clearCanvasBackground(canvas: StaticCanvas): void {
+  const existing = canvas.getObjects().find(isBackgroundObject);
+  if (existing !== undefined) canvas.remove(existing);
+}
+
 export async function setCanvasBackground(
   canvas: StaticCanvas,
   imageUrl: string,
@@ -136,11 +142,7 @@ export async function setCanvasBackground(
     excludeFromExport: true,
   });
 
-  // Remove existing background image if any
-  const objects = canvas.getObjects();
-  const existingBg = objects.find(isBackgroundObject);
-  if (existingBg !== undefined) canvas.remove(existingBg);
-
+  clearCanvasBackground(canvas);
   markAsBackground(img);
   canvas.insertAt(0, img);
   canvas.renderAll();

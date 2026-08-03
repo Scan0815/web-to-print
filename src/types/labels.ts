@@ -56,6 +56,8 @@ export interface DecorationIssueLabels {
   sizeOverflow: (decoration: string, usedWidthMm: number, usedHeightMm: number, maxWidthMm: number, maxHeightMm: number) => string;
   /** An uploaded logo's resolution is below the recommended print threshold. */
   lowDpi: (decoration: string, fileName: string, dpi: number, minDpi: number) => string;
+  /** The decoration's product image could not be loaded, so there is no mockup. */
+  productImageUnavailable: (decoration: string) => string;
 }
 
 export const DEFAULT_DECORATION_ISSUE_LABELS: DecorationIssueLabels = {
@@ -66,6 +68,7 @@ export const DEFAULT_DECORATION_ISSUE_LABELS: DecorationIssueLabels = {
   sizeOverflow: (decoration, usedWidthMm, usedHeightMm, maxWidthMm, maxHeightMm) =>
     `An element on "${decoration}" measures ${usedWidthMm} × ${usedHeightMm} mm, above the printable ${maxWidthMm} × ${maxHeightMm} mm.`,
   lowDpi: (decoration, fileName, dpi, minDpi) => `"${fileName}" on "${decoration}" has ${dpi} DPI, below the recommended ${minDpi} DPI for printing.`,
+  productImageUnavailable: decoration => `The product image for "${decoration}" could not be loaded, so the design cannot be shown in place.`,
 };
 
 export interface EditorLabels {

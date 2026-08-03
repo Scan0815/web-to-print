@@ -44,6 +44,8 @@ export interface DecorationValidationInput {
   logoMetadata?: LogoMetadata[];
   /** Recommended print resolution; defaults to the shared validation config. */
   minDpi?: number;
+  /** The view's product image failed to load, so the canvas has no mockup under the design. */
+  productImageFailed?: boolean;
   /** Overrides for the finding messages; missing keys fall back to English defaults. */
   labels?: Partial<DecorationIssueLabels>;
 }
@@ -63,6 +65,16 @@ export function validateDecoration(input: DecorationValidationInput): LogoValida
   const issues: LogoValidationIssue[] = [];
   const { view, state, bounds, printArea, canvasWidth, canvasHeight } = input;
   const labels: DecorationIssueLabels = { ...DEFAULT_DECORATION_ISSUE_LABELS, ...input.labels };
+
+  // Reported even for an empty decoration: the editor degrades to a blank canvas rather
+  // than failing, so this finding is the only way the host learns the mockup is missing.
+  if (input.productImageFailed === true) {
+    issues.push({
+      code: 'productImageUnavailable',
+      severity: 'warning',
+      message: labels.productImageUnavailable(view.label),
+    });
+  }
 
   const hasContent = state.logos.length > 0 || state.texts.length > 0;
   if (!hasContent) return issues;

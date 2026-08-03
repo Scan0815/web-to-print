@@ -264,6 +264,7 @@ render your own text:
 | `colourLimit` | More text colours than `maxColours` allows. Skipped for `'full color'` |
 | `singleColourPrint` | A one-colour method with a logo placed — the colour count of an uploaded logo cannot be measured, so the customer is asked to confirm |
 | `lowDpi` | An uploaded raster logo is below 300 DPI. Only reported for logos placed in the current session; the envelope does not persist upload metadata |
+| `productImageUnavailable` | The decoration's product image could not be loaded. The editor stays usable on a blank canvas, so this finding is how you learn there is no mockup behind the design |
 
 ## External dependencies at runtime
 

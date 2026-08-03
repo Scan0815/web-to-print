@@ -18,6 +18,7 @@ import {
 } from '../../types';
 import {
   setCanvasBackground,
+  clearCanvasBackground,
   generateObjectId,
   upscaleSvgDataUrl,
   fitLogoToPrintArea,
@@ -118,6 +119,10 @@ export class WtpEditor {
   private previewUrlMap: Map<string, string> = new Map();
   /** Resolves when the current background image has been loaded and the canvas resized. */
   private backgroundReady: Promise<void> = Promise.resolve();
+  /** The product image actually on the canvas, so a changed view image can be spotted. */
+  private canvasImage: string = '';
+  /** Product image URLs that would not load, keyed by URL so a retry can clear them. */
+  private failedImages: Set<string> = new Set();
   /** Canvas state of every view that has been left at least once. */
   private viewStates: Map<string, EditorState> = new Map();
   /** Print areas normalized to 0-1, keyed by view id. */
@@ -207,6 +212,37 @@ export class WtpEditor {
     return view.printArea ?? undefined;
   }
 
+  /**
+   * The single way the product image reaches the canvas. Records what is on there, and
+   * never rejects: a product image the shop's file server will not serve must leave the
+   * customer with a blank canvas and a working toolbar, not an editor where every
+   * `addLogo` and `addText` throws the load error back at the host.
+   */
+  private setBackground(image: string): Promise<void> {
+    if (this.canvas === undefined) return Promise.resolve();
+    this.canvasImage = image;
+
+    if (image === '') {
+      clearCanvasBackground(this.canvas);
+      this.failedImages.delete(image);
+      this.backgroundReady = Promise.resolve();
+      return this.backgroundReady;
+    }
+
+    this.backgroundReady = setCanvasBackground(this.canvas, image).then(
+      () => {
+        this.failedImages.delete(image);
+      },
+      () => {
+        // Degrading beats throwing, but it must not be silent: the envelope would
+        // otherwise name a product image that is not on the canvas and say nothing.
+        // The host learns about it through the decoration's `issues`.
+        this.failedImages.add(image);
+      },
+    );
+    return this.backgroundReady;
+  }
+
   private getActiveImage(): string {
     return this.getActiveView().image;
   }
@@ -220,7 +256,7 @@ export class WtpEditor {
     if (this.canvas !== undefined && this.productImage !== undefined) {
       // Reset to bounding box before setCanvasBackground auto-sizes
       this.canvas.setDimensions({ width: this.width, height: this.height });
-      this.backgroundReady = setCanvasBackground(this.canvas, this.productImage);
+      void this.setBackground(this.productImage);
     }
   }
 
@@ -231,7 +267,7 @@ export class WtpEditor {
       this.canvas.setDimensions({ width: this.width, height: this.height });
       const image = this.getActiveImage();
       if (image !== '') {
-        this.backgroundReady = setCanvasBackground(this.canvas, image);
+        void this.setBackground(image);
       }
       this.canvas.renderAll();
     }
@@ -270,6 +306,15 @@ export class WtpEditor {
       void this.enqueue(async () => {
         await this.activateView(this.getActiveView());
         await this.placeInitialLogo();
+      });
+    } else if (this.getActiveImage() !== this.canvasImage) {
+      // Same article, but this decoration's product image was swapped — a colour variant,
+      // or a late-arriving image URL. Only the background is replaced: re-activating the
+      // view would throw away whatever the customer has placed on it.
+      void this.enqueue(async () => {
+        this.canvas?.setDimensions({ width: this.width, height: this.height });
+        await this.setBackground(this.getActiveImage());
+        this.canvas?.renderAll();
       });
     }
 
@@ -646,10 +691,7 @@ export class WtpEditor {
     this.canvas.setDimensions({ width: this.width, height: this.height });
     this.canvas.backgroundColor = '#ffffff';
 
-    if (view.image !== '') {
-      this.backgroundReady = setCanvasBackground(this.canvas, view.image);
-      await this.backgroundReady;
-    }
+    await this.setBackground(view.image);
     this.canvas.renderAll();
   }
 
@@ -731,6 +773,7 @@ export class WtpEditor {
       canvasWidth: this.canvas.getWidth(),
       canvasHeight: this.canvas.getHeight(),
       logoMetadata,
+      productImageFailed: this.failedImages.has(this.getActiveImage()),
       labels: this.getLabels().issues,
     });
   }
@@ -790,8 +833,7 @@ export class WtpEditor {
 
     // Restore product image after JSON load so it inserts at index 0
     if (state.productImage !== null && state.productImage !== undefined && state.productImage !== '') {
-      this.backgroundReady = setCanvasBackground(this.canvas, state.productImage);
-      await this.backgroundReady;
+      await this.setBackground(state.productImage);
     }
 
     this.canvas.renderAll();
@@ -804,6 +846,11 @@ export class WtpEditor {
     this.canvas.discardActiveObject();
     for (const obj of this.canvas.getObjects().slice()) {
       this.canvas.remove(obj);
+    }
+    // Only this decoration's logos: the map is article-wide, and the other decorations
+    // still need theirs for `applyLogoToAllViews` and the export's `source` lookup.
+    for (const id of this.objectMap.keys()) {
+      this.placedLogoData.delete(id);
     }
     this.objectMap.clear();
     this.previewUrlMap.clear();
@@ -933,7 +980,7 @@ export class WtpEditor {
       }
     } else {
       if (this.getActiveImage() !== '') {
-        this.backgroundReady = setCanvasBackground(this.canvas, this.getActiveImage());
+        void this.setBackground(this.getActiveImage());
       }
       void this.enqueue(() => this.placeInitialLogo());
     }

@@ -6,6 +6,12 @@ import type { LogoData, LogoMetadata } from '../../types/logo';
 const LOGO_DATA_URL =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAFElEQVR42mNkYPhfz0AEYBxVSF+FAP5FDvcfRYWgAAAAAElFTkSuQmCC';
 
+/** 40x40 blue PNG and an 80x20 red one — different aspect ratios, so a background swap is observable. */
+const SQUARE_PNG =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAALElEQVR4nO3NsQkAAAjAsP7/tD4huASyp5onYrFYLBaLxWKxWCwWi8Vi8ZkFNsE6Gz5864YAAAAASUVORK5CYII=';
+const WIDE_PNG =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAAAUCAIAAACVui2AAAAANElEQVR4nO3PQQ0AMBDDsPInvbG4PmopAOK8ZKr+ATAwMDAwMPBM/QNgYGBgYGDgmfoHx31lvzobljYGDgAAAABJRU5ErkJggg==';
+
 const LOGO_METADATA: LogoMetadata = {
   format: 'png',
   width: 4,
@@ -44,6 +50,7 @@ type EditorElement = HTMLElement & {
   activeViewId: string;
   exportImage: (format: string) => Promise<string>;
   exportViewImage: (viewId: string, format?: string, quality?: number) => Promise<string>;
+  exportImageHighRes: (format?: string, quality?: number, multiplier?: number) => Promise<{ dataUrl: string; width: number; height: number }>;
   getObjects: () => Promise<{ id: string; type: string }[]>;
   views: ArticleView[];
   articleId: string;
@@ -618,6 +625,49 @@ describe('wtp-editor browser', () => {
       const after = await el.exportState();
       expect(after.decorations[0].issues.map(i => i.code)).not.toContain('missingPrintArea');
     });
+  });
+
+  it('swaps the canvas background when a view image changes under the same article', async () => {
+    // A colour variant swaps the product photo but keeps the decoration ids, so the
+    // article key is unchanged and no view reset happens. The two images have different
+    // aspect ratios, and `contain` sizes the canvas to the image — so the canvas
+    // proportions say which one is actually on it.
+    const { root, setProps } = await mount(<wtp-editor views={[{ id: 'front', image: SQUARE_PNG, label: 'Front', printArea: null }]} article-id="A-1"></wtp-editor>);
+    const el = root as EditorElement;
+    await new Promise(r => setTimeout(r, 250));
+    await el.addText('Keep me');
+
+    await setProps({ views: [{ id: 'front', image: WIDE_PNG, label: 'Front', printArea: null }] });
+    await new Promise(r => setTimeout(r, 300));
+
+    const canvas = await el.exportImageHighRes('png', 1, 1);
+    expect(canvas.width / canvas.height).toBeCloseTo(4, 1);
+    // The customer's work survives the swap — only the background is replaced.
+    expect((await el.getObjects()).length).toBe(1);
+  });
+
+  it('stays usable when the product image cannot be loaded', async () => {
+    const { root } = await mount(<wtp-editor views={[{ id: 'front', image: 'http://127.0.0.1:9/never.png', label: 'Front', printArea: null }]} article-id="A-1"></wtp-editor>);
+    const el = root as EditorElement;
+    await new Promise(r => setTimeout(r, 400));
+
+    // A product image the file server will not serve must not take the toolbar with it.
+    await el.addText('Still works');
+    expect((await el.getObjects()).length).toBe(1);
+
+    // But it must not be silent either — the envelope names an image that is not on the
+    // canvas, so the host has to be able to find that out.
+    const envelope = await el.exportState();
+    expect(envelope.decorations[0].issues.map(i => i.code)).toContain('productImageUnavailable');
+  });
+
+  it('reports no image problem once a product image loads', async () => {
+    const { root } = await mount(<wtp-editor views={[{ id: 'front', image: SQUARE_PNG, label: 'Front', printArea: null }]} article-id="A-1"></wtp-editor>);
+    const el = root as EditorElement;
+    await new Promise(r => setTimeout(r, 250));
+
+    const envelope = await el.exportState();
+    expect(envelope.decorations[0].issues.map(i => i.code)).not.toContain('productImageUnavailable');
   });
 
   it('exportViewImage rejects an unknown decoration', async () => {
