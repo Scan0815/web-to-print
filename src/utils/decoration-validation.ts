@@ -1,7 +1,7 @@
 import type { ArticleView, EditorState, PrintArea } from '../types/editor';
 import { DEFAULT_VALIDATION_CONFIG, type LogoMetadata, type LogoValidationIssue } from '../types/logo';
 import { DEFAULT_DECORATION_ISSUE_LABELS, type DecorationIssueLabels } from '../types/labels';
-import { printAreaPixelSize, printAreaToPixelCorners } from './canvas-helpers';
+import { printAreaFrame, printAreaToPixelCorners, projectOntoFrame, toFrameLocal, type PrintAreaFrame } from './canvas-helpers';
 
 /** Axis-aligned bounds of a placed object, in canvas pixels. */
 export interface ObjectBounds {
@@ -72,7 +72,7 @@ export function validateDecoration(input: DecorationValidationInput): LogoValida
   if (printArea != null && (sizes !== undefined ? sizes.length > 0 : bounds.length > 0)) {
     const overflowing =
       sizes !== undefined
-        ? sizes.some(s => escapesPrintAreaFrame(s, printArea, canvasWidth, canvasHeight))
+        ? sizes.some(s => escapesPrintAreaFrame(s, printAreaFrame(printArea, canvasWidth, canvasHeight)))
         : escapesPrintAreaBox(bounds, printArea, canvasWidth, canvasHeight);
 
     if (overflowing) {
@@ -114,31 +114,13 @@ function boxToSize(b: ObjectBounds): ObjectSize {
  * is inside it even though its world-space box is not. Comparing boxes would flag every
  * element the clamp just held in place.
  */
-function escapesPrintAreaFrame(size: ObjectSize, printArea: PrintArea, canvasWidth: number, canvasHeight: number): boolean {
-  const { width: areaW, height: areaH } = printAreaPixelSize(printArea, canvasWidth, canvasHeight);
-  const angle = printAreaAngle(printArea, canvasWidth, canvasHeight);
-  const cos = Math.cos(angle);
-  const sin = Math.sin(angle);
-
-  const [tl, tr, br, bl] = printAreaToPixelCorners(printArea, canvasWidth, canvasHeight);
-  const cx = (tl.x + tr.x + br.x + bl.x) / 4;
-  const cy = (tl.y + tr.y + br.y + bl.y) / 4;
-
-  // Object half-size projected onto the area's axes.
-  const relAngle = (size.angle * Math.PI) / 180 - angle;
-  const relCos = Math.abs(Math.cos(relAngle));
-  const relSin = Math.abs(Math.sin(relAngle));
-  const halfW = (size.width * relCos + size.height * relSin) / 2;
-  const halfH = (size.width * relSin + size.height * relCos) / 2;
-
-  // Object centre in the area's local frame.
-  const relX = size.centerX - cx;
-  const relY = size.centerY - cy;
-  const localX = relX * cos + relY * sin;
-  const localY = -relX * sin + relY * cos;
+function escapesPrintAreaFrame(size: ObjectSize, frame: PrintAreaFrame): boolean {
+  const projected = projectOntoFrame(size, frame);
+  const local = toFrameLocal(size.centerX, size.centerY, frame);
 
   return (
-    Math.abs(localX) + halfW > areaW / 2 + OVERFLOW_TOLERANCE_PX || Math.abs(localY) + halfH > areaH / 2 + OVERFLOW_TOLERANCE_PX
+    Math.abs(local.x) + projected.halfW > frame.halfW + OVERFLOW_TOLERANCE_PX ||
+    Math.abs(local.y) + projected.halfH > frame.halfH + OVERFLOW_TOLERANCE_PX
   );
 }
 
@@ -176,27 +158,23 @@ function validatePhysicalSize(
   const { impWidthMm, impHeightMm } = view;
   if (impWidthMm === undefined || impHeightMm === undefined || printArea == null || sizes.length === 0) return [];
 
-  const area = printAreaPixelSize(printArea, canvasWidth, canvasHeight);
-  if (area.width <= 0 || area.height <= 0) return [];
-
-  const mmPerPxX = impWidthMm / area.width;
-  const mmPerPxY = impHeightMm / area.height;
-
   // A tilted print area is printed straight; the editor rotates the logo to match it.
   // Measuring in the area's own frame keeps a perfectly fitted logo at exactly 100%,
   // where a world-space bounding box would report up to 141% and warn every time.
-  const frameAngle = printAreaAngle(printArea, canvasWidth, canvasHeight);
+  const frame = printAreaFrame(printArea, canvasWidth, canvasHeight);
+  if (frame.halfW <= 0 || frame.halfH <= 0) return [];
+
+  const mmPerPxX = impWidthMm / (frame.halfW * 2);
+  const mmPerPxY = impHeightMm / (frame.halfH * 2);
 
   // Report the worst offender rather than one finding per object — the customer fixes
   // the oversized element, then re-validates.
   let widthMm = 0;
   let heightMm = 0;
   for (const size of sizes) {
-    const relAngle = (size.angle * Math.PI) / 180 - frameAngle;
-    const cos = Math.abs(Math.cos(relAngle));
-    const sin = Math.abs(Math.sin(relAngle));
-    widthMm = Math.max(widthMm, (size.width * cos + size.height * sin) * mmPerPxX);
-    heightMm = Math.max(heightMm, (size.width * sin + size.height * cos) * mmPerPxY);
+    const projected = projectOntoFrame(size, frame);
+    widthMm = Math.max(widthMm, projected.halfW * 2 * mmPerPxX);
+    heightMm = Math.max(heightMm, projected.halfH * 2 * mmPerPxY);
   }
 
   if (widthMm <= impWidthMm + SIZE_TOLERANCE_MM && heightMm <= impHeightMm + SIZE_TOLERANCE_MM) return [];
@@ -212,12 +190,6 @@ function validatePhysicalSize(
 
 function round1(value: number): number {
   return Math.round(value * 10) / 10;
-}
-
-/** Rotation of the print area in radians, taken from its bottom edge like the placement math. */
-function printAreaAngle(printArea: PrintArea, canvasWidth: number, canvasHeight: number): number {
-  const [, , br, bl] = printAreaToPixelCorners(printArea, canvasWidth, canvasHeight);
-  return Math.atan2(br.y - bl.y, br.x - bl.x);
 }
 
 /**

@@ -25,6 +25,7 @@ export type {
   LogoSource,
   CoordinateImageSize,
   MaxColours,
+  DecorationMeta,
   DecorationState,
   ArticleEditorState,
 } from './types';
@@ -38,7 +39,9 @@ export { exportProductPdf, exportArticlePdf, collectLogoSources, selectPrintable
 export type { RenderedPdfPage } from './utils/pdf-render';
 export { renderPdfFirstPage, isPdfRenderingAvailable } from './utils/pdf-render';
 
-export type { ObjectBounds, DecorationValidationInput } from './utils/decoration-validation';
+export type { ObjectBounds, ObjectSize, DecorationValidationInput } from './utils/decoration-validation';
 export { validateDecoration } from './utils/decoration-validation';
+
+export { decorationMetaOf } from './utils/decoration-meta';
 
 export type * from './components.d.ts';

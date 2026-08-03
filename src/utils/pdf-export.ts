@@ -1,6 +1,7 @@
 import type { jsPDF as JsPDFType } from 'jspdf';
 import { LogoData, LogoMetadata, Article, PrintArea, ArticleEditorState, DecorationState, ArticleView } from '../types';
 import { printAreaToPixelCorners, upscaleSvgDataUrl } from './canvas-helpers';
+import { decorationMetaOf } from './decoration-meta';
 import { computeContainFit } from './html-render-helpers';
 import { loadImageDimensions, resolveViewPrintArea } from './print-area';
 
@@ -186,11 +187,7 @@ export async function exportProductPdf(
   const decoration: DecorationState = {
     viewId: view.id,
     label: view.label,
-    ...(view.impMethod !== undefined ? { impMethod: view.impMethod } : {}),
-    ...(view.impLocation !== undefined ? { impLocation: view.impLocation } : {}),
-    ...(view.impWidthMm !== undefined ? { impWidthMm: view.impWidthMm } : {}),
-    ...(view.impHeightMm !== undefined ? { impHeightMm: view.impHeightMm } : {}),
-    ...(view.maxColours !== undefined ? { maxColours: view.maxColours } : {}),
+    ...decorationMetaOf(view),
     status: 'designed',
     state: {
       fabricJson: '',

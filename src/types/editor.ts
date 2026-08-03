@@ -82,8 +82,21 @@ export interface CoordinateImageSize {
 /** Number of printable colours, or 'full color' for digital/sublimation printing. */
 export type MaxColours = number | 'full color';
 
+/**
+ * What the catalog says about how a decoration is printed. Named as one thing because it
+ * travels as one thing: from `ArticleView` into `DecorationState`, and on into the PDF's
+ * decoration page. Every field is optional — shop payloads vary in what they declare.
+ */
+export interface DecorationMeta {
+  impMethod?: string;
+  impLocation?: string;
+  impWidthMm?: number;
+  impHeightMm?: number;
+  maxColours?: MaxColours;
+}
+
 /** One decoration option (Veredelung) of an article. */
-export interface ArticleView {
+export interface ArticleView extends DecorationMeta {
   /**
    * Stable decoration id supplied by the host — in the shop payload this is the
    * `printCodeSKU`, which doubles as the key of the purchasable decoration.
@@ -97,12 +110,8 @@ export interface ArticleView {
   coordinateImageSize?: CoordinateImageSize;
   /** Pre-selects this decoration when the editor opens. Falls back to the first view. */
   isDefault?: boolean;
-  impMethod?: string;
-  impLocation?: string;
-  impWidthMm?: number;
-  impHeightMm?: number;
+  /** Round print areas. Stays on the view: the PDF reads it, the envelope does not carry it. */
   impDiameterMm?: number;
-  maxColours?: MaxColours;
 }
 
 export interface Article {
@@ -113,15 +122,10 @@ export interface Article {
 }
 
 /** State of a single decoration inside the article-level envelope. */
-export interface DecorationState {
+export interface DecorationState extends DecorationMeta {
   /** Matches ArticleView.id. */
   viewId: string;
   label: string;
-  impMethod?: string;
-  impLocation?: string;
-  impWidthMm?: number;
-  impHeightMm?: number;
-  maxColours?: MaxColours;
   /** 'designed' iff the canvas holds at least one logo or text object. */
   status: 'empty' | 'designed';
   state: EditorState;

@@ -12,6 +12,7 @@ export type {
   Article,
   CoordinateImageSize,
   MaxColours,
+  DecorationMeta,
   DecorationState,
   ArticleEditorState,
 } from './editor';

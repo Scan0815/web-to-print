@@ -16,7 +16,20 @@ import {
   LogoMetadata,
   Article,
 } from '../../types';
-import { setCanvasBackground, generateObjectId, upscaleSvgDataUrl, fitLogoToPrintArea, printAreaToPixelCorners } from '../../utils/canvas-helpers';
+import {
+  setCanvasBackground,
+  generateObjectId,
+  upscaleSvgDataUrl,
+  fitLogoToPrintArea,
+  printAreaToPixelCorners,
+  printAreaFrame,
+  clampToPrintAreaFrame,
+  drawPrintAreaOverlay,
+  getObjectId,
+  setObjectId,
+  type PrintAreaFrame,
+} from '../../utils/canvas-helpers';
+import { decorationMetaOf } from '../../utils/decoration-meta';
 import { isPixelPrintArea, resolveViewPrintArea } from '../../utils/print-area';
 import { validateDecoration, type ObjectBounds, type ObjectSize } from '../../utils/decoration-validation';
 import { exportArticlePdf, selectPrintableDecorations, type PdfExportConfig } from '../../utils/pdf-export';
@@ -271,7 +284,7 @@ export class WtpEditor {
     // Re-constrain existing user objects to the new bounds
     if (this.canvas !== undefined) {
       for (const obj of this.objectMap.values()) {
-        this.clampObjectToPrintArea(obj);
+        this.clampToActivePrintArea(obj);
       }
       this.canvas.renderAll();
     }
@@ -323,7 +336,7 @@ export class WtpEditor {
       });
     }
 
-    (img as FabricObject & { _objectId?: string })._objectId = id;
+    setObjectId(img, id);
     this.objectMap.set(id, img);
     this.placedLogoData.set(id, logoData);
     if (logoData.previewDataUrl !== undefined) {
@@ -369,7 +382,7 @@ export class WtpEditor {
       fill: options?.fill ?? '#000000',
     });
 
-    (iText as FabricObject & { _objectId?: string })._objectId = id;
+    setObjectId(iText, id);
     this.objectMap.set(id, iText);
 
     this.canvas.add(iText);
@@ -397,7 +410,7 @@ export class WtpEditor {
   /** Export the state of every decoration as a versioned envelope. */
   @Method()
   async exportState(): Promise<ArticleEditorState> {
-    return this.buildArticleState(true);
+    return this.persistableArticleState(true);
   }
 
   /** Switch to another decoration, storing the current one first. */
@@ -755,10 +768,8 @@ export class WtpEditor {
       await this.canvas.loadFromJSON(state.fabricJson);
       // Rebuild object map from loaded objects
       for (const obj of this.canvas.getObjects()) {
-        const id = (obj as FabricObject & { _objectId?: string })._objectId;
-        if (id !== undefined && id !== '') {
-          this.objectMap.set(id, obj);
-        }
+        const id = getObjectId(obj);
+        if (id !== undefined) this.objectMap.set(id, obj);
       }
     }
 
@@ -885,11 +896,11 @@ export class WtpEditor {
     });
 
     this.canvas.on('object:moving', e => {
-      if (e.target !== undefined) this.clampObjectToPrintArea(e.target);
+      if (e.target !== undefined) this.clampToActivePrintArea(e.target);
     });
 
     this.canvas.on('object:scaling', e => {
-      if (e.target !== undefined) this.clampObjectToPrintArea(e.target);
+      if (e.target !== undefined) this.clampToActivePrintArea(e.target);
     });
 
     this.canvas.on('after:render', () => this.drawDebugOverlay());
@@ -923,161 +934,25 @@ export class WtpEditor {
     const printArea = this.getActivePrintArea();
     if (printArea === undefined) return;
 
-    const ctx = this.canvas.getContext() as CanvasRenderingContext2D;
-    const corners = printAreaToPixelCorners(printArea, this.canvas.getWidth(), this.canvas.getHeight());
-
-    ctx.save();
-
-    // Draw the quad outline (actual print area shape)
-    ctx.beginPath();
-    ctx.moveTo(corners[0].x, corners[0].y);
-    ctx.lineTo(corners[1].x, corners[1].y);
-    ctx.lineTo(corners[2].x, corners[2].y);
-    ctx.lineTo(corners[3].x, corners[3].y);
-    ctx.closePath();
-    ctx.fillStyle = 'rgba(37, 99, 235, 0.08)';
-    ctx.fill();
-    ctx.strokeStyle = '#2563eb';
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([6, 4]);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // Draw corner dots
-    for (const c of corners) {
-      ctx.beginPath();
-      ctx.arc(c.x, c.y, 4, 0, Math.PI * 2);
-      ctx.fillStyle = '#2563eb';
-      ctx.fill();
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-    }
-
-    // Draw axis-aligned bounding box (used for clamping)
-    const xs = corners.map(c => c.x);
-    const ys = corners.map(c => c.y);
-    const minX = Math.min(...xs);
-    const maxX = Math.max(...xs);
-    const minY = Math.min(...ys);
-    const maxY = Math.max(...ys);
-    ctx.strokeStyle = 'rgba(220, 38, 38, 0.5)';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([3, 3]);
-    ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
-    ctx.setLineDash([]);
-
-    // Corner labels
-    ctx.font = '10px monospace';
-    ctx.fillStyle = '#2563eb';
-    const labels = ['TL', 'TR', 'BR', 'BL'];
-    for (let i = 0; i < 4; i++) {
-      ctx.fillText(labels[i], corners[i].x + 6, corners[i].y - 6);
-    }
-
-    ctx.restore();
+    drawPrintAreaOverlay(this.canvas.getContext() as CanvasRenderingContext2D, printArea, this.canvas.getWidth(), this.canvas.getHeight());
   }
 
-  /**
-   * Get the print area's rotated frame: center, local axes, and dimensions
-   * along those axes. This lets us clamp in the print area's own coordinate
-   * system instead of using an axis-aligned bounding box.
-   */
-  private getPrintAreaFrame(): { cx: number; cy: number; halfW: number; halfH: number; cos: number; sin: number } | null {
+  /** The active print area's own coordinate system, or null when it has none. */
+  private getPrintAreaFrame(): PrintAreaFrame | null {
     const printArea = this.getActivePrintArea();
     if (printArea === undefined || this.canvas === undefined) return null;
-    const corners = printAreaToPixelCorners(printArea, this.canvas.getWidth(), this.canvas.getHeight());
-    const [tl, tr, br, bl] = corners;
-
-    const cx = (tl.x + tr.x + br.x + bl.x) / 4;
-    const cy = (tl.y + tr.y + br.y + bl.y) / 4;
-
-    const topLen = Math.hypot(tr.x - tl.x, tr.y - tl.y);
-    const botLen = Math.hypot(br.x - bl.x, br.y - bl.y);
-    const leftLen = Math.hypot(bl.x - tl.x, bl.y - tl.y);
-    const rightLen = Math.hypot(br.x - tr.x, br.y - tr.y);
-
-    const halfW = (topLen + botLen) / 4;
-    const halfH = (leftLen + rightLen) / 4;
-
-    // Angle from bottom edge (same as fitLogoToPrintArea)
-    const angle = Math.atan2(br.y - bl.y, br.x - bl.x);
-    return { cx, cy, halfW, halfH, cos: Math.cos(angle), sin: Math.sin(angle) };
+    return printAreaFrame(printArea, this.canvas.getWidth(), this.canvas.getHeight());
   }
 
-  private clampObjectToPrintArea(obj: FabricObject) {
+  private clampToActivePrintArea(obj: FabricObject) {
     const frame = this.getPrintAreaFrame();
-    if (frame === null) return;
-
-    // Skip background objects
-    if ((obj as FabricObject & { _isBackground?: boolean })._isBackground === true) return;
-
-    const { cx, cy, halfW, halfH, cos, sin } = frame;
-
-    // Use the actual visual size of the object (not getBoundingRect which includes control handles)
-    const objW = (obj.width ?? 0) * (obj.scaleX ?? 1);
-    const objH = (obj.height ?? 0) * (obj.scaleY ?? 1);
-
-    // Relative angle between object and print area frame
-    const objAngleRad = ((obj.angle ?? 0) * Math.PI) / 180;
-    const frameAngle = Math.atan2(sin, cos);
-    const relAngle = objAngleRad - frameAngle;
-    const relCos = Math.abs(Math.cos(relAngle));
-    const relSin = Math.abs(Math.sin(relAngle));
-
-    // Object's half-size projected onto the print area's local axes
-    let projHalfW = (objW * relCos + objH * relSin) / 2;
-    let projHalfH = (objW * relSin + objH * relCos) / 2;
-
-    // Cap scale if the object exceeds the print area in its local frame
-    if (projHalfW > halfW || projHalfH > halfH) {
-      const scaleRatio = Math.min(halfW / Math.max(projHalfW, 1), halfH / Math.max(projHalfH, 1));
-      obj.set({
-        scaleX: (obj.scaleX ?? 1) * scaleRatio,
-        scaleY: (obj.scaleY ?? 1) * scaleRatio,
-      });
-      obj.setCoords();
-
-      // Recompute projected sizes after scaling
-      const newObjW = (obj.width ?? 0) * (obj.scaleX ?? 1);
-      const newObjH = (obj.height ?? 0) * (obj.scaleY ?? 1);
-      projHalfW = (newObjW * relCos + newObjH * relSin) / 2;
-      projHalfH = (newObjW * relSin + newObjH * relCos) / 2;
-    }
-
-    // Object center in world coords (use getCenterPoint for accuracy with all origins)
-    obj.setCoords();
-    const objCenter = obj.getCenterPoint();
-
-    // Transform object center into the print area's local frame
-    const relX = objCenter.x - cx;
-    const relY = objCenter.y - cy;
-    const localX = relX * cos + relY * sin;
-    const localY = -relX * sin + relY * cos;
-
-    // Clamp in local frame so the visual object stays within the print area
-    const clampedX = Math.max(-halfW + projHalfW, Math.min(halfW - projHalfW, localX));
-    const clampedY = Math.max(-halfH + projHalfH, Math.min(halfH - projHalfH, localY));
-
-    if (clampedX !== localX || clampedY !== localY) {
-      // Transform back to world coordinates
-      const newCx = cx + clampedX * cos - clampedY * sin;
-      const newCy = cy + clampedX * sin + clampedY * cos;
-      const dx = newCx - objCenter.x;
-      const dy = newCy - objCenter.y;
-
-      obj.set({
-        left: (obj.left ?? 0) + dx,
-        top: (obj.top ?? 0) + dy,
-      });
-      obj.setCoords();
-    }
+    if (frame !== null) clampToPrintAreaFrame(obj, frame);
   }
 
   private handleSelection(obj: FabricObject | undefined) {
     if (obj === undefined) return;
-    const id = (obj as FabricObject & { _objectId?: string })._objectId;
-    if (id !== undefined && id !== '') {
+    const id = getObjectId(obj);
+    if (id !== undefined) {
       this.selectedObjectId = id;
       this.selectedObjectType = obj.type ?? null;
       if (obj.type === 'i-text') {
@@ -1144,41 +1019,42 @@ export class WtpEditor {
   }
 
   /**
-   * Builds the versioned envelope for every decoration. The active view is flushed
-   * first — otherwise the decoration the customer is working on would be reported
-   * as empty.
+   * The envelope to persist: complete, with `fabricJson` for every decoration. The active
+   * view is stored first — otherwise the decoration the customer is working on right now
+   * would be reported as empty.
    */
-  private buildArticleState(withPreview: boolean = false): ArticleEditorState {
+  private persistableArticleState(withPreview: boolean = false): ArticleEditorState {
     this.flushActiveView(withPreview);
     return this.composeArticleState();
   }
 
   /**
-   * The envelope for the change event: the active decoration is read straight off the
-   * canvas without serializing it or writing it back. `text:changed` fires per keystroke,
-   * and the stored state is what persistence uses anyway.
+   * The envelope for the change event: cheap. The active decoration is read straight off
+   * the canvas without serializing it or writing it back, so it carries no `fabricJson`.
+   * `text:changed` fires per keystroke, and persistence uses the stored state anyway.
    */
-  private buildLiveArticleState(): ArticleEditorState {
-    const liveState = this.canvas !== undefined ? this.buildEditorState(false) : undefined;
-    const liveIssues = liveState !== undefined ? this.validateActiveView(liveState) : undefined;
-    return this.composeArticleState(liveState, liveIssues);
+  private liveArticleState(): ArticleEditorState {
+    const activeState = this.canvas !== undefined ? this.buildEditorState(false) : undefined;
+    const activeIssues = activeState !== undefined ? this.validateActiveView(activeState) : undefined;
+    return this.composeArticleState(activeState, activeIssues);
   }
 
-  private composeArticleState(liveState?: EditorState, liveIssues?: LogoValidationIssue[]): ArticleEditorState {
+  /**
+   * Assembles one `DecorationState` per view from what is stored. The two callers differ
+   * only in where the active decoration comes from: stored (persistable) or passed in
+   * live (change event).
+   */
+  private composeArticleState(activeState?: EditorState, activeIssues?: LogoValidationIssue[]): ArticleEditorState {
     const decorations: DecorationState[] = this.getViews().map(view => {
       const isActive = view.id === this.currentViewId;
-      const state = (isActive ? liveState : undefined) ?? this.viewStates.get(view.id) ?? this.emptyEditorState(view);
-      const issues = (isActive ? liveIssues : undefined) ?? this.viewIssues.get(view.id) ?? [];
+      const state = (isActive ? activeState : undefined) ?? this.viewStates.get(view.id) ?? this.emptyEditorState(view);
+      const issues = (isActive ? activeIssues : undefined) ?? this.viewIssues.get(view.id) ?? [];
       const designed = state.logos.length > 0 || state.texts.length > 0;
 
       return {
         viewId: view.id,
         label: view.label,
-        ...(view.impMethod !== undefined ? { impMethod: view.impMethod } : {}),
-        ...(view.impLocation !== undefined ? { impLocation: view.impLocation } : {}),
-        ...(view.impWidthMm !== undefined ? { impWidthMm: view.impWidthMm } : {}),
-        ...(view.impHeightMm !== undefined ? { impHeightMm: view.impHeightMm } : {}),
-        ...(view.maxColours !== undefined ? { maxColours: view.maxColours } : {}),
+        ...decorationMetaOf(view),
         status: designed ? 'designed' : 'empty',
         state,
         ...(this.viewPreviews[view.id] !== undefined ? { previewDataUrl: this.viewPreviews[view.id] } : {}),
@@ -1201,7 +1077,7 @@ export class WtpEditor {
   }
 
   private emitStateChanged() {
-    this.wtpEditorStateChanged.emit(this.buildLiveArticleState());
+    this.wtpEditorStateChanged.emit(this.liveArticleState());
   }
 
   private handleAddText = () => {

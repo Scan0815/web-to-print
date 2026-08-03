@@ -6,12 +6,12 @@
  */
 import { HTMLStencilElement, JSXBase } from "@stencil/core/internal";
 import { Article, ArticleEditorState, ArticleView, BgRemovalConfig, EditorLabels, EditorState, LogoData, LogoUploadLabels, LogoValidationConfig, LogoValidationIssue, PlacedLogo, PrintArea } from "./types";
-import { FabricObject, IText } from "fabric";
 import { PdfExportConfig } from "./utils/pdf-export";
+import { IText } from "fabric";
 import { RenderLayer } from "./utils/html-render-helpers";
 export { Article, ArticleEditorState, ArticleView, BgRemovalConfig, EditorLabels, EditorState, LogoData, LogoUploadLabels, LogoValidationConfig, LogoValidationIssue, PlacedLogo, PrintArea } from "./types";
-export { FabricObject, IText } from "fabric";
 export { PdfExportConfig } from "./utils/pdf-export";
+export { IText } from "fabric";
 export { RenderLayer } from "./utils/html-render-helpers";
 export namespace Components {
     interface WtpEditor {

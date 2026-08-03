@@ -319,6 +319,7 @@ import type {
   CoordinateImageSize,  // Resolution that pixel print-area coordinates refer to
   MaxColours,           // number | 'full color'
   Article,              // Article with all its decoration options
+  DecorationMeta,       // How a decoration prints: method, location, mm size, colour limit
   DecorationState,      // Per-decoration state: viewId, status, state, preview, issues
   ArticleEditorState,   // { version: 2, articleId, decorations }
   LogoUploadLabels,     // Strings used by <wtp-logo-upload>
