@@ -1,4 +1,4 @@
-import { generateObjectId, fitLogoToPrintArea, printAreaFrame, printAreaPixelSize, projectOntoFrame, toFrameLocal, fromFrameLocal, printAreaToPixelCorners, pixelCornersToPrintArea, legacyToPrintArea, defaultPrintArea, trimSvgWhitespace, isPixelPrintArea, normalizePrintArea, parseSvgDimensions, upscaleSvgDataUrl, clampToPrintAreaFrame, markAsBackground } from './canvas-helpers';
+import { generateObjectId, fitLogoToPrintArea, printAreaFrame, printAreaPixelSize, projectOntoFrame, toFrameLocal, fromFrameLocal, printAreaToPixelCorners, pixelCornersToPrintArea, legacyToPrintArea, defaultPrintArea, trimSvgWhitespace, isPixelPrintArea, normalizePrintArea, parseSvgDimensions, upscaleSvgDataUrl, clampToPrintAreaFrame, markAsBackground, isRouteUsable, PLAIN_RETRY_AFTER_MS } from './canvas-helpers';
 import { Rect } from 'fabric';
 import { PrintArea, LegacyPrintArea } from '../types';
 
@@ -254,6 +254,26 @@ describe('normalizePrintArea', () => {
     };
     const result = normalizePrintArea(pa, 2400, 1200);
     expect(result).toBe(pa);
+  });
+});
+
+describe('isRouteUsable', () => {
+  // `cors` and `proxy` retire themselves by throwing; only `plain` needs an expiry.
+  it('keeps a working route regardless of age', () => {
+    expect(isRouteUsable({ strategy: 'cors', recordedAt: 0 }, PLAIN_RETRY_AFTER_MS * 100)).toBe(true);
+    expect(isRouteUsable({ strategy: 'proxy', recordedAt: 0 }, PLAIN_RETRY_AFTER_MS * 100)).toBe(true);
+  });
+
+  it('keeps a fresh plain fallback, so a burst of view switches does not re-probe', () => {
+    expect(isRouteUsable({ strategy: 'plain', recordedAt: 1_000 }, 1_000)).toBe(true);
+    expect(isRouteUsable({ strategy: 'plain', recordedAt: 1_000 }, 1_000 + PLAIN_RETRY_AFTER_MS - 1)).toBe(true);
+  });
+
+  it('retires a plain fallback once the cooldown is up', () => {
+    // Otherwise one CORS failure keeps the canvas tainted, and every export blocked,
+    // for as long as the session stays open.
+    expect(isRouteUsable({ strategy: 'plain', recordedAt: 1_000 }, 1_000 + PLAIN_RETRY_AFTER_MS)).toBe(false);
+    expect(isRouteUsable({ strategy: 'plain', recordedAt: 0 }, PLAIN_RETRY_AFTER_MS * 10)).toBe(false);
   });
 });
 

@@ -42,7 +42,34 @@ const IMAGE_PROXY_BASE = 'http://localhost:3001';
  * refused in production.
  */
 type ImageStrategy = 'cors' | 'proxy' | 'plain';
-const imageStrategies: Map<string, ImageStrategy> = new Map();
+
+interface ImageRoute {
+  strategy: ImageStrategy;
+  /** When this route was recorded — only consulted for `plain`, see `isRouteUsable`. */
+  recordedAt: number;
+}
+
+const imageStrategies: Map<string, ImageRoute> = new Map();
+
+/**
+ * How long the `plain` last resort is trusted before the good routes are tried again.
+ *
+ * Long enough to cover the burst of loads that view switching produces, short enough that
+ * a session still open when the shop fixes its CORS headers picks that up.
+ */
+export const PLAIN_RETRY_AFTER_MS = 60_000;
+
+/**
+ * Whether a remembered route may be reused.
+ *
+ * `cors` and `proxy` retire themselves: when they stop working they throw, and the caller
+ * drops them. `plain` cannot — it never throws, it just taints the canvas and blocks every
+ * export. Without an expiry, one CORS failure would keep a session degraded for as long as
+ * it stays open, however long after the cause was fixed.
+ */
+export function isRouteUsable(route: ImageRoute, now: number): boolean {
+  return route.strategy !== 'plain' || now - route.recordedAt < PLAIN_RETRY_AFTER_MS;
+}
 
 function proxyUrlFor(url: string): string {
   return `${IMAGE_PROXY_BASE}/?url=${encodeURIComponent(url)}`;
@@ -62,9 +89,9 @@ async function loadFabricImage(url: string): Promise<FabricImage> {
   }
 
   const known = imageStrategies.get(url);
-  if (known !== undefined) {
+  if (known !== undefined && isRouteUsable(known, Date.now())) {
     try {
-      return await loadWithStrategy(url, known);
+      return await loadWithStrategy(url, known.strategy);
     } catch {
       // The remembered route stopped working — fall through and probe again.
       imageStrategies.delete(url);
@@ -74,13 +101,15 @@ async function loadFabricImage(url: string): Promise<FabricImage> {
   for (const strategy of ['cors', 'proxy'] as const) {
     try {
       const img = await loadWithStrategy(url, strategy);
-      imageStrategies.set(url, strategy);
+      imageStrategies.set(url, { strategy, recordedAt: Date.now() });
       return img;
     } catch { /* try the next route */ }
   }
 
-  // Fallback: load without CORS (canvas will be tainted, export blocked)
-  imageStrategies.set(url, 'plain');
+  // Fallback: load without CORS (canvas will be tainted, export blocked). The timestamp
+  // restarts the cooldown, so a URL that stays broken is probed once a minute, not once
+  // per view switch.
+  imageStrategies.set(url, { strategy: 'plain', recordedAt: Date.now() });
   return FabricImage.fromURL(url);
 }
 

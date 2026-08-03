@@ -570,6 +570,11 @@ stencil.config.ts          Stencil build configuration
 ```
 
 > The dev script (`npm start`) automatically launches `scripts/image-proxy.mjs` on port 3001. The canvas helper tries direct CORS first, then this proxy as a fallback, before loading the image tainted (which would block export).
+>
+> Whichever route works is remembered per URL, so switching between decorations does not
+> repeat a failed CORS request every time. The tainted fallback is remembered only for a
+> minute: unlike the other two it never fails, so nothing would ever retire it, and a
+> session open while the shop fixes its CORS headers would stay unable to export.
 
 ## Key Dependencies
 

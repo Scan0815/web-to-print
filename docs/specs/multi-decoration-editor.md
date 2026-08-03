@@ -561,6 +561,12 @@ In implementation order; each ends green.
     cannot hold content before its area is resolved — the window is closed by construction
     rather than by a guard. It remains open in theory for content arriving via
     `loadState`/`initialState` followed by an immediate switch; not reproduced, not gated.
+10c. **The remembered image route expires for the tainted fallback only.** `cors` and
+    `proxy` retire themselves by throwing when they stop working; `plain` never throws, it
+    just taints the canvas and blocks every export. Without an expiry one CORS failure
+    would keep a session degraded for as long as it stays open. It is re-probed after a
+    minute — long enough that view switching does not repeat a failing request, short
+    enough that a server-side fix reaches an open session.
 11. **Both geometry checks work in the print area's own frame**, not against its
     axis-aligned bounding box. A print area is printed straight and the editor rotates
     elements to match a tilted one, so a box comparison reports up to 141% of the real
