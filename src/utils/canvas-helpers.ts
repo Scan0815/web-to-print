@@ -124,12 +124,49 @@ export function clearCanvasBackground(canvas: StaticCanvas): void {
   if (existing !== undefined) canvas.remove(existing);
 }
 
-export async function setCanvasBackground(
-  canvas: StaticCanvas,
-  imageUrl: string,
-  fitMode: 'cover' | 'contain' | 'fill' = 'contain',
-): Promise<void> {
-  const img = await loadFabricImage(imageUrl);
+/**
+ * Loads a product image without touching any canvas — the slow half of
+ * `setCanvasBackground`. Callers that swap decorations decode first and apply second,
+ * so the outgoing view stays on screen for the duration of the download. Loading through
+ * here also warms the per-URL strategy cache and the browser's HTTP cache, which is what
+ * makes preloading the other decorations of an article worthwhile.
+ */
+export async function loadBackgroundImage(url: string): Promise<FabricImage> {
+  return loadFabricImage(url);
+}
+
+/**
+ * Downscales an image to a small data URL for the decoration strip. The catalog serves
+ * product photos at one size (~2400px, ~450 KB); showing four of them at 72px costs
+ * nearly 2 MB without this. Returns null when the image cannot be loaded or the canvas
+ * is tainted by a non-CORS load — the caller keeps whatever fallback it has.
+ */
+export async function createImageThumbnail(url: string, maxSize: number): Promise<string | null> {
+  try {
+    const img = await loadFabricImage(url);
+    const width = img.width ?? 0;
+    const height = img.height ?? 0;
+    if (width <= 0 || height <= 0) return null;
+
+    const scale = Math.min(1, maxSize / Math.max(width, height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(width * scale));
+    canvas.height = Math.max(1, Math.round(height * scale));
+    const ctx = canvas.getContext('2d');
+    if (ctx === null) return null;
+
+    ctx.drawImage(img.getElement(), 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/png');
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The synchronous half of `setCanvasBackground`: sizes the canvas to the already-loaded
+ * image (contain mode) and inserts it beneath everything else.
+ */
+export function applyCanvasBackground(canvas: StaticCanvas, img: FabricImage, fitMode: 'cover' | 'contain' | 'fill' = 'contain'): void {
   const canvasWidth = canvas.getWidth();
   const canvasHeight = canvas.getHeight();
 
@@ -175,6 +212,14 @@ export async function setCanvasBackground(
   markAsBackground(img);
   canvas.insertAt(0, img);
   canvas.renderAll();
+}
+
+export async function setCanvasBackground(
+  canvas: StaticCanvas,
+  imageUrl: string,
+  fitMode: 'cover' | 'contain' | 'fill' = 'contain',
+): Promise<void> {
+  applyCanvasBackground(canvas, await loadFabricImage(imageUrl), fitMode);
 }
 
 /** Convert PrintArea corner coordinates (0-1) to absolute pixel positions. */

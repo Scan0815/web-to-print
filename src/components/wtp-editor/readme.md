@@ -109,7 +109,7 @@ Type: `Promise<string>`
 
 Export the canvas as a high-resolution data URL image (for PDF/print).
 Returns the data URL plus the actual canvas dimensions (which may differ
-from the width/height props after setCanvasBackground resizes the canvas).
+from the width/height props after the background image resizes the canvas).
 
 #### Parameters
 

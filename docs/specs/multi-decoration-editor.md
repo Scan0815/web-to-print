@@ -576,6 +576,21 @@ In implementation order; each ends green.
     would keep a session degraded for as long as it stays open. It is re-probed after a
     minute — long enough that view switching does not repeat a failing request, short
     enough that a server-side fix reaches an open session.
+10d. **View switching decodes first and swaps second, and the product images of the other
+    decorations are preloaded.** §4.5's switch order (serialize → swap background → restore)
+    tore the canvas down before the incoming image arrived: a blank canvas at the wrong
+    size, with the print area drawn across it, for the whole download (measured 860 ms on
+    5 Mbit/s), then a layout jump when contain-fit resized the canvas. The teardown now
+    runs in a callback after the decode, so the outgoing decoration stays on screen.
+    Preloading (after the active view settles, never competing with it) turns the first
+    switch to each decoration from a full image download into a cache hit — measured
+    10 ms instead of 860 ms.
+10e. **Strip thumbnails do not wait for a view exit.** §4.5 renders them only on exit,
+    which left `<img src={view.image}>` as the fallback — four ~450 KB catalog images
+    downloaded to be shown at 72px, competing with the image the customer waits for. A
+    thumbnail is now captured on first activation and produced by the preload for
+    unvisited views; the exit preview (which shows the design) still wins and is never
+    overwritten.
 11. **Both geometry checks work in the print area's own frame**, not against its
     axis-aligned bounding box. A print area is printed straight and the editor rotates
     elements to match a tilted one, so a box comparison reports up to 141% of the real

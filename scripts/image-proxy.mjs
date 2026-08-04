@@ -31,6 +31,9 @@ const server = http.createServer((req, res) => {
         res.writeHead(redirectRes.statusCode, {
           'Content-Type': redirectRes.headers['content-type'] || 'application/octet-stream',
           'Access-Control-Allow-Origin': '*',
+          // Without this the browser refetches every product image on every view switch —
+          // no validators, no heuristic caching — which defeats the editor's preload.
+          'Cache-Control': 'public, max-age=3600',
         });
         redirectRes.pipe(res);
       }).on('error', () => { res.writeHead(502); res.end('Redirect failed'); });
@@ -39,6 +42,7 @@ const server = http.createServer((req, res) => {
     res.writeHead(proxyRes.statusCode, {
       'Content-Type': proxyRes.headers['content-type'] || 'application/octet-stream',
       'Access-Control-Allow-Origin': '*',
+      'Cache-Control': 'public, max-age=3600',
     });
     proxyRes.pipe(res);
   }).on('error', (err) => {

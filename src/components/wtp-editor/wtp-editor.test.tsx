@@ -711,6 +711,47 @@ describe('wtp-editor browser', () => {
     expect(envelope.decorations[0].issues.map(i => i.code)).toContain('missingPrintArea');
   });
 
+  it('gives the strip small thumbnails instead of the full product image', async () => {
+    // The catalog serves one size (~2400px). Before the preload, a never-visited
+    // decoration's strip entry was <img src={view.image}> — the full product photo
+    // downloaded to be shown at 72px, competing with the image the customer waits for.
+    const views: ArticleView[] = [
+      { id: 'front', image: SQUARE_PNG, label: 'Front', printArea: null },
+      { id: 'back', image: WIDE_PNG, label: 'Back', printArea: null },
+    ];
+    const { root, waitForChanges } = await mount(<wtp-editor views={views} article-id="A-1"></wtp-editor>);
+    await new Promise(r => setTimeout(r, 600));
+    await waitForChanges();
+
+    const thumbs = Array.from(root.querySelectorAll('.view-thumb img')) as HTMLImageElement[];
+    expect(thumbs.length).toBe(2);
+    // The never-visited decoration shows a re-encoded thumbnail, not the raw catalog image.
+    expect(thumbs[1].src.startsWith('data:image/png')).toBe(true);
+    expect(thumbs[1].src).not.toBe(WIDE_PNG);
+  });
+
+  it('does not replace a design preview with the bare product shot', async () => {
+    const views: ArticleView[] = [
+      { id: 'front', image: SQUARE_PNG, label: 'Front', printArea: null },
+      { id: 'back', image: WIDE_PNG, label: 'Back', printArea: null },
+    ];
+    const { root, waitForChanges } = await mount(<wtp-editor views={views} article-id="A-1"></wtp-editor>);
+    const el = root as EditorElement;
+    await new Promise(r => setTimeout(r, 400));
+
+    // Design the back view and leave it: the exit preview shows the design.
+    await el.setActiveView('back');
+    await el.addText('Design');
+    await el.setActiveView('front');
+    await waitForChanges();
+    const withDesign = (root.querySelectorAll('.view-thumb img')[1] as HTMLImageElement).src;
+
+    // Whatever late preload resolves must not overwrite it.
+    await new Promise(r => setTimeout(r, 400));
+    await waitForChanges();
+    expect((root.querySelectorAll('.view-thumb img')[1] as HTMLImageElement).src).toBe(withDesign);
+  });
+
   it('exportViewImage rejects an unknown decoration', async () => {
     const { root } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
     await expect((root as EditorElement).exportViewImage('nope')).rejects.toThrow(/unknown view id/);

@@ -17,7 +17,9 @@ import {
   Article,
 } from '../../types';
 import {
-  setCanvasBackground,
+  applyCanvasBackground,
+  loadBackgroundImage,
+  createImageThumbnail,
   clearCanvasBackground,
   generateObjectId,
   upscaleSvgDataUrl,
@@ -226,34 +228,68 @@ export class WtpEditor {
    * never rejects: a product image the shop's file server will not serve must leave the
    * customer with a blank canvas and a working toolbar, not an editor where every
    * `addLogo` and `addText` throws the load error back at the host.
+   *
+   * @param prepare Teardown of the outgoing decoration, run only once the incoming image
+   *   is decoded (or has definitively failed). Tearing down before the download meant a
+   *   blank canvas at the wrong size — with the print area drawn across it — for however
+   *   long the product image takes; the outgoing view now stays on screen instead.
    */
-  private setBackground(image: string): Promise<void> {
+  private setBackground(image: string, prepare?: () => void | Promise<void>): Promise<void> {
     if (this.canvas === undefined) return Promise.resolve();
     this.canvasImage = image;
 
-    if (image === '') {
-      clearCanvasBackground(this.canvas);
-      this.failedImages.delete(image);
-      this.backgroundReady = Promise.resolve();
-      return this.backgroundReady;
-    }
+    this.backgroundReady = (async () => {
+      const img = image === '' ? null : await loadBackgroundImage(image).catch(() => null);
 
-    this.backgroundReady = setCanvasBackground(this.canvas, image).then(
-      () => {
+      await prepare?.();
+      if (this.canvas === undefined) return;
+
+      if (img !== null) {
+        applyCanvasBackground(this.canvas, img);
         this.failedImages.delete(image);
-      },
-      () => {
+      } else {
+        clearCanvasBackground(this.canvas);
         // Degrading beats throwing, but it must not be silent: the envelope would
         // otherwise name a product image that is not on the canvas and say nothing.
         // The host learns about it through the decoration's `issues`.
-        this.failedImages.add(image);
-      },
-    );
+        if (image !== '') this.failedImages.add(image);
+      }
+    })();
     return this.backgroundReady;
   }
 
   private getActiveImage(): string {
     return this.getActiveView().image;
+  }
+
+  /**
+   * Warms the cache for the decorations that are not on screen, and gives the strip a
+   * small thumbnail per view while it is at it.
+   *
+   * Both address the same measurement: the first switch to each decoration paid a full
+   * product-image download (~450 KB, 860 ms on ordinary broadband), and the strip pulled
+   * the same full-resolution images just to show them at 72px. After this, switching hits
+   * the warm cache and the strip renders data URLs of thumbnail size.
+   *
+   * Called only after the active view's own image has settled — these loads must not
+   * compete with the one the customer is actually waiting for.
+   */
+  private preloadViewImages(): void {
+    const articleKey = this.loadedArticleKey;
+
+    for (const view of this.getViews()) {
+      if (view.id === this.currentViewId || view.image === '') continue;
+
+      void createImageThumbnail(view.image, PREVIEW_SIZE).then(thumbnail => {
+        // View ids repeat across articles ("front"), so a thumbnail that resolves after
+        // the customer switched articles must not land in the new article's strip. And a
+        // preview captured on view exit shows the design — never replace it with the
+        // bare product shot.
+        if (thumbnail === null || articleKey !== this.loadedArticleKey) return;
+        if (this.viewPreviews[view.id] !== undefined) return;
+        this.viewPreviews = { ...this.viewPreviews, [view.id]: thumbnail };
+      });
+    }
   }
 
   disconnectedCallback() {
@@ -263,9 +299,10 @@ export class WtpEditor {
   @Watch('productImage')
   onProductImageChange() {
     if (this.canvas !== undefined && this.productImage !== undefined) {
-      // Reset to bounding box before setCanvasBackground auto-sizes
-      this.canvas.setDimensions({ width: this.width, height: this.height });
-      void this.setBackground(this.productImage);
+      void this.setBackground(this.productImage, () => {
+        // Reset to the prop box only once the image is decoded; contain-fit sizes from it.
+        this.canvas?.setDimensions({ width: this.width, height: this.height });
+      });
     }
   }
 
@@ -319,14 +356,16 @@ export class WtpEditor {
       void this.enqueue(async () => {
         await this.activateView(this.getActiveView());
         await this.placeInitialLogo();
+        this.preloadViewImages();
       });
     } else if (this.getActiveImage() !== this.canvasImage) {
       // Same article, but this decoration's product image was swapped — a colour variant,
       // or a late-arriving image URL. Only the background is replaced: re-activating the
       // view would throw away whatever the customer has placed on it.
       void this.enqueue(async () => {
-        this.canvas?.setDimensions({ width: this.width, height: this.height });
-        await this.setBackground(this.getActiveImage());
+        await this.setBackground(this.getActiveImage(), () => {
+          this.canvas?.setDimensions({ width: this.width, height: this.height });
+        });
         this.canvas?.renderAll();
       });
     }
@@ -515,6 +554,11 @@ export class WtpEditor {
       await this.printAreasReady;
       this.flushActiveView(options.withPreview);
 
+      // The outgoing view stays visible while the incoming image decodes (see
+      // setBackground), so drop its selection handles — it is a snapshot now.
+      this.canvas?.discardActiveObject();
+      this.canvas?.renderAll();
+
       this.currentViewId = target.id;
       this.activeViewId = target.id;
       this.selectedObjectId = null;
@@ -655,6 +699,7 @@ export class WtpEditor {
 
       this.viewPreviews = previews;
       await this.enqueue(() => this.activateView(this.getActiveView()));
+      this.preloadViewImages();
       return;
     }
 
@@ -663,6 +708,7 @@ export class WtpEditor {
     this.viewStates.set(this.getActiveView().id, state);
     this.rememberPlacedLogos(state);
     await this.loadEditorState(state);
+    this.preloadViewImages();
   }
 
   /**
@@ -702,17 +748,23 @@ export class WtpEditor {
     const stored = this.viewStates.get(view.id);
     if (stored !== undefined) {
       await this.loadEditorState(stored);
-      return;
+    } else {
+      await this.setBackground(view.image, () => {
+        if (this.canvas === undefined) return;
+        this.canvas.clear();
+        this.objectMap.clear();
+        this.previewUrlMap.clear();
+        this.canvas.setDimensions({ width: this.width, height: this.height });
+        this.canvas.backgroundColor = '#ffffff';
+      });
+      this.canvas.renderAll();
     }
 
-    this.canvas.clear();
-    this.objectMap.clear();
-    this.previewUrlMap.clear();
-    this.canvas.setDimensions({ width: this.width, height: this.height });
-    this.canvas.backgroundColor = '#ffffff';
-
-    await this.setBackground(view.image);
-    this.canvas.renderAll();
+    // The strip falls back to the full-resolution product image until a thumbnail
+    // exists; capture one now, while the freshly decoded image is on the canvas.
+    if (view.image !== '' && this.viewPreviews[view.id] === undefined) {
+      this.capturePreview(view.id);
+    }
   }
 
   /**
@@ -829,34 +881,34 @@ export class WtpEditor {
   private async loadEditorState(state: EditorState): Promise<void> {
     if (this.canvas === undefined) throw new Error('Canvas not initialized');
 
-    // Clear canvas
-    this.canvas.clear();
-    this.objectMap.clear();
-    this.previewUrlMap.clear();
+    // The whole restore runs inside the prepare callback, once the product image is
+    // decoded: clear, rebuild the objects from fabricJson, then let setBackground insert
+    // the image beneath them at index 0 (loadFromJSON clears the canvas, so the order
+    // background-last is what keeps it at the bottom).
+    await this.setBackground(state.productImage ?? '', async () => {
+      if (this.canvas === undefined) return;
 
-    // Rebuild preview URL map from state
-    for (const logo of state.logos) {
-      if (logo.previewDataUrl !== undefined) {
-        this.previewUrlMap.set(logo.id, logo.previewDataUrl);
+      this.canvas.clear();
+      this.objectMap.clear();
+      this.previewUrlMap.clear();
+
+      for (const logo of state.logos) {
+        if (logo.previewDataUrl !== undefined) {
+          this.previewUrlMap.set(logo.id, logo.previewDataUrl);
+        }
       }
-    }
 
-    this.canvas.setDimensions({ width: state.width, height: state.height });
+      this.canvas.setDimensions({ width: state.width, height: state.height });
 
-    // Restore from fabricJson first (loadFromJSON clears the canvas)
-    if (state.fabricJson !== undefined && state.fabricJson !== '') {
-      await this.canvas.loadFromJSON(state.fabricJson);
-      // Rebuild object map from loaded objects
-      for (const obj of this.canvas.getObjects()) {
-        const id = getObjectId(obj);
-        if (id !== undefined) this.objectMap.set(id, obj);
+      if (state.fabricJson !== undefined && state.fabricJson !== '') {
+        await this.canvas.loadFromJSON(state.fabricJson);
+        // Rebuild object map from loaded objects
+        for (const obj of this.canvas.getObjects()) {
+          const id = getObjectId(obj);
+          if (id !== undefined) this.objectMap.set(id, obj);
+        }
       }
-    }
-
-    // Restore product image after JSON load so it inserts at index 0
-    if (state.productImage !== null && state.productImage !== undefined && state.productImage !== '') {
-      await this.setBackground(state.productImage);
-    }
+    });
 
     this.canvas.renderAll();
   }
@@ -904,7 +956,7 @@ export class WtpEditor {
 
   /** Export the canvas as a high-resolution data URL image (for PDF/print).
    *  Returns the data URL plus the actual canvas dimensions (which may differ
-   *  from the width/height props after setCanvasBackground resizes the canvas). */
+   *  from the width/height props after the background image resizes the canvas). */
   @Method()
   async exportImageHighRes(format: 'png' | 'jpeg' = 'png', quality: number = 1, multiplier: number = 3): Promise<{ dataUrl: string; width: number; height: number }> {
     if (this.canvas === undefined) throw new Error('Canvas not initialized');
@@ -1004,7 +1056,13 @@ export class WtpEditor {
       if (this.getActiveImage() !== '') {
         void this.setBackground(this.getActiveImage());
       }
-      void this.enqueue(() => this.placeInitialLogo());
+      void this.enqueue(async () => {
+        // Preload only once the active view's own image has settled — these loads must
+        // not compete with the one the customer is looking at.
+        await this.backgroundReady;
+        await this.placeInitialLogo();
+        this.preloadViewImages();
+      });
     }
 
     this.wtpEditorReady.emit();
