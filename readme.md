@@ -415,6 +415,7 @@ wtp-logo-upload::part(preview-item selected) {
 | `rejections` / `rejection-item` | Validation failure container and items |
 | `pending-choices` / `choice-card` / `choice-option` | Background-removal choice cards |
 | `previews` / `preview-item` | Preview gallery and items (selected items also get `selected`) |
+| `preview-select` | The button inside a preview card that selects it |
 | `remove-btn` | Per-preview remove button |
 
 ### Localizing text (`labels` prop)

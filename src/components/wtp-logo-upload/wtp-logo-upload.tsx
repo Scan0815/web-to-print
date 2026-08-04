@@ -4,9 +4,15 @@ import { renderPdfFirstPage } from '../../utils/pdf-render';
 import { validateLogo } from '../../utils/logo-validation';
 import { removeBackground } from '../../utils/background-removal';
 import { generatePreviewDataUrl } from '../../utils/image-preview';
-import { trimSvgWhitespace, parseSvgDimensions } from '../../utils/canvas-helpers';
+import { trimSvgWhitespace, parseSvgDimensions, generateObjectId } from '../../utils/canvas-helpers';
 
 interface BgRemovalChoice {
+  /**
+   * Identity of this card. Not its position: choices are removed as the customer decides,
+   * and a background removal still running would then write its result into whichever card
+   * shifted into the index it captured — or into none at all, leaving that card spinning.
+   */
+  id: string;
   /** The uploaded file, kept for the print shop regardless of which variant is chosen. */
   source: LogoSource;
   originalDataUrl: string;
@@ -88,58 +94,73 @@ export class WtpLogoUpload {
     this.rejections = [];
     this.wtpLogoProcessing.emit(true);
 
-    const fileArray = Array.from(files);
-
-    for (const file of fileArray) {
-      const result = await validateLogo(file, this.config);
-
-      if (result.valid) {
-        const rawDataUrl = await this.fileToDataUrl(file);
-        let dataUrl: string;
-        const metadata = result.metadata;
-        // The print shop needs what the customer uploaded, not what the editor made of
-        // it — every format derives its canvas representation, so keep the original.
-        const source: LogoSource = { dataUrl: rawDataUrl, mimeType: file.type, fileName: file.name, fileSize: file.size };
-
-        if (metadata.format === 'pdf' || metadata.format === 'ai') {
-          // The canvas cannot draw a PDF: rasterize page 1 and keep the original for print.
-          try {
-            const rendered = await renderPdfFirstPage(file);
-            dataUrl = rendered.dataUrl;
-            metadata.width = rendered.width;
-            metadata.height = rendered.height;
-          } catch (e) {
-            const message = e instanceof Error ? e.message : 'Could not read the file.';
-            this.reject(file, [{ code: 'PDF_RENDER_FAILED', severity: 'error', message }]);
-            continue;
-          }
-        } else if (metadata.format === 'svg') {
-          dataUrl = await trimSvgWhitespace(rawDataUrl);
-          const trimmedDims = parseSvgDimensions(dataUrl);
-          if (trimmedDims !== null) {
-            metadata.width = trimmedDims.width;
-            metadata.height = trimmedDims.height;
-          }
-        } else {
-          dataUrl = rawDataUrl;
+    try {
+      for (const file of Array.from(files)) {
+        try {
+          await this.processFile(file);
+        } catch (e) {
+          // A file that cannot be read or decoded is the customer's problem to see, not a
+          // reason to abandon the rest of the batch — and never a reason to strand the
+          // component: without the surrounding `finally` the spinner would stay up and the
+          // host would keep believing an upload is in flight.
+          const message = e instanceof Error ? e.message : 'Could not read the file.';
+          this.reject(file, [{ code: 'FILE_UNREADABLE', severity: 'error', message }]);
         }
-
-        if (this.enableBackgroundRemoval && this.isRasterFormat(metadata.format)) {
-          this.addPendingChoice(dataUrl, metadata, file, source);
-        } else {
-          const logoData = await this.buildLogoData(dataUrl, metadata, source);
-          this.previews = [...this.previews, logoData];
-          this.selectedIndex = this.previews.length - 1;
-          this.wtpLogoValidated.emit(logoData);
-          this.wtpLogoSelected.emit(logoData);
-        }
-      } else {
-        this.reject(file, result.issues);
       }
+    } finally {
+      this.isProcessing = false;
+      this.wtpLogoProcessing.emit(false);
+    }
+  }
+
+  private async processFile(file: File): Promise<void> {
+    const result = await validateLogo(file, this.config);
+    if (!result.valid) {
+      this.reject(file, result.issues);
+      return;
     }
 
-    this.isProcessing = false;
-    this.wtpLogoProcessing.emit(false);
+    const rawDataUrl = await this.fileToDataUrl(file);
+    const metadata = result.metadata;
+    // The print shop needs what the customer uploaded, not what the editor made of it —
+    // every format derives its canvas representation, so keep the original.
+    const source: LogoSource = { dataUrl: rawDataUrl, mimeType: file.type, fileName: file.name, fileSize: file.size };
+
+    let dataUrl: string;
+    if (metadata.format === 'pdf' || metadata.format === 'ai') {
+      // The canvas cannot draw a PDF: rasterize page 1 and keep the original for print.
+      // Caught here rather than by the caller so the finding names the actual cause.
+      try {
+        const rendered = await renderPdfFirstPage(file);
+        dataUrl = rendered.dataUrl;
+        metadata.width = rendered.width;
+        metadata.height = rendered.height;
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Could not read the file.';
+        this.reject(file, [{ code: 'PDF_RENDER_FAILED', severity: 'error', message }]);
+        return;
+      }
+    } else if (metadata.format === 'svg') {
+      dataUrl = await trimSvgWhitespace(rawDataUrl);
+      const trimmedDims = parseSvgDimensions(dataUrl);
+      if (trimmedDims !== null) {
+        metadata.width = trimmedDims.width;
+        metadata.height = trimmedDims.height;
+      }
+    } else {
+      dataUrl = rawDataUrl;
+    }
+
+    if (this.enableBackgroundRemoval && this.isRasterFormat(metadata.format)) {
+      this.addPendingChoice(dataUrl, metadata, file, source);
+      return;
+    }
+
+    const logoData = await this.buildLogoData(dataUrl, metadata, source);
+    this.previews = [...this.previews, logoData];
+    this.selectedIndex = this.previews.length - 1;
+    this.wtpLogoValidated.emit(logoData);
+    this.wtpLogoSelected.emit(logoData);
   }
 
   private reject(file: File, issues: LogoValidationIssue[]) {
@@ -148,7 +169,9 @@ export class WtpLogoUpload {
   }
 
   private addPendingChoice(originalDataUrl: string, metadata: LogoMetadata, file: File, source: LogoSource) {
+    const id = generateObjectId();
     const choice: BgRemovalChoice = {
+      id,
       source,
       originalDataUrl,
       removedBgDataUrl: null,
@@ -159,26 +182,23 @@ export class WtpLogoUpload {
       errorMessage: null,
     };
     this.pendingChoices = [...this.pendingChoices, choice];
-    const index = this.pendingChoices.length - 1;
-    this.performBackgroundRemoval(file, index);
+    this.performBackgroundRemoval(file, id);
   }
 
-  private async performBackgroundRemoval(file: File, index: number) {
+  private async performBackgroundRemoval(file: File, id: string) {
     try {
       const result = await removeBackground(file, this.bgRemovalConfig);
-      this.pendingChoices = this.pendingChoices.map((c, i) =>
-        i === index ? { ...c, removedBgDataUrl: result.dataUrl, removedBgWidth: result.width, removedBgHeight: result.height, status: 'ready' as const } : c,
+      this.pendingChoices = this.pendingChoices.map(c =>
+        c.id === id ? { ...c, removedBgDataUrl: result.dataUrl, removedBgWidth: result.width, removedBgHeight: result.height, status: 'ready' as const } : c,
       );
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Background removal failed';
-      this.pendingChoices = this.pendingChoices.map((c, i) =>
-        i === index ? { ...c, status: 'error' as const, errorMessage: message } : c,
-      );
+      this.pendingChoices = this.pendingChoices.map(c => (c.id === id ? { ...c, status: 'error' as const, errorMessage: message } : c));
     }
   }
 
-  private async selectChoice(index: number, useRemoved: boolean) {
-    const choice = this.pendingChoices[index];
+  private async selectChoice(id: string, useRemoved: boolean) {
+    const choice = this.pendingChoices.find(c => c.id === id);
     if (choice === undefined) return;
 
     const dataUrl = useRemoved && choice.removedBgDataUrl !== null ? choice.removedBgDataUrl : choice.originalDataUrl;
@@ -190,7 +210,7 @@ export class WtpLogoUpload {
     this.selectedIndex = this.previews.length - 1;
     this.wtpLogoValidated.emit(logoData);
     this.wtpLogoSelected.emit(logoData);
-    this.pendingChoices = this.pendingChoices.filter((_, i) => i !== index);
+    this.pendingChoices = this.pendingChoices.filter(c => c.id !== id);
   }
 
   private extractFileNameFromUrl(url: string): string {
@@ -320,15 +340,13 @@ export class WtpLogoUpload {
   };
 
   private handleSelectOriginal = (e: Event) => {
-    const btn = (e.currentTarget as HTMLElement).closest('[data-index]') as HTMLElement | null;
-    if (btn === null) return;
-    this.selectChoice(Number(btn.dataset.index), false);
+    const id = (e.currentTarget as HTMLElement).dataset.choiceId;
+    if (id !== undefined) this.selectChoice(id, false);
   };
 
   private handleSelectRemoved = (e: Event) => {
-    const btn = (e.currentTarget as HTMLElement).closest('[data-index]') as HTMLElement | null;
-    if (btn === null) return;
-    this.selectChoice(Number(btn.dataset.index), true);
+    const id = (e.currentTarget as HTMLElement).dataset.choiceId;
+    if (id !== undefined) this.selectChoice(id, true);
   };
 
   private handleSelectPreview = (e: Event) => {
@@ -457,11 +475,11 @@ export class WtpLogoUpload {
         {/* Pending choice cards (background removal) */}
         {this.pendingChoices.length > 0 && (
           <div class="pending-choices" part="pending-choices">
-            {this.pendingChoices.map((choice, index) => (
+            {this.pendingChoices.map(choice => (
               <div class="choice-card" part="choice-card">
                 <p class="choice-title">{choice.metadata.fileName}</p>
                 <div class="choice-options">
-                  <button class="choice-option" part="choice-option" data-index={index} onClick={this.handleSelectOriginal}>
+                  <button class="choice-option" part="choice-option" data-choice-id={choice.id} onClick={this.handleSelectOriginal}>
                     <img src={choice.originalDataUrl} alt="Original" class="choice-image" />
                     <span class="choice-label">{labels.bgRemovalUseOriginal}</span>
                   </button>
@@ -472,7 +490,7 @@ export class WtpLogoUpload {
                     }}
                     part="choice-option"
                     disabled={choice.status === 'processing'}
-                    data-index={index}
+                    data-choice-id={choice.id}
                     onClick={this.handleSelectRemoved}
                   >
                     {choice.status === 'processing' && (
@@ -506,17 +524,25 @@ export class WtpLogoUpload {
               <div
                 class={{ 'preview-item': true, 'preview-item--selected': index === this.selectedIndex }}
                 part={`preview-item${index === this.selectedIndex ? ' selected' : ''}`}
-                data-index={index}
-                onClick={this.handleSelectPreview}
-                role="button"
-                tabindex={0}
               >
-                <img src={preview.previewDataUrl ?? preview.dataUrl} alt={preview.metadata.fileName} class="preview-image" />
-                <div class="preview-info">
-                  <span class="preview-name">{preview.metadata.fileName}</span>
-                  <span class="preview-dims">{preview.metadata.width} x {preview.metadata.height}px</span>
-                  {preview.metadata.dpiX !== null && <span class="preview-dpi">{preview.metadata.dpiX} {labels.rejectionDpiUnit}</span>}
-                </div>
+                {/* A real button: it takes focus, activates on Enter and Space, and — unlike
+                    a div with role="button" wrapped around everything — leaves the remove
+                    button as a sibling instead of nesting one control inside another. */}
+                <button
+                  type="button"
+                  class="preview-select"
+                  part="preview-select"
+                  data-index={index}
+                  onClick={this.handleSelectPreview}
+                  aria-pressed={index === this.selectedIndex ? 'true' : 'false'}
+                >
+                  <img src={preview.previewDataUrl ?? preview.dataUrl} alt={preview.metadata.fileName} class="preview-image" />
+                  <div class="preview-info">
+                    <span class="preview-name">{preview.metadata.fileName}</span>
+                    <span class="preview-dims">{preview.metadata.width} x {preview.metadata.height}px</span>
+                    {preview.metadata.dpiX !== null && <span class="preview-dpi">{preview.metadata.dpiX} {labels.rejectionDpiUnit}</span>}
+                  </div>
+                </button>
                 <button class="remove-btn" part="remove-btn" data-index={index} onClick={this.handleRemovePreview} aria-label={labels.removeAriaLabel(preview.metadata.fileName)}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="18" y1="6" x2="6" y2="18" />

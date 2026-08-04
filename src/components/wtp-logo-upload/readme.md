@@ -48,6 +48,7 @@ Logo upload with drag-and-drop, format detection and print validation.
 | `"choice-option"`   |             |
 | `"divider"`         |             |
 | `"pending-choices"` |             |
+| `"preview-select"`  |             |
 | `"previews"`        |             |
 | `"prompt-hint"`     |             |
 | `"prompt-text"`     |             |

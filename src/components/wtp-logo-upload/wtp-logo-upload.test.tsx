@@ -33,6 +33,10 @@ function installFakePdfJs(behaviour: 'ok' | 'unreadable'): void {
 
 const PDF_BYTES = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37, 0x0a]);
 
+/** A real 120x120 PNG — above the default minimum size, so it passes validation. */
+const RASTER_PNG =
+  'iVBORw0KGgoAAAANSUhEUgAAAHgAAAB4CAIAAAC2BqGFAAABSElEQVR4nO3OQQ0AIAwAsUlENrLmgnuUpAI6c+73Qj9A9ANEP0D0A0Q/QPQDRD9A9ANEP0D0A0Q/QPQDRD9A9ANEP0D0A0Q/QPQDRD9A9ANEP0D0A0Q/QPQDRD9A9ANEP0D0A0Q/QPQDRD9A9ANEP0D0A0Q/QPQDRD9A9ANEP0D0A0Q/QPQDRD9A9ANEP0D0A0Q/QPQDRD9A9ANEP0D0A0Q/QPQDRD9A9ANEP0D0A0Q/QPQDRD9A9ANEP0D0A0Q/QPQDRD9A9ANEP0D0A0Q/QPQDRD9A9ANEP0D0A0Q/QPQDRD9A9ANEP0D0A0Q/QPQDRD9A9ANEP0D0A0Q/QPQDRD9A9ANEP0D0A0Q/QPQDRD9A9ANEP0D0A0Q/QPQDRD9A9ANEP0D0A0Q/QPQDRD9A9ANEP0D0A0Q/QPQDRD9A9ANEP0D0A0Q/MCxwbYmUNu15gwAAAABJRU5ErkJggg==';
+
 const VALID_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200"><rect/></svg>';
 
 describe('wtp-logo-upload browser', () => {
@@ -174,6 +178,118 @@ describe('wtp-logo-upload browser', () => {
     const urlError = root.shadowRoot?.querySelector('.url-error');
     expect(urlError).not.toBeNull();
     expect(urlError?.textContent).toContain('HTTPS');
+  });
+
+  /** Valid PNG magic bytes with garbage behind them: passes format detection, will not decode. */
+  function corruptPng(name = 'broken.png'): File {
+    return new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, ...Array(4000).fill(0x41)])], name, { type: 'image/png' });
+  }
+
+  it('clears the processing state when a file cannot be decoded', async () => {
+    const { root, spyOnEvent, waitForChanges } = await render(<wtp-logo-upload></wtp-logo-upload>);
+    const processingSpy = spyOnEvent('wtpLogoProcessing');
+
+    selectFile(root, corruptPng());
+    await waitForChanges();
+    await new Promise(r => setTimeout(r, 800));
+
+    // Leaving this on strands the host: the spinner never goes away and it keeps
+    // believing the component is busy.
+    const emitted = processingSpy.events.map((e: CustomEvent) => e.detail);
+    expect(emitted[emitted.length - 1]).toBe(false);
+    expect(root.shadowRoot?.querySelector('.processing-overlay')).toBeNull();
+  });
+
+  it('reports a file it cannot decode instead of failing silently', async () => {
+    const { root, spyOnEvent, waitForChanges } = await render(<wtp-logo-upload></wtp-logo-upload>);
+    const rejectedSpy = spyOnEvent('wtpLogoRejected');
+
+    selectFile(root, corruptPng());
+    await waitForChanges();
+    await new Promise(r => setTimeout(r, 800));
+
+    expect(rejectedSpy).toHaveReceivedEvent();
+    expect(root.shadowRoot?.querySelector('.rejection-item')?.textContent).toContain('broken.png');
+  });
+
+  it('carries on with the rest of the batch after an undecodable file', async () => {
+    const { root, spyOnEvent, waitForChanges } = await render(<wtp-logo-upload multiple></wtp-logo-upload>);
+    const validatedSpy = spyOnEvent('wtpLogoValidated');
+
+    const input = root.shadowRoot?.querySelector('input[type="file"]') as HTMLInputElement;
+    const dt = new DataTransfer();
+    dt.items.add(corruptPng());
+    dt.items.add(new File([VALID_SVG], 'good.svg', { type: 'image/svg+xml' }));
+    Object.defineProperty(input, 'files', { value: dt.files });
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+
+    await waitForChanges();
+    await new Promise(r => setTimeout(r, 800));
+
+    expect(validatedSpy).toHaveReceivedEvent();
+  });
+
+  it('activates a preview with the keyboard', async () => {
+    const { root, spyOnEvent, waitForChanges } = await render(<wtp-logo-upload></wtp-logo-upload>);
+    selectFile(root, new File([VALID_SVG], 'first.svg', { type: 'image/svg+xml' }));
+    await waitForChanges();
+    await new Promise(r => setTimeout(r, 400));
+    await waitForChanges();
+
+    const selectedSpy = spyOnEvent('wtpLogoSelected');
+    const target = root.shadowRoot?.querySelector('.preview-select') as HTMLElement | null;
+    expect(target).not.toBeNull();
+
+    target?.focus();
+    expect(root.shadowRoot?.activeElement).toBe(target);
+    // A real button activates on Enter; a div with role="button" does not.
+    target?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    target?.click();
+    await waitForChanges();
+
+    expect(selectedSpy).toHaveReceivedEvent();
+  });
+
+  it('does not nest the remove button inside the preview button', async () => {
+    const { root, waitForChanges } = await render(<wtp-logo-upload></wtp-logo-upload>);
+    selectFile(root, new File([VALID_SVG], 'first.svg', { type: 'image/svg+xml' }));
+    await waitForChanges();
+    await new Promise(r => setTimeout(r, 400));
+    await waitForChanges();
+
+    const select = root.shadowRoot?.querySelector('.preview-select');
+    expect(select?.querySelector('.remove-btn')).toBeNull();
+  });
+
+  it('identifies a background-removal card by id, not by its position', async () => {
+    // Cards are removed as the customer decides. A removal still running writes its result
+    // back by identity; if that were the array position, it would land on whichever card
+    // shifted into the freed slot — or on none, leaving that card spinning for good.
+    const png = () => new File([Uint8Array.from(atob(RASTER_PNG), c => c.charCodeAt(0))], 'photo.png', { type: 'image/png' });
+    const { root, waitForChanges } = await render(<wtp-logo-upload multiple enable-background-removal></wtp-logo-upload>);
+
+    const input = root.shadowRoot?.querySelector('input[type="file"]') as HTMLInputElement;
+    const dt = new DataTransfer();
+    dt.items.add(png());
+    dt.items.add(png());
+    Object.defineProperty(input, 'files', { value: dt.files });
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+
+    await waitForChanges();
+    await new Promise(r => setTimeout(r, 800));
+    await waitForChanges();
+
+    const idsOf = () => Array.from(root.shadowRoot?.querySelectorAll('.choice-option[data-choice-id]') ?? []).map(e => (e as HTMLElement).dataset.choiceId);
+    const before = [...new Set(idsOf())];
+    expect(before.length).toBe(2);
+
+    // Take the first card out; the second must keep the identity its removal is writing to.
+    (root.shadowRoot?.querySelector(`.choice-option[data-choice-id="${before[0]}"]`) as HTMLButtonElement).click();
+    await waitForChanges();
+    await new Promise(r => setTimeout(r, 200));
+    await waitForChanges();
+
+    expect([...new Set(idsOf())]).toEqual([before[1]]);
   });
 
   it('SVG emits wtpLogoValidated immediately even with enable-background-removal', async () => {
