@@ -532,6 +532,25 @@ describe('wtp-editor browser', () => {
     expect(envelope.decorations.find(d => d.viewId === 'back')?.status).toBe('empty');
   });
 
+  it('places initialLogo exactly once when articleId is assigned before views', async () => {
+    // The order src/index.html uses: activeViewId, then articleId, then views. Both
+    // assignments change the article key, so the placement runs twice — the canvas must
+    // still end up with one logo, on one decoration.
+    const { root, waitForChanges } = await mount(<wtp-editor initialLogo={{ dataUrl: LOGO_DATA_URL, metadata: LOGO_METADATA }}></wtp-editor>);
+    const el = root as EditorElement;
+
+    el.activeViewId = 'back';
+    el.articleId = 'A-1';
+    el.views = VIEWS;
+    await waitForChanges();
+    await new Promise(r => setTimeout(r, 400));
+
+    const envelope = await el.exportState();
+    const designed = envelope.decorations.filter(d => d.status === 'designed');
+    expect(designed.map(d => d.viewId)).toEqual(['back']);
+    expect(designed[0].state.logos.length).toBe(1);
+  });
+
   it('exportViewImage renders an inactive decoration and restores the active one', async () => {
     const { root } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
     const el = root as EditorElement;

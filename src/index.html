@@ -545,20 +545,22 @@
           editorImprint.style.display = 'none';
         }
 
+        // The logo the customer picked in the catalog. The editor places it on the
+        // decoration it opens on and nowhere else — every further decoration costs extra,
+        // so extending is a deliberate click ("Apply to all"). Set before `views`, which
+        // is what triggers the placement.
+        editorEl.initialLogo = currentLogo || undefined;
+
+        // Which decoration to open on, before `views` so the editor resolves against it
+        // rather than against the article the customer just closed.
+        editorEl.activeViewId = firstView.id;
+
         // Hand the editor every decoration of the article
         editorEl.articleId = article.id;
         editorEl.views = article.views;
-        editorEl.activeViewId = firstView.id;
 
         if (editorStates[article.id]) {
           await editorEl.loadState(editorStates[article.id]);
-        } else {
-          await editorEl.resetCanvas();
-          // The logo goes on the default decoration only — every further decoration
-          // costs extra, so extending is a deliberate click ("Apply to all").
-          if (currentLogo) {
-            await editorEl.addLogo(currentLogo);
-          }
         }
       }
 

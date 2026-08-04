@@ -201,26 +201,24 @@ export class WtpEditor {
     return views.find(v => v.id === this.currentViewId) ?? views[0];
   }
 
-  /** Print area of the active view, normalized to 0-1 where possible. */
-  private getActivePrintArea(): PrintArea | undefined {
+  /**
+   * The active view's print area, together with whether that is the final answer.
+   *
+   * The two are returned as one because they come from the same three conditions, and
+   * validation needs both: `undefined` because the decoration has no print area is a
+   * finding, `undefined` because the normalization has not finished yet is not. Deriving
+   * them separately meant two places that had to keep agreeing.
+   */
+  private activePrintArea(): { area: PrintArea | undefined; known: boolean } {
     const view = this.getActiveView();
-    if (this.resolvedPrintAreas.has(view.id)) return this.resolvedPrintAreas.get(view.id) ?? undefined;
+    if (this.resolvedPrintAreas.has(view.id)) {
+      return { area: this.resolvedPrintAreas.get(view.id) ?? undefined, known: true };
+    }
 
     // Not normalized yet. A pixel area read as 0-1 would place logos and guides thousands
     // of pixels off the canvas, so having no print area is the safer intermediate state.
-    if (view.printArea != null && isPixelPrintArea(view.printArea)) return undefined;
-    return view.printArea ?? undefined;
-  }
-
-  /**
-   * Whether `getActivePrintArea` is answering with the real thing or is still waiting for
-   * the normalization. Validation has to tell the two apart: `undefined` because the
-   * decoration has no print area is a finding, `undefined` because we do not know yet is not.
-   */
-  private isActivePrintAreaKnown(): boolean {
-    const view = this.getActiveView();
-    if (this.resolvedPrintAreas.has(view.id)) return true;
-    return view.printArea == null || !isPixelPrintArea(view.printArea);
+    const pending = view.printArea != null && isPixelPrintArea(view.printArea);
+    return { area: pending ? undefined : view.printArea ?? undefined, known: !pending };
   }
 
   /**
@@ -313,7 +311,11 @@ export class WtpEditor {
       this.loadedArticleKey = key;
       this.resetViewState();
       this.currentViewId = this.resolveInitialViewId(views);
-      this.activeViewId = this.currentViewId;
+      // Only once there are real decorations. Hosts assign `articleId` and `views` in
+      // separate statements, and in between `getViews()` still answers with the implicit
+      // single-decoration fallback — writing back then would overwrite the decoration the
+      // host asked for with `default`, and it would be gone by the time `views` arrives.
+      if (this.views.length > 0) this.activeViewId = this.currentViewId;
       void this.enqueue(async () => {
         await this.activateView(this.getActiveView());
         await this.placeInitialLogo();
@@ -377,7 +379,7 @@ export class WtpEditor {
     const canvasWidth = this.canvas.getWidth();
     const canvasHeight = this.canvas.getHeight();
 
-    const activePrintArea = this.getActivePrintArea();
+    const activePrintArea = this.activePrintArea().area;
     if (activePrintArea !== undefined) {
       // Fit logo into the print area: 0-1 coords map directly to canvas pixels
       const transform = fitLogoToPrintArea(img.width ?? 100, img.height ?? 100, activePrintArea, canvasWidth, canvasHeight);
@@ -436,7 +438,7 @@ export class WtpEditor {
     let centerX = this.canvas.getWidth() / 2;
     let centerY = this.canvas.getHeight() / 2;
 
-    const textPrintArea = this.getActivePrintArea();
+    const textPrintArea = this.activePrintArea().area;
     if (textPrintArea !== undefined) {
       const corners = printAreaToPixelCorners(textPrintArea, this.canvas.getWidth(), this.canvas.getHeight());
       centerX = (corners[0].x + corners[1].x + corners[2].x + corners[3].x) / 4;
@@ -775,6 +777,8 @@ export class WtpEditor {
       });
     }
 
+    const printArea = this.activePrintArea();
+
     // Only the logos actually on this decoration — the map is article-wide.
     const logoMetadata: LogoMetadata[] = [];
     for (const logo of state.logos) {
@@ -787,7 +791,7 @@ export class WtpEditor {
       state,
       bounds,
       sizes,
-      printArea: this.isActivePrintAreaKnown() ? this.getActivePrintArea() ?? null : 'pending',
+      printArea: printArea.known ? printArea.area ?? null : 'pending',
       canvasWidth: this.canvas.getWidth(),
       canvasHeight: this.canvas.getHeight(),
       logoMetadata,
@@ -1011,7 +1015,7 @@ export class WtpEditor {
   private drawDebugOverlay() {
     if (!this.debug || this.suppressDebug || this.canvas === undefined) return;
 
-    const printArea = this.getActivePrintArea();
+    const printArea = this.activePrintArea().area;
     if (printArea === undefined) return;
 
     drawPrintAreaOverlay(this.canvas.getContext() as CanvasRenderingContext2D, printArea, this.canvas.getWidth(), this.canvas.getHeight());
@@ -1019,7 +1023,7 @@ export class WtpEditor {
 
   /** The active print area's own coordinate system, or null when it has none. */
   private getPrintAreaFrame(): PrintAreaFrame | null {
-    const printArea = this.getActivePrintArea();
+    const printArea = this.activePrintArea().area;
     if (printArea === undefined || this.canvas === undefined) return null;
     return printAreaFrame(printArea, this.canvas.getWidth(), this.canvas.getHeight());
   }
