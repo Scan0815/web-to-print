@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html dir="ltr" lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Huggy Fleecedecke — Demo Shop</title>
+
+    <script type="module" src="/build/web-to-print.esm.js"></script>
+    <script nomodule src="/build/web-to-print.js"></script>
+    <script src="https://unpkg.com/jspdf@4.1.0/dist/jspdf.umd.min.js"></script>
+
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #fff;
+        color: #1e293b;
+      }
+      button { font: inherit; }
+
+      /* Shop chrome */
+      .shop-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 32px;
+        border-bottom: 1px solid #e2e8f0;
+        position: sticky;
+        top: 0;
+        background: #fff;
+        z-index: 50;
+      }
+      .shop-logo { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
+      .shop-logo span { color: #2563eb; }
+      .shop-header .right { display: flex; align-items: center; gap: 16px; }
+      .cart-btn {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        background: #fff;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+      }
+      .cart-btn svg { width: 16px; height: 16px; }
+      .cart-count {
+        position: absolute;
+        top: -7px;
+        right: -7px;
+        min-width: 18px;
+        height: 18px;
+        border-radius: 999px;
+        background: #2563eb;
+        color: #fff;
+        font-size: 11px;
+        font-weight: 700;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 0 4px;
+      }
+      .breadcrumb { padding: 12px 32px 0; font-size: 12px; color: #94a3b8; max-width: 1240px; margin: 0 auto; width: 100%; }
+      .breadcrumb a { color: #64748b; text-decoration: none; }
+      .breadcrumb a:hover { text-decoration: underline; }
+
+      /* Product layout */
+      .pdp { max-width: 1240px; margin: 0 auto; padding: 16px 32px 48px; }
+      .pdp-top { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 4fr); gap: 40px; }
+      @media (max-width: 980px) { .pdp-top { grid-template-columns: 1fr; } }
+
+      /* Gallery */
+      .gallery-main {
+        aspect-ratio: 4 / 3;
+        border: 1px solid #f1f5f9;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #f8fafc;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .gallery-main img { width: 100%; height: 100%; object-fit: contain; }
+      .gallery-thumbs { display: flex; gap: 8px; margin-top: 10px; }
+      .gallery-thumbs button {
+        width: 64px;
+        height: 64px;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 8px;
+        overflow: hidden;
+        background: #f8fafc;
+        cursor: pointer;
+        padding: 0;
+      }
+      .gallery-thumbs button.active { border-color: #2563eb; }
+      .gallery-thumbs img { width: 100%; height: 100%; object-fit: cover; }
+
+      /* Buy box */
+      .buy-box h1 { font-size: 22px; font-weight: 700; line-height: 1.3; }
+      .art-no { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+      .price-row { display: flex; align-items: baseline; gap: 10px; margin: 16px 0 2px; }
+      .price { font-size: 28px; font-weight: 800; }
+      .price-unit { font-size: 13px; color: #64748b; }
+      .vat-note { font-size: 12px; color: #94a3b8; }
+      .stock-note { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #16a34a; margin-top: 8px; }
+      .stock-note .dot { width: 8px; height: 8px; border-radius: 50%; background: #16a34a; }
+
+      .section-label { font-size: 13px; font-weight: 600; margin: 20px 0 8px; }
+      .swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+      .swatch {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        border: 2px solid #e2e8f0;
+        cursor: pointer;
+        padding: 0;
+        position: relative;
+      }
+      .swatch.active { border-color: #1e293b; box-shadow: 0 0 0 2px #fff inset; }
+      .swatch:hover { border-color: #94a3b8; }
+
+      .qty-row { display: flex; align-items: center; gap: 12px; }
+      .qty-row input {
+        width: 90px;
+        padding: 8px 10px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 14px;
+      }
+      .scale-table { font-size: 12px; color: #64748b; display: flex; gap: 12px; flex-wrap: wrap; }
+      .scale-table b { color: #1e293b; }
+
+      /* Decoration list */
+      .deco-list { display: flex; flex-direction: column; gap: 8px; }
+      .deco-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 10px;
+        transition: border-color 0.15s ease;
+      }
+      .deco-row.designed { border-color: #bbf7d0; background: #f0fdf4; }
+      .deco-row.active-view { border-color: #2563eb; }
+      .deco-row input[type=checkbox] { width: 16px; height: 16px; accent-color: #2563eb; }
+      .deco-thumb {
+        width: 44px;
+        height: 44px;
+        border-radius: 6px;
+        background: #f1f5f9;
+        object-fit: contain;
+        flex-shrink: 0;
+      }
+      .deco-info { flex: 1; min-width: 0; }
+      .deco-name { font-size: 13px; font-weight: 600; }
+      .deco-meta { font-size: 11.5px; color: #64748b; margin-top: 1px; }
+      .deco-warn { font-size: 11px; color: #b45309; margin-top: 2px; }
+      .deco-price { font-size: 13px; font-weight: 600; white-space: nowrap; }
+      .deco-price small { display: block; font-weight: 400; color: #94a3b8; font-size: 11px; text-align: right; }
+      .deco-design-btn {
+        padding: 5px 10px;
+        font-size: 12px;
+        font-weight: 500;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        background: #fff;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .deco-design-btn:hover { border-color: #2563eb; color: #2563eb; }
+
+      .total-box {
+        margin-top: 20px;
+        padding: 14px 16px;
+        background: #f8fafc;
+        border-radius: 10px;
+        font-size: 13px;
+      }
+      .total-box .line { display: flex; justify-content: space-between; padding: 2px 0; color: #475569; }
+      .total-box .line.total { font-size: 16px; font-weight: 700; color: #1e293b; border-top: 1px solid #e2e8f0; margin-top: 6px; padding-top: 8px; }
+
+      .add-to-cart {
+        width: 100%;
+        margin-top: 14px;
+        padding: 13px;
+        border: none;
+        border-radius: 10px;
+        background: #2563eb;
+        color: #fff;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .add-to-cart:hover { background: #1d4ed8; }
+      .delivery-note { text-align: center; font-size: 12px; color: #94a3b8; margin-top: 8px; }
+
+      /* Description */
+      .description { margin-top: 36px; max-width: 760px; font-size: 14px; line-height: 1.65; color: #334155; }
+      .description h2 { font-size: 16px; margin-bottom: 10px; }
+
+      /* Designer section */
+      .designer { margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 28px; }
+      .designer h2 { font-size: 18px; font-weight: 700; }
+      .designer .designer-hint { font-size: 13px; color: #64748b; margin: 4px 0 16px; }
+      .designer-frame {
+        display: flex;
+        align-items: flex-start;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        overflow: hidden;
+      }
+      .designer-main { flex: 1; min-width: 0; padding: 16px; display: flex; justify-content: center; }
+      .designer-sidebar {
+        width: 280px;
+        flex-shrink: 0;
+        padding: 16px;
+        border-left: 1px solid #e2e8f0;
+        align-self: stretch;
+      }
+      .designer-sidebar h4 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+      .designer-sidebar .sidebar-hint { font-size: 12px; color: #64748b; margin-bottom: 12px; line-height: 1.5; }
+      .designer-actions { display: flex; gap: 8px; margin-top: 12px; }
+      .designer-actions button {
+        padding: 7px 14px;
+        font-size: 13px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        background: #fff;
+        cursor: pointer;
+      }
+      .designer-actions button:hover { background: #f8fafc; }
+      @media (max-width: 1100px) {
+        .designer-frame { flex-direction: column; }
+        .designer-sidebar { width: auto; border-left: none; border-top: 1px solid #e2e8f0; }
+      }
+
+      /* File server banner */
+      .filebase-note {
+        margin: 12px 32px 0;
+        max-width: 1240px;
+        margin-left: auto;
+        margin-right: auto;
+        padding: 8px 32px;
+        font-size: 12px;
+        color: #92400e;
+      }
+      .filebase-note .inner {
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+        border-radius: 8px;
+        padding: 8px 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .filebase-note input {
+        flex: 1;
+        min-width: 220px;
+        padding: 5px 8px;
+        border: 1px solid #fde68a;
+        border-radius: 6px;
+        font-size: 12px;
+      }
+      .filebase-note button {
+        padding: 5px 10px;
+        border: 1px solid #d97706;
+        background: #d97706;
+        color: #fff;
+        border-radius: 6px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      /* Cart modal */
+      .cart-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 200;
+        background: rgba(15, 23, 42, 0.55);
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+      .cart-overlay.open { display: flex; }
+      .cart-modal {
+        background: #fff;
+        border-radius: 14px;
+        max-width: 560px;
+        width: 100%;
+        max-height: 85vh;
+        overflow: auto;
+        padding: 24px;
+      }
+      .cart-modal h3 { font-size: 17px; margin-bottom: 4px; }
+      .cart-modal .sub { font-size: 12.5px; color: #64748b; margin-bottom: 16px; }
+      .cart-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+      .cart-item img { width: 52px; height: 52px; object-fit: contain; background: #f8fafc; border-radius: 6px; }
+      .cart-item .grow { flex: 1; }
+      .cart-item .price { font-size: 13px; font-weight: 600; }
+      .cart-json {
+        margin-top: 14px;
+        background: #0f172a;
+        color: #94a3b8;
+        border-radius: 8px;
+        padding: 12px;
+        font-family: ui-monospace, monospace;
+        font-size: 11px;
+        white-space: pre;
+        overflow: auto;
+        max-height: 220px;
+      }
+      .cart-close { margin-top: 16px; width: 100%; padding: 10px; border: none; border-radius: 8px; background: #1e293b; color: #fff; font-size: 14px; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+
+    <div class="shop-header">
+      <div class="shop-logo">demo<span>shop</span></div>
+      <div class="right">
+        <a href="/" style="font-size:13px;color:#64748b;text-decoration:none;">&larr; Zur&uuml;ck zur Testumgebung</a>
+        <button class="cart-btn" id="cart-open">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+          Warenkorb
+          <span class="cart-count" id="cart-count">0</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="filebase-note" id="filebase-note" style="display:none;">
+      <div class="inner">
+        <span>Kein Fileserver konfiguriert &mdash; Produktbilder werden als generierte Platzhalter angezeigt. Basis-URL des Shop-Fileservers:</span>
+        <input id="filebase-input" type="url" placeholder="https://files.mein-shop.de" />
+        <button id="filebase-save">Speichern &amp; neu laden</button>
+      </div>
+    </div>
+
+    <div class="breadcrumb"><a href="/">Start</a> &rsaquo; <a href="/">Textilien</a> &rsaquo; <span id="crumb-name"></span></div>
+
+    <div class="pdp">
+      <div class="pdp-top">
+        <!-- Gallery -->
+        <div>
+          <div class="gallery-main"><img id="gallery-main-img" alt="" /></div>
+          <div class="gallery-thumbs" id="gallery-thumbs"></div>
+        </div>
+
+        <!-- Buy box -->
+        <div class="buy-box">
+          <h1 id="p-name"></h1>
+          <div class="art-no" id="p-artno"></div>
+
+          <div class="price-row">
+            <span class="price" id="p-price"></span>
+            <span class="price-unit">pro St&uuml;ck</span>
+          </div>
+          <div class="vat-note">zzgl. 19&nbsp;% USt., zzgl. Versand</div>
+          <div class="stock-note"><span class="dot"></span><span id="p-stock"></span></div>
+
+          <div class="section-label">Farbe: <span id="variant-name" style="font-weight:400;color:#64748b;"></span></div>
+          <div class="swatches" id="swatches"></div>
+
+          <div class="section-label">Menge</div>
+          <div class="qty-row">
+            <input type="number" id="qty" min="1" value="50" />
+            <div class="scale-table" id="scale-table"></div>
+          </div>
+
+          <div class="section-label">Veredelungen <span style="font-weight:400;color:#94a3b8;">(erst gestalten, dann bestellbar)</span></div>
+          <div class="deco-list" id="deco-list"></div>
+
+          <div class="total-box" id="total-box"></div>
+          <button class="add-to-cart" id="add-to-cart">In den Warenkorb</button>
+          <div class="delivery-note" id="p-delivery"></div>
+        </div>
+      </div>
+
+      <div class="description">
+        <h2>Produktbeschreibung</h2>
+        <div id="p-description"></div>
+      </div>
+
+      <!-- Designer -->
+      <div class="designer" id="designer">
+        <h2>Veredelung gestalten</h2>
+        <p class="designer-hint">Logo hochladen und auf den Druckbereichen platzieren. Jede Veredelung wird einzeln gestaltet &mdash; &bdquo;Apply to all&ldquo; &uuml;bertr&auml;gt ein Logo auf die &uuml;brigen.</p>
+        <div class="designer-frame">
+          <div class="designer-main">
+            <wtp-editor id="editor" width="860" height="540"></wtp-editor>
+          </div>
+          <div class="designer-sidebar">
+            <h4>Logo hinzuf&uuml;gen</h4>
+            <p class="sidebar-hint">Wird auf der gerade aktiven Veredelung platziert.</p>
+            <wtp-logo-upload id="editor-uploader" enable-background-removal></wtp-logo-upload>
+            <div class="designer-actions">
+              <button id="btn-pdf">Druckfreigabe-PDF</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cart modal -->
+    <div class="cart-overlay" id="cart-overlay">
+      <div class="cart-modal">
+        <h3>Warenkorb (Simulation)</h3>
+        <p class="sub">Das ist der Payload, den der Shop beim Bestellen erh&auml;lt &mdash; das vollst&auml;ndige Design-Envelope liegt in der Browser-Konsole.</p>
+        <div id="cart-items"></div>
+        <div class="cart-json" id="cart-json"></div>
+        <button class="cart-close" id="cart-close">Schlie&szlig;en</button>
+      </div>
+    </div>
+
+    <script>
+      // ==========================================================================
+      // A realistic product detail page over the raw shop payload (details.json),
+      // exercising the mapping documented in docs/specs/multi-decoration-editor.md
+      // §3.1a: options[<variant>].printAreas.decorations[] → ArticleView[], and
+      // additionalOptions[<printCodeSKU>] → price + name of that decoration.
+      // ==========================================================================
+
+      // --- File server -----------------------------------------------------------
+      // The payload references shop-relative paths (/images/…, print-areas/…). Without
+      // a configured file server the page generates placeholder mockups in the variant
+      // colour, so the whole flow stays playable offline.
+      const FILE_BASE = (localStorage.getItem('wtpFileBase') || '').replace(/\/+$/, '');
+
+      const filebaseNote = document.getElementById('filebase-note');
+      if (!FILE_BASE) filebaseNote.style.display = 'block';
+      document.getElementById('filebase-input').value = FILE_BASE;
+      document.getElementById('filebase-save').addEventListener('click', () => {
+        localStorage.setItem('wtpFileBase', document.getElementById('filebase-input').value.trim());
+        location.reload();
+      });
+
+      function assetUrl(path, placeholder) {
+        if (!path) return placeholder;
+        if (!FILE_BASE) return placeholder;
+        return FILE_BASE + '/' + String(path).replace(/^\/+/, '');
+      }
+
+      // --- Placeholder artwork ---------------------------------------------------
+      const COLOR_MAP = {
+        limone: '#c6d64a', magenta: '#d9218f', lila: '#7d4fa0', anthrazit: '#4a4d52',
+        royalblau: '#1f4da0', processblau: '#0085ca', schwarz: '#1c1c1e', navy: '#1b2a4a',
+        'grün': '#00843d', rot: '#c8102e', beige: '#cbb99a', orange: '#f37021',
+      };
+
+      function variantColor(variant) {
+        const key = (variant.title || '').split('(')[0].trim().toLowerCase();
+        return COLOR_MAP[key] || '#94a3b8';
+      }
+
+      function svgUrl(svg) {
+        return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+      }
+
+      /** Gallery placeholder: the blanket with its pouch in the variant colour. */
+      function productPlaceholder(variant, seed) {
+        const c = variantColor(variant);
+        const shift = (seed * 37) % 80 - 40;
+        return svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
+          <rect width="1200" height="900" fill="#f8fafc"/>
+          <rect x="${180 + shift}" y="140" width="760" height="560" rx="36" fill="${c}"/>
+          <rect x="${180 + shift}" y="140" width="760" height="560" rx="36" fill="url(#g)" opacity="0.25"/>
+          <rect x="${820 + shift}" y="480" width="230" height="300" rx="26" fill="${c}" stroke="#00000022" stroke-width="6"/>
+          <path d="M${835 + shift} 520 h200" stroke="#00000033" stroke-width="10" stroke-linecap="round"/>
+          <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#000"/></linearGradient></defs>
+        </svg>`);
+      }
+
+      /** Print-line placeholder in the decoration's natural dimensions, so the 0-1 print area lands where it would on the real mockup. */
+      function printLinePlaceholder(dec, variant) {
+        const w = dec.imagePrintLineNaturalWidth || 2400;
+        const h = dec.imagePrintLineNaturalHeight || 1600;
+        const c = variantColor(variant);
+        const pouch = dec.impLocationCode === 'pouch';
+        const body = pouch
+          ? `<rect x="${w * 0.14}" y="${h * 0.08}" width="${w * 0.66}" height="${h * 0.84}" rx="${h * 0.06}" fill="${c}"/>
+             <path d="M${w * 0.18} ${h * 0.14} H${w * 0.76}" stroke="#00000030" stroke-width="${h * 0.015}" stroke-linecap="round"/>`
+          : `<rect x="${w * 0.06}" y="${h * 0.1}" width="${w * 0.88}" height="${h * 0.8}" rx="${h * 0.05}" fill="${c}"/>`;
+        return svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+          <rect width="${w}" height="${h}" fill="#f1f5f9"/>${body}
+          <text x="${w * 0.02}" y="${h * 0.05}" font-family="sans-serif" font-size="${h * 0.032}" fill="#64748b">${dec.impLocation} (Platzhalter)</text>
+        </svg>`);
+      }
+
+      // --- Payload → editor mapping (spec §3.1a) ----------------------------------
+      let article = null;
+      let variants = [];
+      let currentVariant = null;
+      const ordered = new Set();       // printCodeSKUs the customer wants to order
+      let lastEnvelope = null;         // latest ArticleEditorState from the editor
+
+      const editorEl = document.getElementById('editor');
+
+      function decorationOption(sku) {
+        return ((article.additionalOptions || {})[sku] || [])[0] || null;
+      }
+
+      function optionName(sku, fallback) {
+        const opt = decorationOption(sku);
+        return (opt && opt.articleText && opt.articleText.de && opt.articleText.de.name) || fallback;
+      }
+
+      function parseMaxColours(name) {
+        const m = name.match(/Farben\s*:\s*([^-]+?)\s*(?:-|$)/i);
+        if (!m) return undefined;
+        if (/full\s*color/i.test(m[1])) return 'full color';
+        const n = parseInt(m[1], 10);
+        return Number.isFinite(n) ? n : undefined;
+      }
+
+      /**
+       * ArticleView[] for one colour variant. Sorted by printCodeSKU: variant 91986
+       * delivers the same four decorations in a different order than the other eleven
+       * (the reordering case from spec §3.1a) — sorting keeps the decoration identity
+       * stable across colour switches, so a design survives changing the colour.
+       */
+      function mapViews(variant) {
+        return [...variant.printAreas.decorations]
+          .sort((a, b) => a.printCodeSKU - b.printCodeSKU)
+          .map(dec => {
+            const name = optionName(dec.printCodeSKU, dec.printCode);
+            const maxColours = parseMaxColours(name);
+            return {
+              id: String(dec.printCodeSKU),
+              image: assetUrl(dec.imagePrintLine, printLinePlaceholder(dec, variant)),
+              label: dec.impLocation,
+              printArea: dec.printArea || null,
+              coordinateImageSize: {
+                width: dec.imagePrintLineNaturalWidth || null,
+                height: dec.imagePrintLineNaturalHeight || null,
+                longestSide: (dec.imagePrintLineNaturalWidth || 0) >= (dec.imagePrintLineNaturalHeight || 0) ? 'width' : 'height',
+              },
+              impMethod: name.split(' - ')[0].trim(),
+              impLocation: dec.impLocation,
+              ...(maxColours !== undefined ? { maxColours } : {}),
+            };
+          });
+      }
+
+      // --- Pricing -----------------------------------------------------------------
+      const fmt = cents => (cents / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+
+      function unitPriceCents(qty) {
+        const tiers = article.customerPrice && article.customerPrice.length ? article.customerPrice : [{ scale: 1, price: article.price }];
+        let price = tiers[0].price;
+        for (const t of tiers) if (qty >= t.scale) price = t.price;
+        return price;
+      }
+
+      function currentQty() {
+        return Math.max(1, parseInt(document.getElementById('qty').value, 10) || 1);
+      }
+
+      // --- Rendering -----------------------------------------------------------------
+      function renderStatic() {
+        document.title = article.name + ' — Demo Shop';
+        document.getElementById('crumb-name').textContent = article.name;
+        document.getElementById('p-name').textContent = article.name;
+        document.getElementById('p-artno').textContent = 'Art.-Nr. ' + article.extId + ' · ' + (article.supplierName || '');
+        document.getElementById('p-stock').textContent = article.stock + ' auf Lager';
+        document.getElementById('p-delivery').textContent = 'Lieferzeit: ca. ' + (article.deliveryTime || 2) + ' Wochen inkl. Veredelung';
+        document.getElementById('p-description').innerHTML = article.description || '';
+        document.getElementById('scale-table').innerHTML = (article.customerPrice || [])
+          .map(t => `<span>ab ${t.scale}: <b>${fmt(t.price)}</b></span>`).join('');
+      }
+
+      function renderSwatches() {
+        const el = document.getElementById('swatches');
+        el.innerHTML = '';
+        variants.forEach(v => {
+          const b = document.createElement('button');
+          b.className = 'swatch' + (v === currentVariant ? ' active' : '');
+          b.style.background = variantColor(v);
+          b.title = v.title;
+          b.addEventListener('click', () => switchVariant(v));
+          el.appendChild(b);
+        });
+        document.getElementById('variant-name').textContent = currentVariant.title;
+      }
+
+      function renderGallery() {
+        const main = document.getElementById('gallery-main-img');
+        const thumbs = document.getElementById('gallery-thumbs');
+        const images = (currentVariant.images && currentVariant.images.length ? currentVariant.images : [currentVariant.mainImage])
+          .slice(0, 5)
+          .map((p, i) => assetUrl(p, productPlaceholder(currentVariant, i)));
+
+        main.src = images[0];
+        main.onerror = () => { main.src = productPlaceholder(currentVariant, 0); };
+        thumbs.innerHTML = '';
+        images.forEach((src, i) => {
+          const b = document.createElement('button');
+          b.className = i === 0 ? 'active' : '';
+          const img = document.createElement('img');
+          img.src = src;
+          img.onerror = () => { img.src = productPlaceholder(currentVariant, i); };
+          b.appendChild(img);
+          b.addEventListener('click', () => {
+            main.src = src;
+            thumbs.querySelectorAll('button').forEach(x => x.classList.remove('active'));
+            b.classList.add('active');
+          });
+          thumbs.appendChild(b);
+        });
+      }
+
+      /** One row per decoration of the current variant: price, designed status, order checkbox. */
+      function renderDecorations() {
+        const list = document.getElementById('deco-list');
+        list.innerHTML = '';
+
+        const byId = {};
+        (lastEnvelope ? lastEnvelope.decorations : []).forEach(d => { byId[d.viewId] = d; });
+
+        mapViews(currentVariant).forEach(view => {
+          const state = byId[view.id];
+          const designed = !!state && state.status === 'designed';
+          const opt = decorationOption(view.id);
+          const name = optionName(view.id, view.impMethod);
+          const active = editorEl.activeViewId === view.id;
+
+          const row = document.createElement('div');
+          row.className = 'deco-row' + (designed ? ' designed' : '') + (active ? ' active-view' : '');
+
+          const check = document.createElement('input');
+          check.type = 'checkbox';
+          check.disabled = !designed;
+          check.checked = designed && ordered.has(view.id);
+          check.title = designed ? 'Diese Veredelung mitbestellen' : 'Erst gestalten, dann bestellbar';
+          check.addEventListener('change', () => {
+            check.checked ? ordered.add(view.id) : ordered.delete(view.id);
+            renderTotal();
+          });
+
+          const thumb = document.createElement('img');
+          thumb.className = 'deco-thumb';
+          thumb.src = (state && state.previewDataUrl) || view.image;
+          thumb.alt = '';
+
+          const info = document.createElement('div');
+          info.className = 'deco-info';
+          const warnings = state ? state.issues.filter(i => i.severity === 'warning') : [];
+          info.innerHTML = `
+            <div class="deco-name">${view.label} — ${view.impMethod}</div>
+            <div class="deco-meta">${name}${designed ? ' · <b style="color:#16a34a;">gestaltet</b>' : ' · noch nicht gestaltet'}</div>
+            ${warnings.length ? `<div class="deco-warn">&#9888; ${warnings[0].message}</div>` : ''}`;
+
+          const price = document.createElement('div');
+          price.className = 'deco-price';
+          price.innerHTML = opt ? `${fmt(opt.price)}<small>pro St&uuml;ck</small>` : '';
+
+          const design = document.createElement('button');
+          design.className = 'deco-design-btn';
+          design.textContent = designed ? 'Bearbeiten' : 'Gestalten';
+          design.addEventListener('click', async () => {
+            await editorEl.setActiveView(view.id);
+            document.getElementById('designer').scrollIntoView({ behavior: 'smooth' });
+          });
+
+          row.append(check, thumb, info, price, design);
+          list.appendChild(row);
+        });
+      }
+
+      function renderTotal() {
+        const qty = currentQty();
+        const unit = unitPriceCents(qty);
+        const decoSum = [...ordered].reduce((sum, sku) => sum + ((decorationOption(sku) || {}).price || 0), 0);
+        const total = qty * (unit + decoSum);
+
+        const lines = [
+          `<div class="line"><span>${qty} × Artikel (${fmt(unit)})</span><span>${fmt(qty * unit)}</span></div>`,
+          ...[...ordered].map(sku => {
+            const opt = decorationOption(sku) || { price: 0 };
+            return `<div class="line"><span>${qty} × ${optionName(sku, sku)}</span><span>${fmt(qty * opt.price)}</span></div>`;
+          }),
+          `<div class="line total"><span>Gesamt (netto)</span><span>${fmt(total)}</span></div>`,
+        ];
+        document.getElementById('total-box').innerHTML = lines.join('');
+        document.getElementById('p-price').textContent = fmt(unit);
+      }
+
+      // --- Variant switching -----------------------------------------------------
+      // Spec §3.1a: the host resolves the colour variant, the editor only ever sees
+      // that variant's decorations. Because the view ids are stable (sorted SKUs), the
+      // design survives a colour switch — only the mockup images are exchanged.
+      async function switchVariant(variant) {
+        const previous = currentVariant;
+        currentVariant = variant;
+
+        if (previous && lastEnvelope) {
+          const env = await editorEl.exportState();
+          const views = mapViews(variant);
+          const imageById = Object.fromEntries(views.map(v => [v.id, v.image]));
+          env.decorations.forEach(d => {
+            if (imageById[d.viewId]) d.state.productImage = imageById[d.viewId];
+            // Empty decorations get fresh thumbnails in the new colour from the preload.
+            if (d.status === 'empty') delete d.previewDataUrl;
+          });
+          editorEl.views = views;
+          await editorEl.loadState(env);
+          lastEnvelope = await editorEl.exportState();
+        } else {
+          editorEl.articleId = article._id;
+          editorEl.views = mapViews(variant);
+        }
+
+        renderSwatches();
+        renderGallery();
+        renderDecorations();
+        renderTotal();
+      }
+
+      // --- Editor events -----------------------------------------------------------
+      editorEl.addEventListener('wtpEditorStateChanged', e => {
+        const before = lastEnvelope;
+        lastEnvelope = e.detail;
+        // Auto-order a decoration the moment it is first designed; the checkbox stays
+        // in the customer's hands afterwards.
+        e.detail.decorations.forEach(d => {
+          const was = before && before.decorations.find(x => x.viewId === d.viewId);
+          if (d.status === 'designed' && (!was || was.status !== 'designed')) ordered.add(d.viewId);
+          if (d.status === 'empty') ordered.delete(d.viewId);
+        });
+        renderDecorations();
+        renderTotal();
+      });
+      editorEl.addEventListener('wtpEditorViewChanged', () => renderDecorations());
+
+      document.getElementById('editor-uploader').addEventListener('wtpLogoValidated', e => {
+        editorEl.addLogo(e.detail);
+      });
+
+      document.getElementById('qty').addEventListener('input', renderTotal);
+
+      document.getElementById('btn-pdf').addEventListener('click', async () => {
+        const btn = document.getElementById('btn-pdf');
+        btn.disabled = true;
+        btn.textContent = 'Erzeuge PDF…';
+        try {
+          await editorEl.exportPdf({
+            id: String(article.extId),
+            name: article.name,
+            description: '',
+            views: mapViews(currentVariant),
+          });
+        } catch (err) {
+          alert(err && err.message ? err.message : 'Keine gestaltete Veredelung vorhanden.');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Druckfreigabe-PDF';
+        }
+      });
+
+      // --- Cart ----------------------------------------------------------------------
+      async function openCart() {
+        const envelope = await editorEl.exportState();
+        lastEnvelope = envelope;
+        const qty = currentQty();
+        const items = document.getElementById('cart-items');
+        const designedOrdered = envelope.decorations.filter(d => ordered.has(d.viewId) && d.status === 'designed');
+
+        items.innerHTML = `
+          <div class="cart-item">
+            <img src="${document.getElementById('gallery-main-img').src}" alt="" />
+            <div class="grow"><b>${article.name}</b><br><span style="color:#64748b;">${currentVariant.title}, ${qty} Stück</span></div>
+            <div class="price">${fmt(qty * unitPriceCents(qty))}</div>
+          </div>` +
+          designedOrdered.map(d => `
+            <div class="cart-item">
+              <img src="${d.previewDataUrl || ''}" alt="" />
+              <div class="grow"><b>Veredelung: ${d.label}</b><br><span style="color:#64748b;">${optionName(d.viewId, d.impMethod || '')}</span></div>
+              <div class="price">${fmt(qty * ((decorationOption(d.viewId) || {}).price || 0))}</div>
+            </div>`).join('');
+
+        // What the shop's order endpoint would receive. The full envelope (with
+        // fabricJson and logo sources) goes to the console — too big for the modal.
+        const orderPayload = {
+          articleId: article._id,
+          extId: article.extId,
+          variant: currentVariant.extId,
+          quantity: qty,
+          decorations: designedOrdered.map(d => ({
+            printCodeSKU: Number(d.viewId),
+            name: optionName(d.viewId, ''),
+            unitPriceCents: (decorationOption(d.viewId) || {}).price || 0,
+            issues: d.issues.map(i => i.code),
+          })),
+          designEnvelope: `ArticleEditorState v${envelope.version}, ${envelope.decorations.length} decorations, ${(JSON.stringify(envelope).length / 1024).toFixed(0)} KB — see console`,
+        };
+        console.log('Order payload:', orderPayload);
+        console.log('Design envelope:', envelope);
+        document.getElementById('cart-json').textContent = JSON.stringify(orderPayload, null, 2);
+        document.getElementById('cart-count').style.display = 'flex';
+        document.getElementById('cart-count').textContent = '1';
+        document.getElementById('cart-overlay').classList.add('open');
+      }
+
+      document.getElementById('add-to-cart').addEventListener('click', openCart);
+      document.getElementById('cart-open').addEventListener('click', openCart);
+      document.getElementById('cart-close').addEventListener('click', () => document.getElementById('cart-overlay').classList.remove('open'));
+      document.getElementById('cart-overlay').addEventListener('click', e => {
+        if (e.target === document.getElementById('cart-overlay')) e.target.classList.remove('open');
+      });
+
+      // --- Boot ------------------------------------------------------------------------
+      fetch('/demo-article/details.json')
+        .then(r => r.json())
+        .then(data => {
+          article = data;
+          variants = Object.entries(article.options || {}).map(([extId, arr]) => ({ extId: Number(extId), ...arr[0] }));
+          currentVariant = variants[0];
+          renderStatic();
+          return switchVariant(currentVariant);
+        });
+    </script>
+  </body>
+</html>
