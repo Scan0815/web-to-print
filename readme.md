@@ -107,6 +107,7 @@ Validates uploaded files against configurable print-quality rules (format, DPI, 
 | Event | Detail | Description |
 |---|---|---|
 | `wtpLogoValidated` | `LogoData` | Fires when a logo passes validation |
+| `wtpLogoSelected` | `LogoData` | Fires when the customer picks a logo: after a fresh upload and on **every** gallery click, including the already-selected logo — wire this to `addLogo()` for click-to-place. Not fired by the auto-reselection after a removal |
 | `wtpLogoRejected` | `{ file: File; issues: LogoValidationIssue[] }` | Fires when a logo fails validation |
 | `wtpLogoProcessing` | `boolean` | Fires when processing state changes (`true` = busy) |
 

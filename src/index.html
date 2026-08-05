@@ -444,12 +444,14 @@
       uploader.addEventListener('wtpLogoSelected', adoptLogo);
 
       // --- Additional logos, uploaded from inside the editor ---
-      // A fresh upload lands on the decoration currently being edited; "Apply to all"
-      // in the editor toolbar extends a selected logo to the remaining decorations.
+      // wtpLogoSelected fires once per fresh upload and on every gallery click (also on
+      // the already-selected logo), so one listener covers both: the upload lands on the
+      // decoration being edited, and clicking a logo after switching decorations places
+      // it there as well. The picked logo also becomes the page-wide current one.
       const editorUploader = document.getElementById('editor-uploader');
-      editorUploader.addEventListener('wtpLogoSelected', adoptLogo);
-      editorUploader.addEventListener('wtpLogoValidated', (e) => {
+      editorUploader.addEventListener('wtpLogoSelected', (e) => {
         editorEl.addLogo(e.detail);
+        adoptLogo(e);
       });
 
       // --- Imprint info helpers ---

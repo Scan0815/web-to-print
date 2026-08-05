@@ -395,7 +395,7 @@
           </div>
           <div class="designer-sidebar">
             <h4>Logo hinzuf&uuml;gen</h4>
-            <p class="sidebar-hint">Wird auf der gerade aktiven Veredelung platziert.</p>
+            <p class="sidebar-hint">Wird auf der gerade aktiven Veredelung platziert. Ansicht wechseln und das Logo in der Galerie anklicken, um es dort erneut zu verwenden.</p>
             <wtp-logo-upload id="editor-uploader" enable-background-removal></wtp-logo-upload>
             <div class="designer-actions">
               <button id="btn-pdf">Druckfreigabe-PDF</button>
@@ -742,7 +742,11 @@
       });
       editorEl.addEventListener('wtpEditorViewChanged', () => renderDecorations());
 
-      document.getElementById('editor-uploader').addEventListener('wtpLogoValidated', e => {
+      // A fresh upload emits wtpLogoValidated and wtpLogoSelected; a gallery click emits
+      // only wtpLogoSelected — including on the logo that is already selected. Listening
+      // to wtpLogoSelected alone therefore places exactly once per upload, and again on
+      // every click: switch decoration, click the logo, it lands there too.
+      document.getElementById('editor-uploader').addEventListener('wtpLogoSelected', e => {
         editorEl.addLogo(e.detail);
       });
 

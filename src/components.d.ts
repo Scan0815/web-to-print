@@ -525,7 +525,7 @@ declare namespace LocalJSX {
          */
         "onWtpLogoRejected"?: (event: WtpLogoUploadCustomEvent<{ file: File; issues: LogoValidationIssue[] }>) => void;
         /**
-          * Fires when a logo is selected from the preview gallery.
+          * Fires when the customer picks a logo: once after a fresh upload, and on every click in the preview gallery — deliberately also on the logo that is already selected, so hosts can place the same logo again (e.g. on another decoration). Does not fire for the automatic re-selection after a removal: nothing was picked there, and a click-to-place host would otherwise add a logo as a side effect of deleting one.
          */
         "onWtpLogoSelected"?: (event: WtpLogoUploadCustomEvent<LogoData>) => void;
         /**

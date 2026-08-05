@@ -319,6 +319,48 @@ describe('wtp-logo-upload browser', () => {
     expect(validated.events.length).toBe(2);
   });
 
+  it('emits wtpLogoSelected again when the selected logo is clicked again', async () => {
+    // Click-to-place depends on this: switch decoration, click the (still selected)
+    // logo, place it there too. A "nothing changed" guard would break that flow.
+    const { root, spyOnEvent, waitForChanges } = await render(<wtp-logo-upload></wtp-logo-upload>);
+    selectFile(root, new File([VALID_SVG], 'logo.svg', { type: 'image/svg+xml' }));
+    await waitForChanges();
+    await new Promise(r => setTimeout(r, 400));
+    await waitForChanges();
+
+    const selectedSpy = spyOnEvent('wtpLogoSelected');
+    const btn = root.shadowRoot?.querySelector('.preview-select') as HTMLButtonElement;
+    btn.click();
+    btn.click();
+    await waitForChanges();
+
+    expect(selectedSpy.events.length).toBe(2);
+  });
+
+  it('does not emit wtpLogoSelected when a removal auto-selects the next logo', async () => {
+    // Nothing was picked there — a click-to-place host would otherwise add a logo to
+    // the canvas as a side effect of deleting another one.
+    const { root, spyOnEvent, waitForChanges } = await render(<wtp-logo-upload multiple></wtp-logo-upload>);
+    const input = root.shadowRoot?.querySelector('input[type="file"]') as HTMLInputElement;
+    const dt = new DataTransfer();
+    dt.items.add(new File([VALID_SVG], 'one.svg', { type: 'image/svg+xml' }));
+    dt.items.add(new File([VALID_SVG.replace('200', '300')], 'two.svg', { type: 'image/svg+xml' }));
+    input.files = dt.files;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    await waitForChanges();
+    await new Promise(r => setTimeout(r, 500));
+    await waitForChanges();
+
+    const selectedSpy = spyOnEvent('wtpLogoSelected');
+    // The second upload is the selected one; removing it re-selects the first — silently.
+    const removeButtons = root.shadowRoot?.querySelectorAll('.remove-btn');
+    (removeButtons![1] as HTMLButtonElement).click();
+    await waitForChanges();
+
+    expect(root.shadowRoot?.querySelectorAll('.preview-item').length).toBe(1);
+    expect(selectedSpy.events.length).toBe(0);
+  });
+
   it('SVG emits wtpLogoValidated immediately even with enable-background-removal', async () => {
     const { root, spyOnEvent, waitForChanges } = await render(<wtp-logo-upload enable-background-removal></wtp-logo-upload>);
     const validatedSpy = spyOnEvent('wtpLogoValidated');

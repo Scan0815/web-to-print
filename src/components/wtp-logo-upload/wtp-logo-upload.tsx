@@ -73,7 +73,13 @@ export class WtpLogoUpload {
   @Event() wtpLogoRejected: EventEmitter<{ file: File; issues: LogoValidationIssue[] }>;
   /** Fires when processing state changes (true = busy, false = idle). */
   @Event() wtpLogoProcessing: EventEmitter<boolean>;
-  /** Fires when a logo is selected from the preview gallery. */
+  /**
+   * Fires when the customer picks a logo: once after a fresh upload, and on every click
+   * in the preview gallery — deliberately also on the logo that is already selected, so
+   * hosts can place the same logo again (e.g. on another decoration). Does not fire for
+   * the automatic re-selection after a removal: nothing was picked there, and a
+   * click-to-place host would otherwise add a logo as a side effect of deleting one.
+   */
   @Event() wtpLogoSelected: EventEmitter<LogoData>;
 
   private fileInputRef: HTMLInputElement | undefined;
@@ -370,10 +376,8 @@ export class WtpLogoUpload {
     const index = Number(btn.dataset.index);
     this.previews = this.previews.filter((_, i) => i !== index);
     if (this.selectedIndex === index) {
+      // Silent re-selection: see the wtpLogoSelected doc comment.
       this.selectedIndex = this.previews.length > 0 ? 0 : -1;
-      if (this.selectedIndex >= 0) {
-        this.wtpLogoSelected.emit(this.previews[this.selectedIndex]);
-      }
     } else if (this.selectedIndex > index) {
       this.selectedIndex--;
     }
