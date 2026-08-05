@@ -24,7 +24,7 @@ interface RenderedLayer {
   scoped: true,
 })
 export class WtpLogoRenderer {
-  @Element() el: HTMLElement;
+  @Element() el: HTMLWtpLogoRendererElement;
 
   /** Product background image URL. */
   @Prop() productImage: string | undefined;
@@ -37,7 +37,7 @@ export class WtpLogoRenderer {
   /** Background color. */
   @Prop() backgroundColor: string = '#ffffff';
   /** Print area definition for auto-fitting logos (relative 0-1 coordinates). */
-  @Prop({ mutable: true }) printArea: PrintArea | undefined;
+  @Prop() printArea: PrintArea | undefined;
 
   /** Fires when the renderer has finished rendering all logos. */
   @Event() wtpRenderComplete: EventEmitter<{ dataUrl: string }>;

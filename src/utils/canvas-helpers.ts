@@ -5,7 +5,81 @@ export function generateObjectId(): string {
   return crypto.randomUUID();
 }
 
+/**
+ * Fabric objects carry two properties of ours. They live on the object itself because
+ * that is what survives `toObject(['_objectId'])` and comes back through `loadFromJSON`;
+ * these accessors keep the cast in one place instead of at every use.
+ */
+interface TaggedFabricObject extends FabricObject {
+  _objectId?: string;
+  _isBackground?: boolean;
+}
+
+/** The editor's stable id for an object, or undefined for objects it did not place. */
+export function getObjectId(obj: FabricObject): string | undefined {
+  const id = (obj as TaggedFabricObject)._objectId;
+  return id === undefined || id === '' ? undefined : id;
+}
+
+export function setObjectId(obj: FabricObject, id: string): void {
+  (obj as TaggedFabricObject)._objectId = id;
+}
+
+/** True for the product image, which is a canvas object but never part of the design. */
+export function isBackgroundObject(obj: FabricObject): boolean {
+  return (obj as TaggedFabricObject)._isBackground === true;
+}
+
+export function markAsBackground(obj: FabricObject): void {
+  (obj as TaggedFabricObject)._isBackground = true;
+}
+
 const IMAGE_PROXY_BASE = 'http://localhost:3001';
+
+/**
+ * Which loading strategy worked for a URL, so switching back and forth between
+ * decorations does not repeat a failing CORS request and a proxy connection that is
+ * refused in production.
+ */
+type ImageStrategy = 'cors' | 'proxy' | 'plain';
+
+interface ImageRoute {
+  strategy: ImageStrategy;
+  /** When this route was recorded — only consulted for `plain`, see `isRouteUsable`. */
+  recordedAt: number;
+}
+
+const imageStrategies: Map<string, ImageRoute> = new Map();
+
+/**
+ * How long the `plain` last resort is trusted before the good routes are tried again.
+ *
+ * Long enough to cover the burst of loads that view switching produces, short enough that
+ * a session still open when the shop fixes its CORS headers picks that up.
+ */
+export const PLAIN_RETRY_AFTER_MS = 60_000;
+
+/**
+ * Whether a remembered route may be reused.
+ *
+ * `cors` and `proxy` retire themselves: when they stop working they throw, and the caller
+ * drops them. `plain` cannot — it never throws, it just taints the canvas and blocks every
+ * export. Without an expiry, one CORS failure would keep a session degraded for as long as
+ * it stays open, however long after the cause was fixed.
+ */
+export function isRouteUsable(route: ImageRoute, now: number): boolean {
+  return route.strategy !== 'plain' || now - route.recordedAt < PLAIN_RETRY_AFTER_MS;
+}
+
+function proxyUrlFor(url: string): string {
+  return `${IMAGE_PROXY_BASE}/?url=${encodeURIComponent(url)}`;
+}
+
+async function loadWithStrategy(url: string, strategy: ImageStrategy): Promise<FabricImage> {
+  if (strategy === 'cors') return FabricImage.fromURL(url, { crossOrigin: 'anonymous' });
+  if (strategy === 'proxy') return FabricImage.fromURL(proxyUrlFor(url), { crossOrigin: 'anonymous' });
+  return FabricImage.fromURL(url);
+}
 
 /** Load a FabricImage from a URL, trying CORS → local proxy → plain load (tainted). */
 async function loadFabricImage(url: string): Promise<FabricImage> {
@@ -13,25 +87,86 @@ async function loadFabricImage(url: string): Promise<FabricImage> {
   if (url.startsWith('data:') || url.startsWith('blob:')) {
     return FabricImage.fromURL(url);
   }
-  // Try direct CORS
-  try {
-    return await FabricImage.fromURL(url, { crossOrigin: 'anonymous' });
-  } catch { /* CORS rejected */ }
-  // Try local image proxy
-  try {
-    const proxyUrl = `${IMAGE_PROXY_BASE}/?url=${encodeURIComponent(url)}`;
-    return await FabricImage.fromURL(proxyUrl, { crossOrigin: 'anonymous' });
-  } catch { /* proxy not available */ }
-  // Fallback: load without CORS (canvas will be tainted, export blocked)
+
+  const known = imageStrategies.get(url);
+  if (known !== undefined && isRouteUsable(known, Date.now())) {
+    try {
+      return await loadWithStrategy(url, known.strategy);
+    } catch {
+      // The remembered route stopped working — fall through and probe again.
+      imageStrategies.delete(url);
+    }
+  }
+
+  for (const strategy of ['cors', 'proxy'] as const) {
+    try {
+      const img = await loadWithStrategy(url, strategy);
+      imageStrategies.set(url, { strategy, recordedAt: Date.now() });
+      return img;
+    } catch { /* try the next route */ }
+  }
+
+  // Fallback: load without CORS (canvas will be tainted, export blocked). The timestamp
+  // restarts the cooldown, so a URL that stays broken is probed once a minute, not once
+  // per view switch.
+  imageStrategies.set(url, { strategy: 'plain', recordedAt: Date.now() });
   return FabricImage.fromURL(url);
 }
 
-export async function setCanvasBackground(
-  canvas: StaticCanvas,
-  imageUrl: string,
-  fitMode: 'cover' | 'contain' | 'fill' = 'contain',
-): Promise<void> {
-  const img = await loadFabricImage(imageUrl);
+/** Forgets the remembered loading routes. Exposed for tests. */
+export function clearImageStrategyCache(): void {
+  imageStrategies.clear();
+}
+
+/** Removes the product image, leaving the customer's objects in place. */
+export function clearCanvasBackground(canvas: StaticCanvas): void {
+  const existing = canvas.getObjects().find(isBackgroundObject);
+  if (existing !== undefined) canvas.remove(existing);
+}
+
+/**
+ * Loads a product image without touching any canvas — the slow half of
+ * `setCanvasBackground`. Callers that swap decorations decode first and apply second,
+ * so the outgoing view stays on screen for the duration of the download. Loading through
+ * here also warms the per-URL strategy cache and the browser's HTTP cache, which is what
+ * makes preloading the other decorations of an article worthwhile.
+ */
+export async function loadBackgroundImage(url: string): Promise<FabricImage> {
+  return loadFabricImage(url);
+}
+
+/**
+ * Downscales an image to a small data URL for the decoration strip. The catalog serves
+ * product photos at one size (~2400px, ~450 KB); showing four of them at 72px costs
+ * nearly 2 MB without this. Returns null when the image cannot be loaded or the canvas
+ * is tainted by a non-CORS load — the caller keeps whatever fallback it has.
+ */
+export async function createImageThumbnail(url: string, maxSize: number): Promise<string | null> {
+  try {
+    const img = await loadFabricImage(url);
+    const width = img.width ?? 0;
+    const height = img.height ?? 0;
+    if (width <= 0 || height <= 0) return null;
+
+    const scale = Math.min(1, maxSize / Math.max(width, height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(width * scale));
+    canvas.height = Math.max(1, Math.round(height * scale));
+    const ctx = canvas.getContext('2d');
+    if (ctx === null) return null;
+
+    ctx.drawImage(img.getElement(), 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/png');
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The synchronous half of `setCanvasBackground`: sizes the canvas to the already-loaded
+ * image (contain mode) and inserts it beneath everything else.
+ */
+export function applyCanvasBackground(canvas: StaticCanvas, img: FabricImage, fitMode: 'cover' | 'contain' | 'fill' = 'contain'): void {
   const canvasWidth = canvas.getWidth();
   const canvasHeight = canvas.getHeight();
 
@@ -73,14 +208,18 @@ export async function setCanvasBackground(
     excludeFromExport: true,
   });
 
-  // Remove existing background image if any
-  const objects = canvas.getObjects();
-  const existingBg = objects.find(o => (o as FabricObject & { _isBackground?: boolean })._isBackground === true);
-  if (existingBg !== undefined) canvas.remove(existingBg);
-
-  (img as FabricObject & { _isBackground?: boolean })._isBackground = true;
+  clearCanvasBackground(canvas);
+  markAsBackground(img);
   canvas.insertAt(0, img);
   canvas.renderAll();
+}
+
+export async function setCanvasBackground(
+  canvas: StaticCanvas,
+  imageUrl: string,
+  fitMode: 'cover' | 'contain' | 'fill' = 'contain',
+): Promise<void> {
+  applyCanvasBackground(canvas, await loadFabricImage(imageUrl), fitMode);
 }
 
 /** Convert PrintArea corner coordinates (0-1) to absolute pixel positions. */
@@ -170,6 +309,7 @@ export function isPixelPrintArea(pa: PrintArea): boolean {
 /** Normalize a PrintArea from pixel coordinates to 0–1 relative values. Already-normalized areas are returned unchanged. */
 export function normalizePrintArea(pa: PrintArea, imageWidth: number, imageHeight: number): PrintArea {
   if (!isPixelPrintArea(pa)) return pa;
+  if (imageWidth <= 0 || imageHeight <= 0) return pa;
   return pixelCornersToPrintArea(
     [pa.topLeft, pa.topRight, pa.bottomRight, pa.bottomLeft],
     imageWidth,
@@ -189,6 +329,173 @@ export function defaultPrintArea(): PrintArea {
 }
 
 /**
+ * The print area's own coordinate system: centroid, half-extents along its local axes,
+ * and its rotation.
+ *
+ * Everything that reasons about "inside the print area" has to use this same frame —
+ * placement, the editor's drag clamp, and the geometry validations. A print area is any
+ * quadrilateral and is printed straight, so comparing against its world-space bounding
+ * box instead reports up to 1.41x the real size for a tilted one. Since it is a quad and
+ * not a rectangle, it has no single width either; averaging opposite edges is the
+ * effective size all three consumers agree on.
+ */
+export interface PrintAreaFrame {
+  /** Centroid in canvas pixels. */
+  cx: number;
+  cy: number;
+  halfW: number;
+  halfH: number;
+  /** Rotation in radians, taken from the bottom edge. */
+  angle: number;
+  cos: number;
+  sin: number;
+}
+
+export function printAreaFrame(printArea: PrintArea, canvasWidth: number, canvasHeight: number): PrintAreaFrame {
+  const [tl, tr, br, bl] = printAreaToPixelCorners(printArea, canvasWidth, canvasHeight);
+
+  const topLen = Math.hypot(tr.x - tl.x, tr.y - tl.y);
+  const botLen = Math.hypot(br.x - bl.x, br.y - bl.y);
+  const leftLen = Math.hypot(bl.x - tl.x, bl.y - tl.y);
+  const rightLen = Math.hypot(br.x - tr.x, br.y - tr.y);
+
+  const angle = Math.atan2(br.y - bl.y, br.x - bl.x);
+
+  return {
+    cx: (tl.x + tr.x + br.x + bl.x) / 4,
+    cy: (tl.y + tr.y + br.y + bl.y) / 4,
+    halfW: (topLen + botLen) / 4,
+    halfH: (leftLen + rightLen) / 4,
+    angle,
+    cos: Math.cos(angle),
+    sin: Math.sin(angle),
+  };
+}
+
+/** Half-extents of a rotated object projected onto the frame's axes. `angle` in degrees. */
+export function projectOntoFrame(size: { width: number; height: number; angle: number }, frame: PrintAreaFrame): { halfW: number; halfH: number } {
+  const relAngle = (size.angle * Math.PI) / 180 - frame.angle;
+  const cos = Math.abs(Math.cos(relAngle));
+  const sin = Math.abs(Math.sin(relAngle));
+
+  return {
+    halfW: (size.width * cos + size.height * sin) / 2,
+    halfH: (size.width * sin + size.height * cos) / 2,
+  };
+}
+
+/** A canvas point in the frame's local coordinates, with the origin at its centre. */
+export function toFrameLocal(x: number, y: number, frame: PrintAreaFrame): RelativePoint {
+  const relX = x - frame.cx;
+  const relY = y - frame.cy;
+  return { x: relX * frame.cos + relY * frame.sin, y: -relX * frame.sin + relY * frame.cos };
+}
+
+/** Inverse of `toFrameLocal`. */
+export function fromFrameLocal(x: number, y: number, frame: PrintAreaFrame): RelativePoint {
+  return { x: frame.cx + x * frame.cos - y * frame.sin, y: frame.cy + x * frame.sin + y * frame.cos };
+}
+
+/**
+ * Holds an object inside the print area by shrinking it if it is too big, then sliding it
+ * back in — all in the area's own frame, so a tilted decoration is not clamped against a
+ * bounding box the customer cannot see. Background objects are left alone.
+ *
+ * Mutates the object in place, the way Fabric's `object:moving` handlers do.
+ */
+export function clampToPrintAreaFrame(obj: FabricObject, frame: PrintAreaFrame): void {
+  if (isBackgroundObject(obj)) return;
+
+  const sizeOf = (): { width: number; height: number; angle: number } => ({
+    // The object's visual size, not getBoundingRect — that includes the control handles.
+    width: (obj.width ?? 0) * (obj.scaleX ?? 1),
+    height: (obj.height ?? 0) * (obj.scaleY ?? 1),
+    angle: obj.angle ?? 0,
+  });
+
+  let projected = projectOntoFrame(sizeOf(), frame);
+
+  if (projected.halfW > frame.halfW || projected.halfH > frame.halfH) {
+    const scaleRatio = Math.min(frame.halfW / Math.max(projected.halfW, 1), frame.halfH / Math.max(projected.halfH, 1));
+    obj.set({ scaleX: (obj.scaleX ?? 1) * scaleRatio, scaleY: (obj.scaleY ?? 1) * scaleRatio });
+    obj.setCoords();
+    projected = projectOntoFrame(sizeOf(), frame);
+  }
+
+  // getCenterPoint stays accurate for every originX/originY combination.
+  obj.setCoords();
+  const center = obj.getCenterPoint();
+  const local = toFrameLocal(center.x, center.y, frame);
+
+  const clampedX = Math.max(-frame.halfW + projected.halfW, Math.min(frame.halfW - projected.halfW, local.x));
+  const clampedY = Math.max(-frame.halfH + projected.halfH, Math.min(frame.halfH - projected.halfH, local.y));
+  if (clampedX === local.x && clampedY === local.y) return;
+
+  const world = fromFrameLocal(clampedX, clampedY, frame);
+  obj.set({ left: (obj.left ?? 0) + (world.x - center.x), top: (obj.top ?? 0) + (world.y - center.y) });
+  obj.setCoords();
+}
+
+/** Draws the print area outline, its corners and its clamping box — debug mode only. */
+export function drawPrintAreaOverlay(ctx: CanvasRenderingContext2D, printArea: PrintArea, canvasWidth: number, canvasHeight: number): void {
+  const corners = printAreaToPixelCorners(printArea, canvasWidth, canvasHeight);
+
+  ctx.save();
+
+  // The quad outline — the actual print area shape.
+  ctx.beginPath();
+  ctx.moveTo(corners[0].x, corners[0].y);
+  ctx.lineTo(corners[1].x, corners[1].y);
+  ctx.lineTo(corners[2].x, corners[2].y);
+  ctx.lineTo(corners[3].x, corners[3].y);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(37, 99, 235, 0.08)';
+  ctx.fill();
+  ctx.strokeStyle = '#2563eb';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([6, 4]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  for (const c of corners) {
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#2563eb';
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  const xs = corners.map(c => c.x);
+  const ys = corners.map(c => c.y);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  ctx.strokeStyle = 'rgba(220, 38, 38, 0.5)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 3]);
+  ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
+  ctx.setLineDash([]);
+
+  ctx.font = '10px monospace';
+  ctx.fillStyle = '#2563eb';
+  const labels = ['TL', 'TR', 'BR', 'BL'];
+  for (let i = 0; i < 4; i++) {
+    ctx.fillText(labels[i], corners[i].x + 6, corners[i].y - 6);
+  }
+
+  ctx.restore();
+}
+
+/** Effective pixel size of a print area — the frame's extents, for callers that need no axes. */
+export function printAreaPixelSize(printArea: PrintArea, canvasWidth: number, canvasHeight: number): { width: number; height: number } {
+  const frame = printAreaFrame(printArea, canvasWidth, canvasHeight);
+  return { width: frame.halfW * 2, height: frame.halfH * 2 };
+}
+
+/**
  * Compute a CanvasTransform to fit a logo within a 4-corner print area.
  * Uses the centroid for position, average edge lengths for dimensions,
  * and the bottom edge angle for rotation.
@@ -200,32 +507,15 @@ export function fitLogoToPrintArea(
   canvasWidth: number,
   canvasHeight: number,
 ): CanvasTransform {
-  const [tl, tr, br, bl] = printAreaToPixelCorners(printArea, canvasWidth, canvasHeight);
-
-  // Centroid
-  const cx = (tl.x + tr.x + br.x + bl.x) / 4;
-  const cy = (tl.y + tr.y + br.y + bl.y) / 4;
-
-  // Average edge lengths for effective width/height
-  const topLen = Math.hypot(tr.x - tl.x, tr.y - tl.y);
-  const botLen = Math.hypot(br.x - bl.x, br.y - bl.y);
-  const leftLen = Math.hypot(bl.x - tl.x, bl.y - tl.y);
-  const rightLen = Math.hypot(br.x - tr.x, br.y - tr.y);
-
-  const avgWidth = (topLen + botLen) / 2;
-  const avgHeight = (leftLen + rightLen) / 2;
-
-  // Angle from bottom edge
-  const angle = Math.atan2(br.y - bl.y, br.x - bl.x) * 180 / Math.PI;
-
-  const scale = Math.min(avgWidth / logoWidth, avgHeight / logoHeight);
+  const frame = printAreaFrame(printArea, canvasWidth, canvasHeight);
+  const scale = Math.min((frame.halfW * 2) / logoWidth, (frame.halfH * 2) / logoHeight);
 
   return {
-    x: cx,
-    y: cy,
+    x: frame.cx,
+    y: frame.cy,
     scaleX: scale,
     scaleY: scale,
-    angle,
+    angle: (frame.angle * 180) / Math.PI,
   };
 }
 
@@ -468,7 +758,7 @@ export async function addLogoToCanvas(
     originY: 'center',
   });
 
-  (img as FabricObject & { _objectId?: string })._objectId = id;
+  setObjectId(img, id);
 
   canvas.add(img);
   canvas.renderAll();

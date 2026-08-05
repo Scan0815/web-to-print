@@ -195,7 +195,7 @@
         background: #fff;
         border-radius: 16px;
         box-shadow: 0 24px 64px rgba(0,0,0,0.2);
-        max-width: 920px;
+        max-width: 1240px;
         width: 100%;
         max-height: 90vh;
         overflow: hidden;
@@ -263,9 +263,42 @@
 
       .editor-body {
         overflow: auto;
+        display: flex;
+        align-items: flex-start;
+      }
+
+      .editor-main {
+        flex: 1;
+        min-width: 0;
         padding: 16px 20px;
         display: flex;
         justify-content: center;
+      }
+
+      .editor-sidebar {
+        width: 280px;
+        flex-shrink: 0;
+        padding: 16px 20px;
+        border-left: 1px solid #e2e8f0;
+        align-self: stretch;
+      }
+      .editor-sidebar h4 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+      .editor-sidebar .sidebar-hint { font-size: 12px; color: #64748b; margin-bottom: 12px; line-height: 1.5; }
+
+      .optional-badge {
+        font-size: 11px;
+        font-weight: 500;
+        color: #64748b;
+        background: #f1f5f9;
+        border-radius: 999px;
+        padding: 2px 8px;
+        vertical-align: middle;
+        margin-left: 6px;
+      }
+
+      @media (max-width: 1100px) {
+        .editor-body { flex-direction: column; align-items: stretch; }
+        .editor-sidebar { width: auto; border-left: none; border-top: 1px solid #e2e8f0; }
       }
     </style>
   </head>
@@ -273,30 +306,29 @@
 
     <div class="header">
       <h1>Web-to-Print Configurator</h1>
-      <p>Upload your logo and preview it on promotional products. Click a product to customize.</p>
-      <p style="margin-top:4px;"><a href="/tool-print-area.html" style="color:#2563eb;font-size:13px;text-decoration:none;">Define print areas &rarr;</a></p>
+      <p>Pick a product to start customizing — or upload your logo first to preview it on every product.</p>
+      <p style="margin-top:4px;">
+        <a href="/tool-print-area.html" style="color:#2563eb;font-size:13px;text-decoration:none;">Define print areas &rarr;</a>
+        &nbsp;&middot;&nbsp;
+        <a href="/product-detail.html" style="color:#2563eb;font-size:13px;text-decoration:none;">Shop detail page (real payload) &rarr;</a>
+      </p>
     </div>
 
     <div class="container">
 
-      <!-- Step 1: Logo Upload -->
+      <!-- Optional: upload a logo up front to preview it on every product -->
       <div class="upload-section">
-        <h2>Your Logo</h2>
-        <p class="hint">Upload a print-ready logo (min 300 DPI for raster, SVG preferred). It will be placed on all products below.</p>
+        <h2>Your Logo <span class="optional-badge">optional</span></h2>
+        <p class="hint">Upload a print-ready logo (min 300 DPI for raster, SVG preferred) to preview it on all products below. You can also upload logos later, inside the editor.</p>
         <wtp-logo-upload id="uploader" enable-background-removal allow-url-upload></wtp-logo-upload>
       </div>
 
-      <!-- Step 2: Product catalog with auto-rendered logos -->
+      <!-- Product catalog from the demo articles.json -->
       <div class="products-section">
         <h2>Products</h2>
 
         <div id="products-empty" class="products-empty">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="17 8 12 3 7 8"/>
-            <line x1="12" y1="3" x2="12" y2="15"/>
-          </svg>
-          <p>Upload a logo above to see it on products</p>
+          <p>Loading products&hellip;</p>
         </div>
 
         <div id="products-grid" class="products-grid" style="display:none;"></div>
@@ -321,7 +353,14 @@
         </div>
         <div id="editor-imprint" class="editor-imprint" style="display:none;"></div>
         <div class="editor-body">
-          <wtp-editor id="editor" width="860" height="540" debug></wtp-editor>
+          <div class="editor-main">
+            <wtp-editor id="editor" width="860" height="540"></wtp-editor>
+          </div>
+          <div class="editor-sidebar">
+            <h4>Add a logo</h4>
+            <p class="sidebar-hint">Placed on the decoration you are editing. Use &ldquo;Apply to all&rdquo; in the toolbar to extend it to the other decorations.</p>
+            <wtp-logo-upload id="editor-uploader" enable-background-removal></wtp-logo-upload>
+          </div>
         </div>
       </div>
     </div>
@@ -341,9 +380,15 @@
       const editorEl = document.getElementById('editor');
       const editorTitle = document.getElementById('editor-title');
 
-      // --- Normalize pixel print areas to 0-1 ---
+      // --- Normalize pixel print areas to 0-1 for the catalog cards ---
+      // The editor normalizes its own views via the library; this only feeds
+      // wtp-logo-renderer on the product grid.
+      function isPixelPrintArea(pa) {
+        return [pa.topLeft, pa.topRight, pa.bottomRight, pa.bottomLeft].some(p => p.x > 1 || p.y > 1);
+      }
+
       function loadImageDimensions(url) {
-        return new Promise((resolve) => {
+        return new Promise(resolve => {
           const img = new Image();
           img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
           img.onerror = () => resolve(null);
@@ -351,46 +396,27 @@
         });
       }
 
-      function isPixelPrintArea(pa) {
-        return [pa.topLeft, pa.topRight, pa.bottomRight, pa.bottomLeft].some(p => p.x > 1 || p.y > 1);
-      }
-
-      function normalizePrintArea(pa, imgW, imgH) {
-        if (!isPixelPrintArea(pa)) return pa;
-        return {
-          topLeft: { x: pa.topLeft.x / imgW, y: pa.topLeft.y / imgH },
-          topRight: { x: pa.topRight.x / imgW, y: pa.topRight.y / imgH },
-          bottomRight: { x: pa.bottomRight.x / imgW, y: pa.bottomRight.y / imgH },
-          bottomLeft: { x: pa.bottomLeft.x / imgW, y: pa.bottomLeft.y / imgH },
-          ...(pa.bulge != null && pa.bulge !== 0 ? { bulge: pa.bulge } : {}),
-        };
-      }
-
-      function getViewImageDimensions(view) {
-        const cis = view.coordinateImageSize;
-        if (cis && cis.width && cis.longestSide === 'width') {
-          // Width is known (2400), need to load image for height
-          return loadImageDimensions(view.image).then(dims => dims || { width: cis.width, height: cis.width });
-        }
-        if (cis && cis.height && cis.longestSide === 'height') {
-          return loadImageDimensions(view.image).then(dims => dims || { width: cis.height, height: cis.height });
-        }
-        return loadImageDimensions(view.image);
-      }
-
       async function normalizeArticles(data) {
         const tasks = [];
         for (const article of data) {
           for (const view of article.views) {
-            if (view.printArea && isPixelPrintArea(view.printArea)) {
-              tasks.push(
-                getViewImageDimensions(view).then(dims => {
-                  if (dims) {
-                    view.printArea = normalizePrintArea(view.printArea, dims.width, dims.height);
-                  }
-                })
-              );
-            }
+            if (!view.printArea || !isPixelPrintArea(view.printArea)) continue;
+            tasks.push(
+              loadImageDimensions(view.image).then(dims => {
+                const cis = view.coordinateImageSize;
+                const w = dims ? dims.width : cis && cis.width;
+                const h = dims ? dims.height : cis && (cis.height || cis.width);
+                if (!w || !h) return;
+                const pa = view.printArea;
+                view.printArea = {
+                  topLeft: { x: pa.topLeft.x / w, y: pa.topLeft.y / h },
+                  topRight: { x: pa.topRight.x / w, y: pa.topRight.y / h },
+                  bottomRight: { x: pa.bottomRight.x / w, y: pa.bottomRight.y / h },
+                  bottomLeft: { x: pa.bottomLeft.x / w, y: pa.bottomLeft.y / h },
+                  ...(pa.bulge ? { bulge: pa.bulge } : {}),
+                };
+              })
+            );
           }
         }
         await Promise.all(tasks);
@@ -398,15 +424,34 @@
       }
 
       // --- Load articles catalog ---
+      // The catalog is browsable right away — uploading a logo up front is optional.
       fetch('/demo-article/articles.json')
         .then(r => r.json())
         .then(data => normalizeArticles(data))
-        .then(data => { articles = data; });
+        .then(data => {
+          articles = data;
+          showProducts();
+        });
 
       // --- Logo upload/selection handler ---
-      uploader.addEventListener('wtpLogoSelected', (e) => {
+      // Both uploaders feed the same "chosen logo": whichever logo is selected last —
+      // on the start page or inside the editor — is what the catalog previews and what
+      // the next product opens with.
+      function adoptLogo(e) {
         currentLogo = e.detail;
-        showProducts();
+        if (articles.length > 0) showProducts();
+      }
+      uploader.addEventListener('wtpLogoSelected', adoptLogo);
+
+      // --- Additional logos, uploaded from inside the editor ---
+      // wtpLogoSelected fires once per fresh upload and on every gallery click (also on
+      // the already-selected logo), so one listener covers both: the upload lands on the
+      // decoration being edited, and clicking a logo after switching decorations places
+      // it there as well. The picked logo also becomes the page-wide current one.
+      const editorUploader = document.getElementById('editor-uploader');
+      editorUploader.addEventListener('wtpLogoSelected', (e) => {
+        editorEl.addLogo(e.detail);
+        adoptLogo(e);
       });
 
       // --- Imprint info helpers ---
@@ -541,8 +586,7 @@
         const activeCard = document.querySelector(`[data-product-id="${article.id}"]`);
         if (activeCard) activeCard.classList.add('active');
 
-        const firstView = article.views[0];
-        const productImgUrl = firstView.image;
+        const firstView = article.views.find(v => v.isDefault) || article.views[0];
 
         // Show imprint info
         const editorImprint = document.getElementById('editor-imprint');
@@ -559,19 +603,28 @@
           editorImprint.style.display = 'none';
         }
 
-        // If we have a saved state for this article, restore it
-        if (editorStates[article.id]) {
-          // Set print area before loading state so constraints are active
-          editorEl.printArea = firstView.printArea || undefined;
-          await editorEl.loadState(editorStates[article.id]);
-        } else {
-          // Fresh editor: clear leftover objects, then set product background and add logo
-          await editorEl.resetCanvas();
-          editorEl.productImage = productImgUrl;
-          // Set print area after productImage — addLogo awaits backgroundReady internally
-          editorEl.printArea = firstView.printArea || undefined;
+        // The logo the customer picked in the catalog. The editor places it on the
+        // decoration it opens on and nowhere else — every further decoration costs extra,
+        // so extending is a deliberate click ("Apply to all"). Set before `views`, which
+        // is what triggers the placement.
+        editorEl.initialLogo = currentLogo || undefined;
 
-          if (currentLogo) {
+        // Which decoration to open on, before `views` so the editor resolves against it
+        // rather than against the article the customer just closed.
+        editorEl.activeViewId = firstView.id;
+
+        // Hand the editor every decoration of the article
+        editorEl.articleId = article.id;
+        editorEl.views = article.views;
+
+        const saved = editorStates[article.id];
+        if (saved) {
+          await editorEl.loadState(saved);
+          // The saved state wins over initialLogo by design — but when it holds no
+          // design at all (the product was merely opened and closed before the logo
+          // was chosen), the customer expects the chosen logo, not the stale blank.
+          const hasDesign = saved.decorations.some(d => d.status === 'designed');
+          if (!hasDesign && currentLogo) {
             await editorEl.addLogo(currentLogo);
           }
         }
@@ -611,180 +664,18 @@
 
       // Export PDF
       document.getElementById('btn-export-pdf').addEventListener('click', async () => {
-        if (!currentLogo || !activeArticle) return;
+        if (!activeArticle) return;
         const btn = document.getElementById('btn-export-pdf');
         btn.textContent = 'Generating...';
         btn.disabled = true;
         try {
-          const result = await editorEl.exportImageHighRes('png', 1, 3);
-          await generatePdf(currentLogo, activeArticle, 0, result.dataUrl, result.width, result.height);
+          await editorEl.exportPdf(activeArticle);
         } finally {
           btn.textContent = 'Export PDF';
           btn.disabled = false;
         }
       });
 
-      /** Upscale SVG data URL so the browser rasterizes vectors at high resolution. */
-      function upscaleSvg(dataUrl, maxSize) {
-        var b64Idx = dataUrl.indexOf(';base64,');
-        var svgText;
-        if (b64Idx !== -1) {
-          svgText = atob(dataUrl.slice(b64Idx + 8));
-        } else {
-          var commaIdx = dataUrl.indexOf(',');
-          if (commaIdx === -1) return dataUrl;
-          svgText = decodeURIComponent(dataUrl.slice(commaIdx + 1));
-        }
-        var doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
-        var svg = doc.documentElement;
-        if (svg.tagName !== 'svg') return dataUrl;
-        var vb = svg.getAttribute('viewBox');
-        var w, h;
-        if (vb) {
-          var parts = vb.trim().split(/[\s,]+/);
-          w = parseFloat(parts[2]) || 0;
-          h = parseFloat(parts[3]) || 0;
-        } else {
-          w = parseFloat(svg.getAttribute('width')) || 0;
-          h = parseFloat(svg.getAttribute('height')) || 0;
-        }
-        if (w <= 0 || h <= 0 || Math.max(w, h) >= maxSize) return dataUrl;
-        var scale = maxSize / Math.max(w, h);
-        svg.setAttribute('width', String(Math.round(w * scale)));
-        svg.setAttribute('height', String(Math.round(h * scale)));
-        if (!vb) svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
-        var newSvg = new XMLSerializer().serializeToString(doc);
-        return 'data:image/svg+xml;base64,' + btoa(newSvg);
-      }
-
-      /** Rasterize SVG data URLs to high-res PNG (jsPDF only accepts PNG/JPEG). */
-      function rasterizeSvg(dataUrl) {
-        if (!dataUrl.startsWith('data:image/svg+xml')) return Promise.resolve(dataUrl);
-        var upscaled = upscaleSvg(dataUrl, 4000);
-        return new Promise(function(resolve, reject) {
-          var img = new Image();
-          img.onload = function() {
-            var w = img.naturalWidth || 4000;
-            var h = img.naturalHeight || 4000;
-            var c = document.createElement('canvas');
-            c.width = w; c.height = h;
-            c.getContext('2d').drawImage(img, 0, 0, w, h);
-            resolve(c.toDataURL('image/png'));
-          };
-          img.onerror = function() { reject(new Error('Failed to rasterize SVG')); };
-          img.src = upscaled;
-        });
-      }
-
-      /** Generate a 2-page print-shop PDF using jsPDF (loaded via script tag). */
-      async function generatePdf(logo, article, viewIndex, mockupDataUrl, canvasW, canvasH) {
-        const rasterLogo = await rasterizeSvg(logo.dataUrl);
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-        const margin = 15;
-        const pageW = doc.internal.pageSize.getWidth();
-        const pageH = doc.internal.pageSize.getHeight();
-        const contentW = pageW - 2 * margin;
-
-        // --- Page 1: Logo source with metadata ---
-        doc.setFontSize(18);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Logo Print Specification', pageW / 2, margin + 8, { align: 'center' });
-
-        const logoFmt = rasterLogo.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
-        const logoY = margin + 16;
-        const maxLogoH = pageH * 0.5;
-        const meta = logo.metadata;
-        const aspect = meta.width / Math.max(meta.height, 1);
-        let imgW = contentW;
-        let imgH = imgW / aspect;
-        if (imgH > maxLogoH) { imgH = maxLogoH; imgW = imgH * aspect; }
-        const imgX = (pageW - imgW) / 2;
-        doc.addImage(rasterLogo, logoFmt, imgX, logoY, imgW, imgH);
-
-        // Metadata table
-        const tableY = logoY + imgH + 10;
-        const formatSize = (b) => b < 1024 ? b + ' B' : b < 1048576 ? (b/1024).toFixed(1) + ' KB' : (b/1048576).toFixed(1) + ' MB';
-        const rows = [
-          ['Format', meta.format.toUpperCase()],
-          ['Dimensions', meta.width + ' x ' + meta.height + ' px'],
-          ['DPI', meta.dpiX != null ? meta.dpiX + ' x ' + (meta.dpiY || meta.dpiX) : 'Not available'],
-          ['File Size', formatSize(meta.fileSize)],
-          ['Transparency', meta.hasTransparency ? 'Yes' : 'No'],
-          ['File Name', meta.fileName],
-        ];
-        doc.setDrawColor(200, 200, 200);
-        doc.setLineWidth(0.3);
-        doc.line(margin, tableY - 4, margin + contentW, tableY - 4);
-        doc.setFontSize(10);
-        rows.forEach(function(row, i) {
-          const y = tableY + i * 7;
-          doc.setFont('helvetica', 'bold');
-          doc.text(row[0], margin, y);
-          doc.setFont('helvetica', 'normal');
-          doc.text(row[1], margin + 30, y);
-        });
-
-        // --- Page 2: Product mockup ---
-        doc.addPage();
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text(article.name, pageW / 2, margin + 8, { align: 'center' });
-
-        // Article details table
-        const view = article.views[viewIndex];
-        const detailRows = [['Article ID', article.id]];
-        if (view && view.impMethod) detailRows.push(['Print Method', view.impMethod]);
-        if (view && view.impLocation) detailRows.push(['Print Location', view.impLocation]);
-        if (view && view.impDiameterMm && view.impDiameterMm > 0) {
-          detailRows.push(['Print Area', '\u00D8 ' + view.impDiameterMm + ' mm']);
-        } else if (view && view.impWidthMm && view.impHeightMm) {
-          detailRows.push(['Print Area', view.impWidthMm + ' \u00D7 ' + view.impHeightMm + ' mm']);
-        }
-        if (view && view.maxColours) detailRows.push(['Max Colors', '' + view.maxColours]);
-
-        const detailTableY = margin + 16;
-        const detailRowH = 6;
-        doc.setFontSize(9);
-        detailRows.forEach(function(row, i) {
-          const y = detailTableY + i * detailRowH;
-          doc.setFont('helvetica', 'bold');
-          doc.text(row[0], margin, y);
-          doc.setFont('helvetica', 'normal');
-          doc.text(row[1], margin + 30, y);
-        });
-        doc.setDrawColor(200, 200, 200);
-        doc.setLineWidth(0.3);
-        const detailLineY = detailTableY + detailRows.length * detailRowH + 2;
-        doc.line(margin, detailLineY, margin + contentW, detailLineY);
-
-        const mockFmt = mockupDataUrl.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
-        const mockY = detailTableY + detailRows.length * detailRowH + 6;
-        const maxMockH = pageH - mockY - margin;
-        const mAspect = canvasW / Math.max(canvasH, 1);
-        let mW = contentW;
-        let mH = mW / mAspect;
-        if (mH > maxMockH) { mH = maxMockH; mW = mH * mAspect; }
-        const mX = (pageW - mW) / 2;
-        doc.addImage(mockupDataUrl, mockFmt, mX, mockY, mW, mH);
-
-        // Print area guides
-        if (view && view.printArea) {
-          const pa = view.printArea;
-          const corners = [pa.topLeft, pa.topRight, pa.bottomRight, pa.bottomLeft].map(function(c) {
-            return { x: mX + c.x * canvasW * (mW / canvasW), y: mockY + c.y * canvasH * (mH / canvasH) };
-          });
-          doc.setDrawColor(37, 99, 235);
-          doc.setLineWidth(0.4);
-          doc.setLineDashPattern([2, 1.5], 0);
-          for (let i = 0; i < 4; i++) {
-            doc.line(corners[i].x, corners[i].y, corners[(i + 1) % 4].x, corners[(i + 1) % 4].y);
-          }
-          doc.setLineDashPattern([], 0);
-        }
-
-        doc.save(article.id + '.pdf');
-      }
     </script>
   </body>
 </html>

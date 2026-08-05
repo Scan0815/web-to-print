@@ -5,6 +5,7 @@ const MAGIC_BYTES: { format: LogoFormat; bytes: number[]; offset?: number }[] = 
   { format: 'jpeg', bytes: [0xff, 0xd8, 0xff] },
   { format: 'tiff', bytes: [0x49, 0x49, 0x2a, 0x00] }, // Little-endian
   { format: 'tiff', bytes: [0x4d, 0x4d, 0x00, 0x2a] }, // Big-endian
+  { format: 'pdf', bytes: [0x25, 0x50, 0x44, 0x46] }, // "%PDF" — modern .ai files are PDFs too
   { format: 'avif', bytes: [0x66, 0x74, 0x79, 0x70, 0x61, 0x76, 0x69, 0x66], offset: 4 }, // ISO BMFF "ftypavif"
 ];
 
@@ -15,6 +16,8 @@ export function mimeToFormat(mime: string): LogoFormat {
     'image/svg+xml': 'svg',
     'image/tiff': 'tiff',
     'image/avif': 'avif',
+    'application/pdf': 'pdf',
+    'application/illustrator': 'ai',
   };
   return map[mime] ?? 'unknown';
 }
@@ -40,7 +43,13 @@ export async function detectFileFormat(file: File): Promise<LogoFormat> {
   const bytes = new Uint8Array(buffer);
 
   const magicFormat = matchMagicBytes(bytes);
+  // Illustrator files carry the PDF header; only the extension tells them apart.
+  if (magicFormat === 'pdf' && file.name.toLowerCase().endsWith('.ai')) return 'ai';
   if (magicFormat !== null) return magicFormat;
+
+  // An .ai file without PDF compatibility has no usable header. EPS shares the
+  // application/postscript mime type but is not renderable, so it stays unknown.
+  if (file.name.toLowerCase().endsWith('.ai')) return 'ai';
 
   // Check for SVG by reading text content
   if (file.type === 'image/svg+xml' || file.name.endsWith('.svg')) {

@@ -107,6 +107,7 @@ Validates uploaded files against configurable print-quality rules (format, DPI, 
 | Event | Detail | Description |
 |---|---|---|
 | `wtpLogoValidated` | `LogoData` | Fires when a logo passes validation |
+| `wtpLogoSelected` | `LogoData` | Fires when the customer picks a logo: after a fresh upload and on **every** gallery click, including the already-selected logo — wire this to `addLogo()` for click-to-place. Not fired by the auto-reselection after a removal |
 | `wtpLogoRejected` | `{ file: File; issues: LogoValidationIssue[] }` | Fires when a logo fails validation |
 | `wtpLogoProcessing` | `boolean` | Fires when processing state changes (`true` = busy) |
 
@@ -178,10 +179,15 @@ Interactive canvas editor with a built-in toolbar for adding text, changing font
 |---|---|---|---|---|
 | `width` | `width` | `number` | `800` | Canvas width in pixels |
 | `height` | `height` | `number` | `600` | Canvas height in pixels |
-| `productImage` | `product-image` | `string \| undefined` | `undefined` | Product background image URL |
+| `views` | — | `ArticleView[]` | `[]` | The article's decoration options (Veredelungen). Every view needs a stable `id` |
+| `articleId` | `article-id` | `string` | `''` | Written into the exported envelope |
+| `activeViewId` | `active-view-id` | `string \| undefined` | `undefined` | Decoration currently edited. Defaults to the `isDefault` view, else the first |
+| `showViewStrip` | `show-view-strip` | `boolean` | `true` | Built-in decoration strip (hidden for a single decoration). Each thumbnail shows a hover/focus tooltip with the decoration's print method and area |
+| `initialLogo` | — | `LogoData \| undefined` | `undefined` | Logo picked in the catalog, placed once into the decoration the editor opens on — and nowhere else. Ignored when `initialState` is set |
+| `productImage` | `product-image` | `string \| undefined` | `undefined` | **Deprecated** — single-decoration fallback, used only when `views` is empty |
 | `initialState` | `initial-state` | `string \| undefined` | `undefined` | JSON-serialized initial editor state |
 | `fonts` | — | `string[]` | `['Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Verdana']` | Available font families for the text tool |
-| `printArea` | — | `PrintArea \| undefined` | `undefined` | Print area (0–1 relative coords) used to constrain objects to a defined region |
+| `printArea` | — | `PrintArea \| undefined` | `undefined` | **Deprecated** — single-decoration fallback, used only when `views` is empty |
 | `debug` | `debug` | `boolean` | `false` | Show the print-area overlay and clamp bounding box on the canvas |
 | `labels` | — | `Partial<EditorLabels>` | `{}` | Override toolbar strings (see [Localizing text](#localizing-text-labels-prop)) |
 
@@ -190,7 +196,8 @@ Interactive canvas editor with a built-in toolbar for adding text, changing font
 | Event | Detail | Description |
 |---|---|---|
 | `wtpEditorReady` | `void` | Fires when the canvas is initialized |
-| `wtpEditorStateChanged` | `EditorState` | Fires on any object change (add/move/remove) |
+| `wtpEditorStateChanged` | `ArticleEditorState` | Fires on any object change (add/move/remove). The active decoration's `state.fabricJson` is empty — serializing the canvas on every keystroke is too expensive. Call `exportState()` for the persistable envelope |
+| `wtpEditorViewChanged` | `{ viewId: string; index: number }` | Fires when the edited decoration changes |
 | `wtpEditorObjectSelected` | `{ id: string; type: string }` | Fires when an object is selected |
 | `wtpEditorObjectDeselected` | `void` | Fires when the selection is cleared |
 
@@ -203,11 +210,92 @@ Interactive canvas editor with a built-in toolbar for adding text, changing font
 | `updateText` | `(id: string, text: string) => Promise<void>` | Update the text content of an `i-text` object by ID |
 | `removeObject` | `(id: string) => Promise<void>` | Remove an object by ID |
 | `resetCanvas` | `() => Promise<void>` | Clear all user objects, keep the canvas instance alive |
-| `exportState` | `() => Promise<EditorState>` | Export the full editor state as a serializable object |
-| `loadState` | `(state: EditorState) => Promise<void>` | Restore a previously exported editor state |
+| `exportState` | `() => Promise<ArticleEditorState>` | Export every decoration as a versioned envelope (flushes the active one first) |
+| `loadState` | `(state: ArticleEditorState \| EditorState) => Promise<void>` | Restore an envelope, or a legacy flat state into the default decoration |
+| `setActiveView` | `(viewId: string) => Promise<void>` | Switch decoration, storing the current one |
+| `applyLogoToAllViews` | `(logoId: string) => Promise<string[]>` | Place a logo on every still-empty decoration, returns the ids it touched |
+| `renderMockups` | `(viewIds?: string[], multiplier?: number) => Promise<Record<string, { dataUrl, width, height }>>` | High-resolution mockup per decoration |
+| `exportPdf` | `(article: Article, config?: Partial<PdfExportConfig>) => Promise<void>` | Generate and download the proof PDF (needs jsPDF, see below) |
 | `exportImage` | `(format?: 'png' \| 'jpeg', quality?: number) => Promise<string>` | Export canvas as a data URL (1× resolution) |
 | `exportImageHighRes` | `(format?, quality?, multiplier?) => Promise<{ dataUrl, width, height }>` | High-resolution export for PDF/print (default 3× multiplier) |
+| `exportViewImage` | `(viewId: string, format?: 'png' \| 'jpeg', quality?: number) => Promise<string>` | Render one decoration, active or not, and restore the active one afterwards. Clears the selection unless the decoration is already active |
 | `getObjects` | `() => Promise<{ id: string; type: string }[]>` | List all objects on the canvas |
+
+## Multiple decorations per article
+
+An article usually offers several decoration options — front pad print, back pad print,
+a wrap-around screen print — each with its own product image, print area, print method,
+size and colour limit. `ArticleView[]` is that list, and the editor edits all of them in
+one canvas.
+
+```ts
+const views = [
+  { id: '184932', image: '...', label: 'Beutel', printArea, impMethod: 'Siebdruck', maxColours: 1 },
+  { id: '184928', image: '...', label: 'Decke', printArea, impMethod: 'Stick', maxColours: 12, isDefault: true },
+];
+
+editor.articleId = article.id;
+editor.views = views;
+
+// ... the customer designs one or more decorations ...
+
+const envelope = await editor.exportState();
+// { version: 2, articleId, decorations: [{ viewId, status: 'designed' | 'empty', state, previewDataUrl, issues }] }
+```
+
+`id` must be stable and must not be a position: supplier feeds reorder decorations. In
+the Connect Shop payload it is the `printCodeSKU`, which is also the key of the
+purchasable decoration, so the returned `viewId` maps straight onto the shop's order
+lines.
+
+**`status` is mechanical**: `designed` means the decoration's canvas holds at least one
+logo or text object. Which decorations are actually ordered is a pricing decision and
+stays in the shop — the editor deliberately has no "selected" flag.
+
+**Validation never blocks.** `DecorationState.issues` carries warnings; the shop decides
+whether one stops checkout. The messages are translatable via `labels.issues` (see
+`DecorationIssueLabels`), and each finding carries a stable `code` if you would rather
+render your own text:
+
+| `code` | Meaning |
+|---|---|
+| `printAreaOverflow` | An element reaches outside the print area |
+| `missingPrintArea` | The decoration is designed but has no print area to check against |
+| `sizeOverflow` | An element is physically larger than `impWidthMm × impHeightMm`. Skipped when the catalog declares no mm dimensions |
+| `colourLimit` | More text colours than `maxColours` allows. Skipped for `'full color'` |
+| `singleColourPrint` | A one-colour method with a logo placed — the colour count of an uploaded logo cannot be measured, so the customer is asked to confirm |
+| `lowDpi` | An uploaded raster logo is below 300 DPI. Only reported for logos placed in the current session; the envelope does not persist upload metadata |
+| `productImageUnavailable` | The decoration's product image could not be loaded. The editor stays usable on a blank canvas, so this finding is how you learn there is no mockup behind the design |
+
+## External dependencies at runtime
+
+Two features expect a global, which keeps them out of the bundle:
+
+| Feature | Global | Script |
+|---|---|---|
+| PDF export (`exportPdf`, `exportArticlePdf`, `exportProductPdf`) | `window.jspdf` | `https://unpkg.com/jspdf@4.1.0/dist/jspdf.umd.min.js` |
+| PDF/AI logo upload | `window.pdfjsLib` | `https://unpkg.com/pdfjs-dist@5/build/pdf.min.mjs` |
+
+Both throw a message naming the missing script when they are used without it.
+
+### The PDF is a proof, not print data
+
+`exportPdf` produces one page per distinct logo source (deduplicated, the uploaded
+original where available) followed by one page per designed decoration with mockup,
+print-area guide, decoration data and warnings. It is RGB, without bleed or crop marks —
+a placement reference. The print-ready file is the customer's original upload, which
+travels through `LogoData.source` → `PlacedLogo.source` into the export envelope.
+
+## Migrating from 0.1.x
+
+- `wtp-editor` now takes `views`. `productImage` and `printArea` still work for a single
+  decoration but are deprecated.
+- `exportState()` returns `ArticleEditorState` instead of the flat `EditorState`;
+  `wtpEditorStateChanged` carries the same envelope. `loadState()` still accepts the old
+  flat shape and loads it into the default decoration.
+- `ArticleView.id` is required.
+- `maxColours` is `number | 'full color'`.
+- Tests run on Vitest (`@stencil/vitest`) instead of the Stencil Jest runner.
 
 ## TypeScript Types
 
@@ -215,23 +303,30 @@ All types are exported from the package root:
 
 ```ts
 import type {
-  LogoFormat,           // 'png' | 'jpeg' | 'svg' | 'pdf' | 'tiff' | 'avif' | 'unknown'
+  LogoFormat,           // 'png' | 'jpeg' | 'svg' | 'tiff' | 'avif' | 'pdf' | 'ai' | 'unknown'
   LogoMetadata,         // Format, dimensions, DPI, file size, transparency
   LogoValidationConfig, // Validation rules (minDpi, maxFileSize, minWidth, etc.)
   LogoValidationIssue,  // { code, severity, message }
   LogoValidationResult, // { valid, metadata, issues }
-  LogoData,             // { dataUrl, previewDataUrl?, metadata }
+  LogoData,             // { dataUrl, previewDataUrl?, source?, metadata }
+  LogoSource,           // { dataUrl, mimeType, fileName, fileSize } — the uploaded original
   BgRemovalConfig,      // { tolerance, minEdgeRatio }
   CanvasTransform,      // { x, y, scaleX, scaleY, angle, skewX?, skewY? }
-  PlacedLogo,           // { id, dataUrl, previewDataUrl?, transform? }
+  PlacedLogo,           // { id, dataUrl, previewDataUrl?, source?, transform? }
   PlacedText,           // { id, text, fontFamily, fontSize, fill, transform }
   EditorState,          // { fabricJson, logos, texts, productImage, width, height }
   PrintArea,            // { topLeft, topRight, bottomRight, bottomLeft, bulge? } (0–1 coords)
   RelativePoint,        // { x, y } in 0–1 space
-  ArticleView,          // Single article view + print-method metadata
-  Article,              // Multi-view article descriptor
+  ArticleView,          // One decoration option: id, image, print area + print-method metadata
+  CoordinateImageSize,  // Resolution that pixel print-area coordinates refer to
+  MaxColours,           // number | 'full color'
+  Article,              // Article with all its decoration options
+  DecorationMeta,       // How a decoration prints: method, location, mm size, colour limit
+  DecorationState,      // Per-decoration state: viewId, status, state, preview, issues
+  ArticleEditorState,   // { version: 2, articleId, decorations }
   LogoUploadLabels,     // Strings used by <wtp-logo-upload>
   EditorLabels,         // Strings used by <wtp-editor>
+  DecorationIssueLabels,// Messages for the per-decoration validation findings
 } from 'web-to-print';
 
 import {
@@ -239,6 +334,7 @@ import {
   DEFAULT_BG_REMOVAL_CONFIG,
   DEFAULT_LOGO_UPLOAD_LABELS,
   DEFAULT_EDITOR_LABELS,
+  DEFAULT_DECORATION_ISSUE_LABELS,
 } from 'web-to-print';
 ```
 
@@ -320,6 +416,7 @@ wtp-logo-upload::part(preview-item selected) {
 | `rejections` / `rejection-item` | Validation failure container and items |
 | `pending-choices` / `choice-card` / `choice-option` | Background-removal choice cards |
 | `previews` / `preview-item` | Preview gallery and items (selected items also get `selected`) |
+| `preview-select` | The button inside a preview card that selects it |
 | `remove-btn` | Per-preview remove button |
 
 ### Localizing text (`labels` prop)
@@ -369,6 +466,7 @@ import {
   EditorLabels,
   DEFAULT_LOGO_UPLOAD_LABELS,
   DEFAULT_EDITOR_LABELS,
+  DEFAULT_DECORATION_ISSUE_LABELS,
 } from 'web-to-print';
 
 const myLabels: LogoUploadLabels = {
@@ -474,6 +572,11 @@ stencil.config.ts          Stencil build configuration
 ```
 
 > The dev script (`npm start`) automatically launches `scripts/image-proxy.mjs` on port 3001. The canvas helper tries direct CORS first, then this proxy as a fallback, before loading the image tainted (which would block export).
+>
+> Whichever route works is remembered per URL, so switching between decorations does not
+> repeat a failed CORS request every time. The tainted fallback is remembered only for a
+> minute: unlike the other two it never fails, so nothing would ever retire it, and a
+> session open while the shop fixes its CORS headers would stay unable to export.
 
 ## Key Dependencies
 

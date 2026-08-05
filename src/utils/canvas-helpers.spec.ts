@@ -1,4 +1,5 @@
-import { generateObjectId, fitLogoToPrintArea, printAreaToPixelCorners, pixelCornersToPrintArea, legacyToPrintArea, defaultPrintArea, trimSvgWhitespace, isPixelPrintArea, normalizePrintArea, parseSvgDimensions, upscaleSvgDataUrl } from './canvas-helpers';
+import { generateObjectId, fitLogoToPrintArea, printAreaFrame, printAreaPixelSize, projectOntoFrame, toFrameLocal, fromFrameLocal, printAreaToPixelCorners, pixelCornersToPrintArea, legacyToPrintArea, defaultPrintArea, trimSvgWhitespace, isPixelPrintArea, normalizePrintArea, parseSvgDimensions, upscaleSvgDataUrl, clampToPrintAreaFrame, markAsBackground, isRouteUsable, PLAIN_RETRY_AFTER_MS } from './canvas-helpers';
+import { Rect } from 'fabric';
 import { PrintArea, LegacyPrintArea } from '../types';
 
 // Canvas helpers rely on Fabric.js which requires a real canvas context.
@@ -253,6 +254,204 @@ describe('normalizePrintArea', () => {
     };
     const result = normalizePrintArea(pa, 2400, 1200);
     expect(result).toBe(pa);
+  });
+});
+
+describe('isRouteUsable', () => {
+  // `cors` and `proxy` retire themselves by throwing; only `plain` needs an expiry.
+  it('keeps a working route regardless of age', () => {
+    expect(isRouteUsable({ strategy: 'cors', recordedAt: 0 }, PLAIN_RETRY_AFTER_MS * 100)).toBe(true);
+    expect(isRouteUsable({ strategy: 'proxy', recordedAt: 0 }, PLAIN_RETRY_AFTER_MS * 100)).toBe(true);
+  });
+
+  it('keeps a fresh plain fallback, so a burst of view switches does not re-probe', () => {
+    expect(isRouteUsable({ strategy: 'plain', recordedAt: 1_000 }, 1_000)).toBe(true);
+    expect(isRouteUsable({ strategy: 'plain', recordedAt: 1_000 }, 1_000 + PLAIN_RETRY_AFTER_MS - 1)).toBe(true);
+  });
+
+  it('retires a plain fallback once the cooldown is up', () => {
+    // Otherwise one CORS failure keeps the canvas tainted, and every export blocked,
+    // for as long as the session stays open.
+    expect(isRouteUsable({ strategy: 'plain', recordedAt: 1_000 }, 1_000 + PLAIN_RETRY_AFTER_MS)).toBe(false);
+    expect(isRouteUsable({ strategy: 'plain', recordedAt: 0 }, PLAIN_RETRY_AFTER_MS * 10)).toBe(false);
+  });
+});
+
+describe('printAreaFrame', () => {
+  // 45° diamond on the editor's default 800x600 canvas: every edge is 250px long, so the
+  // frame is square even though the canvas is not.
+  const tilted: PrintArea = {
+    topLeft: { x: 0.5, y: 0.25 },
+    topRight: { x: 0.75, y: 0.5 },
+    bottomRight: { x: 0.5, y: 0.75 },
+    bottomLeft: { x: 0.25, y: 0.5 },
+  };
+
+  it('takes the centroid as its origin', () => {
+    const frame = printAreaFrame(tilted, 800, 600);
+    expect(frame.cx).toBe(400);
+    expect(frame.cy).toBe(300);
+  });
+
+  it('reports half-extents along its own axes, not the bounding box', () => {
+    const frame = printAreaFrame(tilted, 800, 600);
+    expect(frame.halfW).toBeCloseTo(125, 6);
+    expect(frame.halfH).toBeCloseTo(125, 6);
+  });
+
+  it('takes its angle from the bottom edge', () => {
+    const frame = printAreaFrame(tilted, 800, 600);
+    expect(frame.angle).toBeCloseTo(Math.atan2(150, 200), 6);
+    expect(frame.cos).toBeCloseTo(Math.cos(frame.angle), 6);
+    expect(frame.sin).toBeCloseTo(Math.sin(frame.angle), 6);
+  });
+
+  it('has no rotation for an axis-aligned area', () => {
+    const square: PrintArea = {
+      topLeft: { x: 0.25, y: 0.25 },
+      topRight: { x: 0.75, y: 0.25 },
+      bottomRight: { x: 0.75, y: 0.75 },
+      bottomLeft: { x: 0.25, y: 0.75 },
+    };
+    expect(printAreaFrame(square, 400, 400).angle).toBe(0);
+  });
+
+  describe('projectOntoFrame', () => {
+    it('leaves an object aligned with the frame at half its own size', () => {
+      const frame = printAreaFrame(tilted, 800, 600);
+      const degrees = (frame.angle * 180) / Math.PI;
+      const projected = projectOntoFrame({ width: 200, height: 100, angle: degrees }, frame);
+      expect(projected.halfW).toBeCloseTo(100, 6);
+      expect(projected.halfH).toBeCloseTo(50, 6);
+    });
+
+    it('swaps the axes for an object turned 90° against the frame', () => {
+      const frame = printAreaFrame(tilted, 800, 600);
+      const degrees = (frame.angle * 180) / Math.PI + 90;
+      const projected = projectOntoFrame({ width: 200, height: 100, angle: degrees }, frame);
+      expect(projected.halfW).toBeCloseTo(50, 6);
+      expect(projected.halfH).toBeCloseTo(100, 6);
+    });
+  });
+
+  describe('toFrameLocal / fromFrameLocal', () => {
+    it('puts the frame centre at the local origin', () => {
+      const frame = printAreaFrame(tilted, 800, 600);
+      const local = toFrameLocal(400, 300, frame);
+      expect(local.x).toBeCloseTo(0, 6);
+      expect(local.y).toBeCloseTo(0, 6);
+    });
+
+    it('round-trips a world point', () => {
+      const frame = printAreaFrame(tilted, 800, 600);
+      const local = toFrameLocal(510, 240, frame);
+      const world = fromFrameLocal(local.x, local.y, frame);
+      expect(world.x).toBeCloseTo(510, 6);
+      expect(world.y).toBeCloseTo(240, 6);
+    });
+
+    it('measures along the frame axis, not the canvas axis', () => {
+      const frame = printAreaFrame(tilted, 800, 600);
+      // Midpoint of the area's right-hand edge: exactly halfW along its local x-axis,
+      // and on the local x-axis itself — although it is 100px right and 75px down in
+      // canvas coordinates.
+      const local = toFrameLocal(500, 375, frame);
+      expect(local.x).toBeCloseTo(125, 6);
+      expect(local.y).toBeCloseTo(0, 6);
+    });
+  });
+});
+
+describe('clampToPrintAreaFrame', () => {
+  // Axis-aligned 200x200 area centred on a 400x400 canvas: half-extents of 100 around (200, 200).
+  const area: PrintArea = {
+    topLeft: { x: 0.25, y: 0.25 },
+    topRight: { x: 0.75, y: 0.25 },
+    bottomRight: { x: 0.75, y: 0.75 },
+    bottomLeft: { x: 0.25, y: 0.75 },
+  };
+  const frame = () => printAreaFrame(area, 400, 400);
+
+  it('leaves an object that is already inside alone', () => {
+    const rect = new Rect({ left: 180, top: 180, width: 40, height: 40 });
+    clampToPrintAreaFrame(rect, frame());
+    expect(rect.left).toBe(180);
+    expect(rect.top).toBe(180);
+  });
+
+  it('slides an object that escaped back onto the boundary', () => {
+    const rect = new Rect({ left: 300, top: 180, width: 40, height: 40 });
+    clampToPrintAreaFrame(rect, frame());
+    // Its right edge now sits exactly on the area's right edge, and nothing moved vertically.
+    expect(rect.getCenterPoint().x + 20).toBeCloseTo(300, 6);
+    expect(rect.top).toBe(180);
+  });
+
+  it('leaves an object exactly on the boundary where it is', () => {
+    const rect = new Rect({ left: 260, top: 180, width: 40, height: 40 });
+    clampToPrintAreaFrame(rect, frame());
+    expect(rect.left).toBe(260);
+    expect(rect.top).toBe(180);
+  });
+
+  it('shrinks an object larger than the area and centres it', () => {
+    const rect = new Rect({ left: 0, top: 0, width: 400, height: 400 });
+    clampToPrintAreaFrame(rect, frame());
+    expect(rect.scaleX).toBeCloseTo(0.5, 6);
+    expect(rect.scaleY).toBeCloseTo(0.5, 6);
+    expect(rect.getCenterPoint().x).toBeCloseTo(200, 6);
+    expect(rect.getCenterPoint().y).toBeCloseTo(200, 6);
+  });
+
+  it('never touches the product image', () => {
+    const background = new Rect({ left: -500, top: -500, width: 40, height: 40 });
+    markAsBackground(background);
+    clampToPrintAreaFrame(background, frame());
+    expect(background.left).toBe(-500);
+    expect(background.top).toBe(-500);
+  });
+
+  it('clamps along the area axes for a tilted area', () => {
+    const tilted: PrintArea = {
+      topLeft: { x: 0.5, y: 0.25 },
+      topRight: { x: 0.75, y: 0.5 },
+      bottomRight: { x: 0.5, y: 0.75 },
+      bottomLeft: { x: 0.25, y: 0.5 },
+    };
+    const tiltedFrame = printAreaFrame(tilted, 400, 400);
+    const rect = new Rect({ left: 380, top: 190, width: 20, height: 20 });
+
+    clampToPrintAreaFrame(rect, tiltedFrame);
+
+    // Inside the area's own frame, not merely inside its bounding box.
+    const center = rect.getCenterPoint();
+    const local = toFrameLocal(center.x, center.y, tiltedFrame);
+    const projected = projectOntoFrame({ width: 20, height: 20, angle: 0 }, tiltedFrame);
+    expect(Math.abs(local.x) + projected.halfW).toBeLessThanOrEqual(tiltedFrame.halfW + 1e-6);
+    expect(Math.abs(local.y) + projected.halfH).toBeLessThanOrEqual(tiltedFrame.halfH + 1e-6);
+  });
+});
+
+describe('printAreaPixelSize', () => {
+  it('measures an axis-aligned area', () => {
+    const area: PrintArea = {
+      topLeft: { x: 0.25, y: 0.25 },
+      topRight: { x: 0.75, y: 0.25 },
+      bottomRight: { x: 0.75, y: 0.75 },
+      bottomLeft: { x: 0.25, y: 0.75 },
+    };
+    expect(printAreaPixelSize(area, 400, 400)).toEqual({ width: 200, height: 200 });
+  });
+
+  it('averages opposite edges of a tapered area', () => {
+    // Top edge spans 100px, bottom edge 200px — the effective width is the average.
+    const tapered: PrintArea = {
+      topLeft: { x: 0.375, y: 0 },
+      topRight: { x: 0.625, y: 0 },
+      bottomRight: { x: 0.75, y: 1 },
+      bottomLeft: { x: 0.25, y: 1 },
+    };
+    expect(printAreaPixelSize(tapered, 400, 400).width).toBe(150);
   });
 });
 

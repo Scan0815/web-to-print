@@ -27,10 +27,8 @@ export const config: Config = {
       copy: [
         { src: 'examples/demo-article', dest: 'demo-article' },
         { src: 'tool-print-area.html', dest: 'tool-print-area.html' },
+        { src: 'product-detail.html', dest: 'product-detail.html' },
       ],
     },
   ],
-  testing: {
-    browserHeadless: 'shell',
-  },
 };

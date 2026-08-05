@@ -5,6 +5,7 @@
     "description": "Keramikbecher mit unglasiertem Boden. Spülmaschinenfest EN12875-1 konform (bei bis zu 125 Waschvorgängen) für alle Werbeanbringungsmethoden. Das Fassungsvermögen beträgt 360 ml. Präsentiert in einer weißen Geschenkschachtel.",
     "views": [
       {
+        "id": "front",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10054000_1_4804_1041.png",
         "label": "Front",
         "printArea": {
@@ -45,6 +46,7 @@
     "description": "Strapazierfähiger, einwandiger Kunststoffbecher. Das Fassungsvermögen beträgt 300 ml. Hergestellt in Großbritannien.",
     "views": [
       {
+        "id": "wrap",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/21001400_3_1171_441_uk.png",
         "label": "Wrap",
         "printArea": {
@@ -85,6 +87,7 @@
     "description": "Der Riviera Becher ist mit seiner matten Außenfläche und dem Farbakzent auf der Innenseite ein echter Blickfang in jeder Wohnung oder im Büro. Der robuste und dennoch fröhliche Becher fasst bis zu 340 ml Heißgetränke und ist aus Keramik gefertigt. Der Keramikbecher Riviera (einschließlich Aufdruck) ist gemäß EN12875-1 für mindestens 125 Spülgänge spülmaschinenfest. ",
     "views": [
       {
+        "id": "front",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10047600_1_4804_552.png",
         "label": "Front",
         "printArea": {
@@ -118,6 +121,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "back",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10047600_1_4805_575.png",
         "label": "Back",
         "printArea": {
@@ -151,6 +155,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "wrap",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10047600_3_1284_1377.png",
         "label": "Wrap",
         "printArea": {
@@ -191,6 +196,7 @@
     "description": "Sanibel ist der perfekte Becher für Unterwegs. Der Becher hat eine doppelte Isolierwand, die Getränke lange warm hält. Mit dem aufdrehbaren Schiebedeckel lassen sich bis zu 400 ml Getränke bequem trinken. Außerdem sorgt der Griff mit der ergonomischen Daumenauflage für einen guten Halt. Der Sanibel Becher besteht aus rostfreiem Stahl und schwarzem Kunststoff, was ihn sehr robust, korrosionsbeständig und leicht zu reinigen macht.",
     "views": [
       {
+        "id": "front",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10029600_1_4804_1233.png",
         "label": "Front",
         "printArea": {
@@ -224,6 +230,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "back",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10029600_1_4805_1233.png",
         "label": "Back",
         "printArea": {
@@ -257,6 +264,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "wrap",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10029600_3_1284_1235.png",
         "label": "Wrap",
         "printArea": {
@@ -297,6 +305,7 @@
     "description": "Der Bronx 900 ml Becher ist aus RCS-zertifiziertem Edelstahl gefertigt und verfügt über eine doppelwandige Vakuumkonstruktion mit Kupferisolierung. Die doppelwandige Isolierung hält Ihr Getränk bis zu 12 Stunden warm oder 48 Stunden kalt. Der Deckel hat eine Doppelfunktion: einen ausklappbaren Trinkhalm zum bequemen Trinken und eine Flip-Top-Öffnung mit praktischem Klappgriff für den einfachen Transport. Für die meisten Getränkehalter im Auto geeignet. Verpackt in einer Geschenkbox aus Recyclingkarton. ",
     "views": [
       {
+        "id": "front",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10086401_6_7002_2133.png",
         "label": "Front",
         "printArea": {
@@ -330,6 +339,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "wrap",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10086401_3_1175_2334.png",
         "label": "Wrap",
         "printArea": {
@@ -370,6 +380,7 @@
     "description": "Extra große Vakuum-Isolierflasche aus Edelstahl im kultigen Design mit komfortablem Griff zum einfachen Tragen. BPA-frei, geprüft und zugelassen nach dem deutschen Lebensmittelrecht (LFGB). Auf Phthalate geprüft und zugelassen gemäß den REACH-Vorschriften. Das Volumen beträgt 1,5 Liter. Handwäsche empfohlen. Verpackt in einer Geschenkbox aus Recyclingkarton. Hält Getränke 12 Stunden heiß und 48 Stunden kalt.",
     "views": [
       {
+        "id": "front",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10071001_1_6039_552.png",
         "label": "Front",
         "printArea": {
@@ -403,6 +414,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "wrap",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10071001_3_1175_441.png",
         "label": "Wrap",
         "printArea": {
@@ -443,6 +455,7 @@
     "description": "Der einwandige Becher Americano® Switch Renew ist der perfekte Becher für den Kaffeegenuss unterwegs. Er hat ein Fassungsvermögen von 300 ml und einen sicheren Stülpdeckel und ist der ideale Ersatz für Einweg-Kaffeebecher. Der Becher enthält 25 % Kunststoff, der aus Zuckerrohr gewonnen wird, wodurch der Bedarf an neuem Kunststoff reduziert wird. Spülmaschinenfest, mikrowellenfest und BPA-frei. Als Teil der Americano® Switch-Familie können Sie Ihren Becher durch Hinzufügen eines Deckels und eines Griffs nach Belieben individuell gestalten. Hergestellt in UK. Verpackt in einem recycelten PE-Kunststoffbeutel.",
     "views": [
       {
+        "id": "wrap",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/21028102_3_5179_441_uk.png",
         "label": "Wrap",
         "printArea": {
@@ -483,6 +496,7 @@
     "description": "Der Ocean Bottle 350 ml Reisebecher ist doppelwandig isoliert und hält Getränke bis zu vier Stunden heiß und bis zu zehn Stunden kalt. Jeder Reisebecher ist CO₂-neutral und finanziert die Sammlung von 1.000 Plastikflaschen, um die Lebensbedingungen in Küstengemeinden zu verbessern. Der Becher besteht zu 90 % aus recyceltem Edelstahl und anderen recycelten Materialien. Verpackt in einer Geschenkbox aus verantwortungsvoll hergestellten Recyclingkarton.",
     "views": [
       {
+        "id": "front",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10081782_6_4805_4531.png",
         "label": "Front",
         "printArea": {
@@ -523,6 +537,7 @@
     "description": "Kompakter, doppelwandiger Isolierbecher mit Schraubverschluss. Die äußere Schicht des Bechers ist aus recyceltem Kunststoff hergestellt. Trinköffnung mit Clip verhindert auslaufen und schließt ohne Silikon. Passt unter die meisten Kaffeemaschinen. Der Becher verfügt über ein vollfarbiges, umlaufendes Design, das an das Produkt angepasst ist – für Strapazierfähigkeit und Haltbarkeit. EN12875-1 konform; spülmaschinen- und mikrowellenfest. Das Fassungsvermögen beträgt 250 ml. Mischen und kombinieren Sie Farben, um Ihren perfekten Becher zu kreieren. Kontaktieren Sie uns für weitere Farboptionen. Hergestellt in Großbritannien. BPA-frei.",
     "views": [
       {
+        "id": "wrap",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/21009100_30_5178_441_uk.png",
         "label": "Wrap",
         "printArea": {
@@ -563,6 +578,7 @@
     "description": "Einwandige Sportflasche mit geripptem Design. Verfügt über einen auslaufsicheren Deckel zum Klappen Das Fassungsvermögen beträgt 750 ml. Mischen und kombinieren Sie Farben, um Ihre perfekte Flasche zu kreieren. Kontaktieren Sie uns bezüglich weiterer Farboptionen. Hergestellt in Großbritannien. Verpackt in einem recycelten PE-Kunststoffbeutel. BPA-frei.",
     "views": [
       {
+        "id": "wrap",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/21087700_3_5179_441_uk.png",
         "label": "Wrap",
         "printArea": {
@@ -603,6 +619,7 @@
     "description": "Einwandige Sportflasche mit integriertem Fingergriff-Design. Die Flasche ist aus recycelbarem PET-Material hergestellt. Verfügt über einen auslaufsicheren Deckel mit klappbarer Tülle. Sowohl die Flasche als auch der Deckel werden in Großbritannien hergestellt. Das Fassungsvermögen beträgt 500 ml. Mischen und kombinieren Sie Farben, um Ihre perfekte Flasche zu kreieren. Verpackt in einem recycelten PE-Kunststoffbeutel. BPA-frei.",
     "views": [
       {
+        "id": "wrap",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/21088300_3_5179_441_uk.png",
         "label": "Wrap",
         "printArea": {
@@ -643,6 +660,7 @@
     "description": "Einwandige Sportflasche mit einem stylischen, schlanken Design. Die Flasche ist aus recycelbarem PET-Material hergestellt. Verfügt über einen auslaufsicheren Deckel mit klappbarer Tülle. Das Fassungsvermögen beträgt 700 ml. Mischen und kombinieren Sie Farben, um Ihre perfekte Flasche zu kreieren. Kontaktieren Sie den Kundendienst für weitere Farboptionen. Hergestellt in Großbritannien. Verpackt in einem recycelten PE-Kunststoffbeutel. BPA-frei.",
     "views": [
       {
+        "id": "wrap",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/21004000_3_5286_441_uk.png",
         "label": "Wrap",
         "printArea": {
@@ -676,6 +694,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "wrap-2",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/21004000_35_5286_43_uk.png",
         "label": "Wrap 2",
         "printArea": {
@@ -716,6 +735,7 @@
     "description": "Die Twist Sportflasche hält Getränke bis zu 6 Stunden warm oder bis zu 10 Stunden kalt. Sie verfügt über einen integrierten Strohhalm, der sich durch einfaches Drehen hervorbringen lässt, sowie über eine praktische Trageschlaufe. Auslaufsicher und spülmaschinengeeignet. BPA frei.",
     "views": [
       {
+        "id": "back",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10091001_6_6861_1042.png",
         "label": "Back",
         "printArea": {
@@ -749,6 +769,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "wrap",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10091001_41_6486_1377.png",
         "label": "Wrap",
         "printArea": {
@@ -789,6 +810,7 @@
     "description": "Die Stanley 350 ml All Day Slim Flasche wurde für die ganztägige Flüssigkeitsversorgung entwickelt und vereint Komfort und Leistung. Sie besteht zu 90% aus recyceltem Edelstahl und hat eine zweigeteilte Öffnung – eine zum bequemen Trinken – die andere zum Einfüllen von Eis und zur einfachen Reinigung. Der Hals besteht aus einwandigem Edelstahl mit einem Kunststoffgewinde und einer sicheren, komprimierten Dichtung, die ein Auslaufen verhindert. Der doppelwandige Behälter ist vakuumisoliert. So bleiben Ihre Getränke stundenlang optimal temperiert. Die langlebige und durchdachte Konstruktion macht sie zur idealen Thermoflasche für unterwegs.",
     "views": [
       {
+        "id": "wrap",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10088310_35_6486_1042.png",
         "label": "Wrap",
         "printArea": {
@@ -822,6 +844,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "back",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10088310_1_6486_1042.png",
         "label": "Back",
         "printArea": {
@@ -862,6 +885,7 @@
     "description": "Die 500 ml Ellipse Isolierflasche aus Edelstahl hält Getränke bis zu 12 Stunden heiß oder 24 Stunden kalt – ideal für Reisen oder den Arbeitsweg. Die Flasche ist BPA-frei, auslaufsicher und spülmaschinengeeignet. Auch für kohlensäurehaltige Getränke geeignet.",
     "views": [
       {
+        "id": "front",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10090952_6_6860_1041.png",
         "label": "Front",
         "printArea": {
@@ -895,6 +919,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "wrap",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10090952_35_6486_1377.png",
         "label": "Wrap",
         "printArea": {
@@ -935,6 +960,7 @@
     "description": "Die Stanley 600 ml All Day Slim Wasserflasche wurde für die ganztägige Flüssigkeitsversorgung entwickelt und vereint Komfort und Leistung. Sie besteht zu 90% aus recyceltem Edelstahl und hat eine zweigeteilte Öffnung – eine zum bequemen Trinken – die andere zum Einfüllen von Eis und zur einfachen Reinigung. Der Hals besteht aus einwandigem Edelstahl mit einem Kunststoffgewinde und einer sicheren, komprimierten Dichtung, die ein Auslaufen verhindert. Der doppelwandige Behälter ist vakuumisoliert. So bleiben Ihre Getränke stundenlang optimal temperiert. Die langlebige und durchdachte Konstruktion macht sie zur idealen Thermoflasche für unterwegs.",
     "views": [
       {
+        "id": "wrap",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10088210_35_6486_1042.png",
         "label": "Wrap",
         "printArea": {
@@ -968,6 +994,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "back",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10088210_1_6486_1042.png",
         "label": "Back",
         "printArea": {
@@ -1008,6 +1035,7 @@
     "description": "Robuste, doppelwandige, vakuumisolierte RCS-zertifizierte Edelstahl Flasche, sodass Ihr Getränk bis zu 12 Stunden warm und bis zu 24 Stunden kalt bleibt.Mit Schraubverschluss  und stabiler Trageschlaufe aus Edelstahl. Fassungsvermögen: 500 ml. Auslaufsicher. Geliefert in einer Präsentbox.",
     "views": [
       {
+        "id": "front",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10081901_1_4799_552.png",
         "label": "Front",
         "printArea": {
@@ -1041,6 +1069,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "cap",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10081901_1_1175_41.png",
         "label": "Cap",
         "printArea": {
@@ -1074,6 +1103,7 @@
         "impDiameterMm": 30
       },
       {
+        "id": "wrap",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10081901_3_1175_441.png",
         "label": "Wrap",
         "printArea": {
@@ -1114,6 +1144,7 @@
     "description": "Diese doppelwandige, vakuumisolierte Flasche aus Edelstahl hält Getränke lange auf der gewünschten Temperatur. Sie verfügt außerdem über ein herausnehmbares Teesieb für zusätzlichen Komfort. Mit einem Fassungsvermögen von 450 ml und einem auslaufsicheren Design ist sie ideal für den täglichen Gebrauch oder für Reisen.",
     "views": [
       {
+        "id": "front",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10082601_6_4799_1041.png",
         "label": "Front",
         "printArea": {
@@ -1147,6 +1178,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "wrap",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10082601_3_1175_1377.png",
         "label": "Wrap",
         "printArea": {
@@ -1187,6 +1219,7 @@
     "description": "Mit der Kupfer-Vakuum Isolierflasche Vasa bleiben Ihre Getränke 12 Stunden lang heiß oder 48 Stunden lang kalt. Der doppelwandige Edelstahlbehälter mit Vakuumisolierung und verkupferter Innenwand hält Ihr Getränk je nach Bedarf heiß oder kalt. Die Flasche hat eine natürliche Holzoptik. Die Flasche ist BPA-frei und nach dem deutschen Lebensmittel- und Futtermittelgesetzbuch (LFGB) sowie nach REACH auf Phthalate geprüft und zugelassen. Fassungsvermögen: 500 ml. Geliefert in einer Geschenkbox.",
     "views": [
       {
+        "id": "front",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10051500_1_1175_1041.png",
         "label": "Front",
         "printArea": {
@@ -1220,6 +1253,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "wrap",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10051500_41_1175_1377.png",
         "label": "Wrap",
         "printArea": {
@@ -1260,6 +1294,7 @@
     "description": "Verfügt über 80 Blatt Blankopapier (80 g/m2) und eine schwarze oder weiße Spiralbindung. Erhältlich in den Größe A4, A5 und A6. Vollfarbdruck auf beiden Seiten des Umschlags sowie auf jedem Blatt möglich.",
     "views": [
       {
+        "id": "blatter",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/21257000_26_1209_3547_uk.png",
         "label": "Blätter",
         "printArea": {
@@ -1293,6 +1328,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "front",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/21257000_26_1209_588_uk.png",
         "label": "Front",
         "printArea": {
@@ -1326,6 +1362,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "back",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/21257000_26_1234_587_uk.png",
         "label": "Back",
         "printArea": {
@@ -1359,6 +1396,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "back-2",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/21257000_26_1234_3548_uk.png",
         "label": "Back 2",
         "printArea": {
@@ -1399,6 +1437,7 @@
     "description": "Referenznotizbuch im Format A5 mit Umschlag aus Lederresten. Mit Gummiband, Stiftschlaufe, Farbbandmarker und 80 Blatt, 80 g/m² liniertem Papier.",
     "views": [
       {
+        "id": "front",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10757500_1_5211_1096.png",
         "label": "Front",
         "printArea": {
@@ -1432,6 +1471,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "left",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10757500_1_5211_3648.png",
         "label": "Left",
         "printArea": {
@@ -1465,6 +1505,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "right",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10757500_1_4283_3649.png",
         "label": "Right",
         "printArea": {
@@ -1505,6 +1546,7 @@
     "description": "Notizbuch aus Bio Baumwolle mit 120 Seiten aus weißem, liniertem, recyceltem Papier (70 g/m2). Ausgestattet mit einem schwarzen Farbband, einem Elastikverschluss und einer Stiftschlaufe. Bio Baumwolle wird mit nachhaltigen Anbaumethoden angebaut, die zum Schutz der Umwelt und zur Förderung der Artenvielfalt beitragen. Durch den Verzicht auf schädliche Chemikalien kann der ökologische Anbau von Baumwolle dazu beitragen, die Boden- und Wasserverschmutzung sowie das Risiko von Gesundheitsproblemen für Landwirte und deren Familien zu verringern.",
     "views": [
       {
+        "id": "front",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10781306_7_5211_1096.png",
         "label": "Front",
         "printArea": {
@@ -1538,6 +1580,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "back",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10781306_2_2671_1099.png",
         "label": "Back",
         "printArea": {
@@ -1578,6 +1621,7 @@
     "description": "Softcover Notizbuch Liliana im A5-Format mit abgerundeten Ecken und 72 Blatt, liniert, 90 g/m² Papier. Der Einband besteht aus RPET und Zuckerrohrpapier. ",
     "views": [
       {
+        "id": "front",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10612521_2_1209_588.png",
         "label": "Front",
         "printArea": {
@@ -1611,6 +1655,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "back",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10612521_1_1234_587.png",
         "label": "Back",
         "printArea": {
@@ -1651,6 +1696,7 @@
     "description": "Planen Sie jeden Tag bis ins kleinste Detail mit dem Moleskine Softcover Tagesplaner für 12 Monate. Dieser Planer ist von Januar bis Dezember 2026 datiert und so formatiert, dass auf jeder Seite ein ganzer Tag abgebildet ist, damit Sie genügend Platz haben, um Ereignisse, Termine, Aufgaben, Erinnerungen und Pläne festzuhalten. Im Laufe des Jahres wird er zu einem physischen Tagebuch, in dem Sie Tag für Tag festhalten, was Sie alles erreicht haben. Er enthält elfenbeinfarbenes, säurefreies Papier, einen schwarzen, elastischen Verschluss, ein Seitenband, eine farblich abgestimmte, erweiterbare Innentasche und Aufkleber zur persönlichen Gestaltung sowie Jahresaufkleber für den Buchrücken.",
     "views": [
       {
+        "id": "front",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10793690_5_1954_588.png",
         "label": "Front",
         "printArea": {
@@ -1684,6 +1730,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "papierband",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10793690_23_4710_1093.png",
         "label": "Papierband",
         "printArea": {
@@ -1717,6 +1764,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "left",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10793690_5_5211_3648.png",
         "label": "Left",
         "printArea": {
@@ -1750,6 +1798,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "right",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10793690_5_5211_3649.png",
         "label": "Right",
         "printArea": {
@@ -1790,6 +1839,7 @@
     "description": "Die aus strapazierfähigem und reißfestem RPET hergestellte, GRS-zertifizierte recycelte EcoSeal Tragetasche verfügt über eine ultraschallverschweißte Konstruktion und gestanzte Griffe. Sie ist nahtfrei, leicht und dennoch robust. Perfekt für den täglichen Bedarf, Veranstaltungen oder schnelle Besorgungen. Beständigkeit bis zu 3 kg. Fassungsvermögen: 5 Liter.",
     "views": [
       {
+        "id": "front",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/13010301_49_4703_552.png",
         "label": "Front",
         "printArea": {
@@ -1830,6 +1880,7 @@
     "description": "Die Liberty Tragetasche aus GRS-zertifiziertem Recyclingmaterial besteht aus strapazierfähigem und reißfestem RPET-Non Woven und verfügt über einen harten Boden, der sie vielseitig und stabil macht. Die Tasche hat ein großes Hauptfach und 25 cm lange Tragegriffe. Fassungsvermögen: 29 Liter. Beständigkeit bis zu 12 kg.",
     "views": [
       {
+        "id": "front",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/13008101_2_6962_1287.png",
         "label": "Front",
         "printArea": {
@@ -1870,6 +1921,7 @@
     "description": "Tragetasche aus einem 150 g/m² schweren Recyclingbaumwolle-Polyester-Gemisch. Diese Tasche lässt sich leicht zusammenfalten, sodass sie auf kleinem Raum Platz findet und ist die perfekte Begleiterin für eine Vielzahl von Aktivitäten wie Lebensmitteleinkäufe, Tagesausflüge oder Bastelprojekte. Recycelte Baumwolle wird aus Verbrauchsabfällen hergestellt, die während des Schneidevorgangs in Textilfabriken anfallen. Ähnliche Farben werden miteinander vermischt, sodass kein zusätzliches Färben erforderlich ist. Aufgrund der Beschaffenheit von Recyclingbaumwolle kann es zu sehr leichten Farbabweichungen kommen. Dies trägt eindeutig zu einem authentischeren Erscheinungsbild bei. Jede Tasche wird außerdem mit einem Aware™ Tracer geliefert. Diese innovative Funktion ermöglicht es den Nutzern, die Herkunft und den Weg ihres Artikels mithilfe eines QR-Codes nachzuvollziehen, wodurch die Transparenz der Lieferkette erhöht und eine stärkere Verbindung zwischen dem Produkt und seinem Herstellungsprozess fördert. Belastbarkeit bis zu 5 kg. Grifflänge: 31 cm.",
     "views": [
       {
+        "id": "front",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/12070306_2_4703_552.png",
         "label": "Front",
         "printArea": {
@@ -1903,6 +1955,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "back",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/12070306_2_4703_575.png",
         "label": "Back",
         "printArea": {
@@ -1943,6 +1996,7 @@
     "description": "Ein stilvoller Rucksack mit viel Platz, einem gepolsterten Rückenteil und Schultergurten für optimalen Komfort. Mit einem gepolsterten Fach für ein 16\"-MacBook® oder einen 15,6\"-Laptop, einem speziellen Einschubfach für ein 10,5\"-Tablet und mehreren Fächern für die Aufbewahrung und den einfachen Zugriff auf kleinere Gegenstände.",
     "views": [
       {
+        "id": "front",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/12063290_33_1226_43.png",
         "label": "Front",
         "printArea": {
@@ -1976,6 +2030,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "front-2",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/12063290_2_1226_43.png",
         "label": "Front 2",
         "printArea": {
@@ -2009,6 +2064,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "flap",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/12063290_2_1226_74.png",
         "label": "Flap",
         "printArea": {
@@ -2049,6 +2105,7 @@
     "description": "Der Classic Rucksack ist ein urbaner Rucksack mit klarem Design und 2 Hauptfächern für einen Laptop und andere persönliche Dinge. Mit atmungsaktivem Netzgewebe auf der Rückseite für angenehmen Tragekomfort unterwegs, einer leicht zugänglichen Fronttasche mit hitzeversiegeltem Reißverschluss, einem Gepäckgurt für längere Reisen und einem umlaufenden Reißverschluss oben. Außerdem enthält sie mehrere Innenfächer. Ein Notizbuchfach, ein sicheres Reißverschlussfach und einen Organizer mit 2 Stiftschlaufen und einem Visitenkartenfach. Ein elektronisches Gerät bis 15\" kann ebenfalls sicher verstaut werden. ",
     "views": [
       {
+        "id": "front",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/13006890_6_6667_2513.png",
         "label": "Front",
         "printArea": {
@@ -2089,6 +2146,7 @@
     "description": "Der Evergreen Sportbeutel ist eine gute Wahl, wenn Sie eine Tasche suchen, die sich gut als einfach zu handhabendes Giveaway eignet, um eine Marke oder eine Marketingkampagne zu bewerben. Der leichte Rucksack ist budgetfreundlich und verfügt über einen Kordelzug, mit dem er sich leicht über der Schulter oder als Rucksack tragen lässt. Die Tasche besteht aus 80 g/m² PP-Kunststoff, verfügt über ein großes Hauptfach und lässt auf der Außenseite genügend Platz, um ein Logo oder andere Botschaften anzubringen. ",
     "views": [
       {
+        "id": "front",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/11961900_49_4739_552.png",
         "label": "Front",
         "printArea": {
@@ -2129,6 +2187,7 @@
     "description": "Rucksack aus 210 g/m² recycelter Baumwolle und recyceltem Polyester. Recycelte Baumwolle wird aus Verbrauchsabfällen hergestellt, die während des Schneidevorgangs in Textilfabriken anfallen. Großes Hauptfach mit Kordelzugverschluss aus Baumwolle. Ausgestattet mit zwei Griffen mit einer Höhe von 14 cm. Beständigkeit bis zu 5 kg Gewicht. Aufgrund des Produktionsprozesses kann es zu geringfügigen Farbabweichungen des Produktes kommen.",
     "views": [
       {
+        "id": "front",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/12046000_2_5558_552.png",
         "label": "Front",
         "printArea": {
@@ -2162,6 +2221,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "back",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/12046000_2_5558_575.png",
         "label": "Back",
         "printArea": {
@@ -2202,6 +2262,7 @@
     "description": "Die 800 ml-Dovi-Lunchbox besteht zu 100 % aus recyceltem Kunststoff und ist damit eine nachhaltige und trendige Wahl. Der Deckel ist mit einem Gummibandverschluss versehen, der ihn auch unterwegs sicher hält.",
     "views": [
       {
+        "id": "lid",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/11327402_1_6010_4024.png",
         "label": "Lid",
         "printArea": {
@@ -2242,6 +2303,7 @@
     "description": "Die Mangi Lunchbox besteht aus recyceltem Kunststoff und hat ein Fassungsvermögen von 750 ml. Sie hat einen Deckel aus Bambus und ein Gummiband, das den Deckel an Ort und Stelle hält und dafür sorgt, dass der Inhalt frisch bleibt. Der Behälter ist spülmaschinenfest, jedoch nicht der Deckel.",
     "views": [
       {
+        "id": "linke-seite",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/11336101_6_4759_4377.png",
         "label": "linke Seite",
         "printArea": {
@@ -2275,6 +2337,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "rechte-seite",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/11336101_6_4759_4378.png",
         "label": "rechte Seite",
         "printArea": {
@@ -2315,6 +2378,7 @@
     "description": "Bewahren Sie Ihre Mahlzeiten mühelos auf mit dieser stilvollen Lunchbox und dem passenden Besteckset. Das geräumige Fach hält Ihre Speisen frisch, ordentlich und zum Verzehr bereit. Das Besteck ist in einem separaten Fach im Deckel der Lunchbox untergebracht – praktisch zum Mitnehmen und ideal für Schule, Arbeit oder Reisen. Kapazität 1000 ml.",
     "views": [
       {
+        "id": "lid",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/11342001_15_1986_65.png",
         "label": "Lid",
         "printArea": {
@@ -2355,6 +2419,7 @@
     "description": "Der Parker IM ist ein idealer Partner mit unbegrenztem Potenzial. Die schlanke Form ergibt zusammen mit dem innovativen Design ein markantes Gesamtbild. Das trendige matte Finish des Korpus und die PVD-Beschichtung der Zierteile machen diesen Parker-Kugelschreiber zum perfekten, langlebigen Schreibgerät für Studenten und Profis. Die Kugelschreiberspitze und die Quinkflow-Tinte werden mit einem hörbaren Klick eingezogen und sorgen für ein außergewöhnlich flüssiges und zuverlässiges Schreibgefühl. Zur Verwendung mit QUINK Kugelschreiber- und Geltintenminen. Im Lieferumfang enthalten sind eine Patrone und eine Parker-Geschenkbox. Exklusives Design.",
     "views": [
       {
+        "id": "front",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10780190_6_5012_43.png",
         "label": "Front",
         "printArea": {
@@ -2395,6 +2460,7 @@
     "description": "Dieser Kugelschreiber aus Bambus bietet ein elegantes und nachhaltiges Schreiberlebnis. Tintenfarbe: Schwarz. Schreiblänge: 1000 Meter. Schreibspitze: 1 mm.",
     "views": [
       {
+        "id": "cap",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10625306_6_5012_3391.png",
         "label": "Cap",
         "printArea": {
@@ -2428,6 +2494,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "barrel",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10625306_1_5012_3595.png",
         "label": "Barrel",
         "printArea": {
@@ -2461,6 +2528,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "wrap",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10625306_3_5009_3391.png",
         "label": "Wrap",
         "printArea": {
@@ -2501,6 +2569,7 @@
     "description": "Transparenter, runder I7-Schlüsselanhänger mit metallenem Schlüsselring. Der Metallring bietet ein flaches Profil, das sich ideal für Mailings eignet. Durchmesser des Druckeinsatzes: 3,3 cm.",
     "views": [
       {
+        "id": "beide-seiten",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/21055200_45_1810_3577_uk.png",
         "label": "beide Seiten",
         "printArea": {
@@ -2541,6 +2610,7 @@
     "description": "Zeitloser Schlüsselanhänger aus Metall.",
     "views": [
       {
+        "id": "front",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/19538050_1_1301_552.png",
         "label": "Front",
         "printArea": {
@@ -2581,6 +2651,7 @@
     "description": "Kabellose 10.000 mAh Powerbank mit antibakterieller Soft-Touch-Oberfläche und leuchtendem Logo. Das Gerät leuchtet 30 Sekunden lang, wenn es berührt oder aufgeladen wird. 3-in-1 (Typ C, Android, iPhone) Kabel aus recyceltem PET Kunststoff. Kapazität: 10.000 mAh Input: 5 V/2,4 A (Mikro). Output: 5 V/2,4 A (USB). Wireless Output: 5 V/2 A max. Frequenz: 110 kHz - 205 kHz. Lieferung in einer Geschenkbox aus recyceltem Papier.\n",
     "views": [
       {
+        "id": "front",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/2PX06090_6_6975_3069.png",
         "label": "Front",
         "printArea": {
@@ -2621,6 +2692,7 @@
     "description": "Powerbank aus recyceltem ABS-Kunststoff. Die Powerbank enthält einen langlebigen Lithium-Polymer-Akku der Güteklasse A mit 10.000 mAh für schnelles Aufladen. Die Energieanzeige zeigt den verbleibenden Energiestand an, so dass Sie immer wissen, wann Sie wieder aufladen müssen. Typ-C-Eingang 5V/2A, Micro-USB-Eingang 5V/2A, dualer USB-A-Ausgang 5V/2A, Gesamtleistung 10 W. Geliefert mit einem 30 cm langen TPE-2A-USB-A-auf-Typ-C-Ladekabel, einer Bedienungsanleitung und einer Geschenkbox aus Kraftpapier.",
     "views": [
       {
+        "id": "segment",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/12432190_15_5890_2545.png",
         "label": "Segment",
         "printArea": {
@@ -2661,6 +2733,7 @@
     "description": "Stilvolle Kühltragetasche aus hochwertigem, weichem und langlebigem GRS-zertifiziertem, recyceltem Filz. Großes Hauptfach mit lebensmittelechter Aluminiumisolierung und Klettverschluss an der Oberseite, damit Getränke, Erfrischungen und Tiefkühlprodukte länger kühl und von äußeren Einflüssen abgeschirmt bleiben. Mit langen, gewebten Baumwollgriffen (30 × 2,5 cm), einem extra breiten Boden und einer Vordertasche mit Reißverschluss. Egal, ob Sie zum Strand gehen, Einkäufe erledigen oder einfach nur einen Tag im Freien mit Freunden und Familie genießen möchten, diese Tasche ist der ideale Begleiter für Sie.",
     "views": [
       {
+        "id": "tasche",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/21074382_7_1226_153.png",
         "label": "Tasche",
         "printArea": {
@@ -2701,6 +2774,7 @@
     "description": "Mit der Oslo-Kühltasche haben Sie jederzeit und überall gekühlte Getränke und Snacks dabei. Die Kühltasche hat zwei separate Fächer mit Reißverschluss. Das obere Fach eignet sich perfekt für kleine Snacks, während das untere Fach ideal für größere Lebensmittel ist. Der Schultergurt ist verstellbar, so dass die Tasche von jedem leicht zu tragen ist. Die Kühltasche besteht aus 600D Polyester, einem strapazierfähigen und langlebigen Material.",
     "views": [
       {
+        "id": "front",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/11960000_2_1212_1013.png",
         "label": "Front",
         "printArea": {
@@ -2734,6 +2808,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "top",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/11960000_2_6462_1014.png",
         "label": "Top",
         "printArea": {
@@ -2774,6 +2849,7 @@
     "description": "Der Regenschirm Lisa 23\" ist ein echter Verkaufsschlager. Dank des automatischen Systems lässt sich der Schirm schnell öffnen. Der Schaft und die Rippen sind aus Metall, und der Holzgriff verleiht dem Schirm ein klassisches Aussehen. Der Schirm bietet zahlreiche Möglichkeiten, um eine Werbebotschaft oder ein Logo anzubringen. Außerdem ist der Regenschirm Lisa in einer Vielzahl von Farben erhältlich. ",
     "views": [
       {
+        "id": "1-segment",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10901702_2_614_7.png",
         "label": "1. Segment",
         "printArea": {
@@ -2807,6 +2883,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "3-segment",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10901702_2_616_7.png",
         "label": "3. Segment",
         "printArea": {
@@ -2840,6 +2917,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "5-segment",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10901702_2_618_7.png",
         "label": "5. Segment",
         "printArea": {
@@ -2873,6 +2951,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "7-segment",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10901702_2_620_7.png",
         "label": "7. Segment",
         "printArea": {
@@ -2913,6 +2992,7 @@
     "description": "Selbstöffnender Regenschirm mit Pongee Polyester Baldachin und einem stabilen schwarz beschichteten Metallschaft. Die hochwertigen Speichen aus Vollglasfaser bieten maximale Flexibilität bei windigen Bedingungen. Gebogener Griff in Karbonoptik mit schwarz vernickelten Spitzen. Luxe Markendetails auf dem gewebten Etikett auf Baldachin und Verschlussriemen. Große Werbeanbringungssfläche auf jedem Paneel.",
     "views": [
       {
+        "id": "1-segment",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10941390_2_614_7.png",
         "label": "1. Segment",
         "printArea": {
@@ -2946,6 +3026,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "3-segment",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10941390_2_616_7.png",
         "label": "3. Segment",
         "printArea": {
@@ -2979,6 +3060,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "5-segment",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10941390_2_618_7.png",
         "label": "5. Segment",
         "printArea": {
@@ -3012,6 +3094,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "7-segment",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/10941390_2_620_7.png",
         "label": "7. Segment",
         "printArea": {
@@ -3052,6 +3135,7 @@
     "description": "Schürze aus Twill Gewebe mit 3 Taschen und 0,9 m langem Bindeband.",
     "views": [
       {
+        "id": "rechtes-fach",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/11205100_2_1625_50.png",
         "label": "rechtes Fach",
         "printArea": {
@@ -3085,6 +3169,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "linkes-fach",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/11205100_2_1625_49.png",
         "label": "linkes Fach",
         "printArea": {
@@ -3118,6 +3203,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "tasche",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/11205100_4_1625_72.png",
         "label": "Tasche",
         "printArea": {
@@ -3158,6 +3244,7 @@
     "description": "Die hübsche Transit Kulturtasche hat ein einfaches Layout und ist daher ideal für Reisen. Große Produkte wie Shampoo und Parfüm passen in das Hauptfach mit Reißverschluss, während der Reißverschluss an der Vorderseite für kleine Gegenstände wie einen Spiegel geeignet ist. Die Kulturtasche besteht aus 300D-Polyester, ist leicht und einfach zu pflegen. Darüber hinaus bietet der Transit Kulturbeutel verschiedene Werbeanbringungsoptionen für Logos und andere Unternehmensbotschaften.",
     "views": [
       {
+        "id": "front",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/11996800_2_2936_328.png",
         "label": "Front",
         "printArea": {
@@ -3191,6 +3278,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "back",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/11996800_7_3395_1093.png",
         "label": "Back",
         "printArea": {
@@ -3231,6 +3319,7 @@
     "description": "Zuziehbeutel aus GRS-zertifizierter, Recyclingbaumwolle mit Kordelzugverschluss aus Baumwolle. Ideal zum Verschenken oder Aufbewahren von Gegenständen. Größe 25 x 30 cm. Aufgrund des Produktionsprozesses kann es zu geringfügigen Farbabweichungen des Produktes kommen.",
     "views": [
       {
+        "id": "front",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/12067106_2_1237_1041.png",
         "label": "Front",
         "printArea": {
@@ -3264,6 +3353,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "back",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/12067106_2_1237_1042.png",
         "label": "Back",
         "printArea": {
@@ -3304,6 +3394,7 @@
     "description": "Eine wiederverwendbare Baumwolltasche zur Aufbewahrung von Brot. So bleibt das Brot frisch und der Plastikverbrauch wird reduziert. Sie ist leicht, atmungsaktiv, einfach zu waschen und perfekt für den täglichen Gebrauch in der Küche oder für den Einkauf beim Bäcker.",
     "views": [
       {
+        "id": "tasche",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/12636906_42_5980_1048.png",
         "label": "Tasche",
         "printArea": {
@@ -3344,6 +3435,7 @@
     "description": "Sticky-Mate® Haftnotizen mit selbstklebendem 80 g/m2 Papier. Ein vollfarbiger Druck ist auf jedem Blatt möglich. Erhältlich in 3 Größen: 25, 50, 100 Blatt.",
     "views": [
       {
+        "id": "top",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/2109500_31_5306_3540_uk.png",
         "label": "Top",
         "printArea": {
@@ -3377,6 +3469,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "left",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/2109500_31_5305_3540_uk.png",
         "label": "Left",
         "printArea": {
@@ -3417,6 +3510,7 @@
     "description": "Schnell einziehendes, schnell trocknendes und waschbares kühlendes Handtuch aus starkem und strapazierfähigem Polyester, perfekt um während des Trainings oder bei allen Outdoor-Aktivitäten kühl zu bleiben. Wird in einem PET-Behälter mit Tragegriff und integriertem Karabinerhaken für einfaches Tragen geliefert. Erhältlich in 5 frischen Farben. Große Deko-Logofläche auf dem Behälter, Dekoration auch auf dem Kühlhandtuch selbst möglich. Größe 30 x 80 cm.",
     "views": [
       {
+        "id": "front",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/12617002_3_1175_1377.png",
         "label": "Front",
         "printArea": {
@@ -3450,6 +3544,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "top",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/12617002_2_3728_2333.png",
         "label": "Top",
         "printArea": {
@@ -3483,6 +3578,7 @@
         "impDiameterMm": 0
       },
       {
+        "id": "handtuch",
         "image": "http://images.pfconcept.com/CoordinateImages_All/PNG/2400/12617002_16_5614_1093.png",
         "label": "Handtuch",
         "printArea": {

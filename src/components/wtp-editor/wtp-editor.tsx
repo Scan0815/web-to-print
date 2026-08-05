@@ -1,7 +1,49 @@
 import { Component, h, Prop, State, Method, Event, EventEmitter, Watch, Element } from '@stencil/core';
 import { Canvas, FabricObject, FabricImage, IText } from 'fabric';
-import { PlacedLogo, PlacedText, EditorState, LogoData, CanvasTransform, PrintArea, EditorLabels, DEFAULT_EDITOR_LABELS } from '../../types';
-import { setCanvasBackground, generateObjectId, upscaleSvgDataUrl, fitLogoToPrintArea, printAreaToPixelCorners } from '../../utils/canvas-helpers';
+import {
+  PlacedLogo,
+  PlacedText,
+  EditorState,
+  LogoData,
+  CanvasTransform,
+  PrintArea,
+  EditorLabels,
+  DEFAULT_EDITOR_LABELS,
+  ArticleView,
+  ArticleEditorState,
+  DecorationState,
+  LogoValidationIssue,
+  LogoMetadata,
+  Article,
+} from '../../types';
+import {
+  applyCanvasBackground,
+  loadBackgroundImage,
+  createImageThumbnail,
+  clearCanvasBackground,
+  generateObjectId,
+  upscaleSvgDataUrl,
+  fitLogoToPrintArea,
+  printAreaToPixelCorners,
+  printAreaFrame,
+  clampToPrintAreaFrame,
+  drawPrintAreaOverlay,
+  isBackgroundObject,
+  getObjectId,
+  setObjectId,
+  type PrintAreaFrame,
+} from '../../utils/canvas-helpers';
+import { decorationMetaOf } from '../../utils/decoration-meta';
+import { isPixelPrintArea, resolveViewPrintArea } from '../../utils/print-area';
+import { shouldApplyPreloadedThumbnail } from '../../utils/view-preview';
+import { validateDecoration, type ObjectBounds, type ObjectSize } from '../../utils/decoration-validation';
+import { exportArticlePdf, selectPrintableDecorations, type PdfExportConfig } from '../../utils/pdf-export';
+
+/** Id of the implicit view used when the host supplies productImage/printArea instead of views. */
+const LEGACY_VIEW_ID = 'default';
+
+/** Longest side of a decoration thumbnail in pixels. */
+const PREVIEW_SIZE = 120;
 
 @Component({
   tag: 'wtp-editor',
@@ -9,22 +51,59 @@ import { setCanvasBackground, generateObjectId, upscaleSvgDataUrl, fitLogoToPrin
   scoped: true,
 })
 export class WtpEditor {
-  @Element() el: HTMLElement;
+  @Element() el: HTMLWtpEditorElement;
 
   /** Canvas width in pixels. */
   @Prop() width: number = 800;
   /** Canvas height in pixels. */
   @Prop() height: number = 600;
-  /** Product background image URL. */
+  /** Decoration options (Veredelungen) of the article. Each view needs a stable `id`. */
+  @Prop() views: ArticleView[] = [];
+  /** Article id written into the exported envelope. */
+  @Prop() articleId: string = '';
+  /**
+   * Id of the decoration currently being edited. Two-way: assign a valid id to switch, and
+   * read it back (as a DOM **property**, not the attribute) to learn the shown view — the
+   * editor writes the resolved view onto it once real `views` exist, including the initial
+   * one. Defaults to the `isDefault` view, else the first. An id not in `views` is ignored
+   * by the watcher (the imperative `setActiveView` throws instead) and corrected to the
+   * default on the next `views` change — so after assigning an unknown id the property is
+   * momentarily stale until then.
+   */
+  @Prop({ mutable: true }) activeViewId: string | undefined;
+  /**
+   * Product background image URL.
+   * @deprecated Single-decoration fallback used only when `views` is empty.
+   */
   @Prop() productImage: string | undefined;
   /** JSON-serialized initial editor state. */
   @Prop() initialState: string | undefined;
+  /**
+   * Logo the customer already picked in the catalog, placed once when the editor
+   * initializes. It lands in the decoration the editor opens on and nowhere else:
+   * `status: 'designed'` is what the shop charges for, so auto-filling every decoration
+   * would order — and bill — positions the customer never chose. `applyLogoToAllViews`
+   * is the one visible click that extends it. Ignored when `initialState` is set.
+   */
+  @Prop() initialLogo: LogoData | undefined;
   /** Available font families for the text tool. */
   @Prop() fonts: string[] = ['Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Verdana'];
-  /** Print area definition (0-1 relative coordinates) to constrain objects. */
+  /**
+   * Print area definition (0-1 relative coordinates) to constrain objects.
+   * @deprecated Single-decoration fallback used only when `views` is empty.
+   */
   @Prop() printArea: PrintArea | undefined;
+  /**
+   * Show the built-in decoration strip. Turn off to build your own switcher around
+   * `activeViewId`. Defaults to true on purpose: the strip is the editor's out-of-the-box
+   * way to reach the other decorations, so it must be present unless a host opts out.
+   */
+  // eslint-disable-next-line stencil/ban-default-true -- an opt-out control, on by default by design
+  @Prop() showViewStrip: boolean = true;
   /** Show print area overlay and bounding box for debugging. */
   @Prop() debug: boolean = false;
+  /** Suppresses the debug overlay during exports without touching the @Prop (which re-renders). */
+  private suppressDebug: boolean = false;
   /** Override any of the user-facing toolbar strings. Missing keys fall back to English defaults. */
   @Prop() labels: Partial<EditorLabels> = {};
 
@@ -36,11 +115,16 @@ export class WtpEditor {
   @State() selectedObjectType: string | null = null;
   @State() selectedFont: string = 'Arial';
   @State() selectedTextColor: string = '#000000';
+  @State() currentViewId: string = LEGACY_VIEW_ID;
+  /** Thumbnails per view id, refreshed when a view is left. */
+  @State() viewPreviews: Record<string, string> = {};
 
   /** Fires when the canvas is initialized and ready. */
   @Event() wtpEditorReady: EventEmitter<void>;
   /** Fires when the editor state changes (object add/move/remove). */
-  @Event() wtpEditorStateChanged: EventEmitter<EditorState>;
+  @Event() wtpEditorStateChanged: EventEmitter<ArticleEditorState>;
+  /** Fires when the edited decoration changes. */
+  @Event() wtpEditorViewChanged: EventEmitter<{ viewId: string; index: number }>;
   /** Fires when an object is selected on the canvas. */
   @Event() wtpEditorObjectSelected: EventEmitter<{ id: string; type: string }>;
   /** Fires when the current selection is cleared. */
@@ -52,9 +136,182 @@ export class WtpEditor {
   private previewUrlMap: Map<string, string> = new Map();
   /** Resolves when the current background image has been loaded and the canvas resized. */
   private backgroundReady: Promise<void> = Promise.resolve();
+  /** The product image actually on the canvas, so a changed view image can be spotted. */
+  private canvasImage: string = '';
+  /** Product image URLs that would not load, keyed by URL so a retry can clear them. */
+  private failedImages: Set<string> = new Set();
+  /** Canvas state of every view that has been left at least once. */
+  private viewStates: Map<string, EditorState> = new Map();
+  /** Print areas normalized to 0-1, keyed by view id. */
+  private resolvedPrintAreas: Map<string, PrintArea | null> = new Map();
+  /** Resolves once every view's print area has been normalized. */
+  private printAreasReady: Promise<void> = Promise.resolve();
+  /** Validation findings of every view, refreshed whenever a view is flushed. */
+  private viewIssues: Map<string, LogoValidationIssue[]> = new Map();
+  /** Source data of every placed logo, so it can be copied to other decorations. */
+  private placedLogoData: Map<string, LogoData> = new Map();
+  /** Cached implicit view for the deprecated single-decoration props — see `getViews`. */
+  private legacyViews: ArticleView[] | undefined;
+  /** Identifies the article the per-view state belongs to. */
+  private loadedArticleKey: string = '';
+  /** Serializes canvas transitions — two overlapping switches would flush into the wrong view. */
+  private transition: Promise<void> = Promise.resolve();
+  /** True while a view transition is in flight; suppresses change events for the frozen outgoing view. */
+  private switching: boolean = false;
+
+  componentWillLoad() {
+    const views = this.getViews();
+    this.assertValidViews(views);
+    this.currentViewId = this.resolveInitialViewId(views);
+    // Reflect the resolved view so `activeViewId` is a trustworthy output from the first
+    // render — for views present at mount (declarative `<wtp-editor views=…>`, or a
+    // property assigned before the lazy component hydrated). `@Watch('views')` does not
+    // fire for those, so without this the prop stayed undefined until the first switch.
+    // Guarded like `onViewsChange`: never write from the empty single-decoration
+    // placeholder, or a host mid-assignment would see its requested view clobbered.
+    if (this.views.length > 0) this.activeViewId = this.currentViewId;
+    this.loadedArticleKey = this.buildArticleKey(views);
+  }
+
+  /** Articles are told apart by id plus their decoration ids — view ids alone repeat across articles. */
+  private buildArticleKey(views: ArticleView[]): string {
+    return `${this.articleId}|${views.map(v => v.id).join(',')}`;
+  }
+
+  private assertValidViews(views: ArticleView[]): void {
+    for (const view of views) {
+      if (view.id === undefined || view.id === '') {
+        throw new Error('wtp-editor: every entry in `views` needs a stable `id`.');
+      }
+    }
+    const ids = new Set(views.map(v => v.id));
+    if (ids.size !== views.length) {
+      throw new Error('wtp-editor: `views` contains duplicate ids.');
+    }
+  }
 
   componentDidLoad() {
     this.initCanvas();
+  }
+
+  private resolveInitialViewId(views: ArticleView[]): string {
+    if (this.activeViewId !== undefined && views.some(v => v.id === this.activeViewId)) return this.activeViewId;
+    return views.find(v => v.isDefault === true)?.id ?? views[0].id;
+  }
+
+  /**
+   * The article's decorations, or a single implicit view for the deprecated
+   * single-decoration props.
+   *
+   * The implicit view is cached because this runs on every render and, via
+   * `getActivePrintArea`, on every mousemove of a drag. The cache is validated against
+   * the props themselves rather than invalidated from a `@Watch`: there is then no
+   * invalidation path that can be forgotten when another prop joins the fallback.
+   */
+  private getViews(): ArticleView[] {
+    if (this.views.length > 0) return this.views;
+
+    const image = this.productImage ?? '';
+    const printArea = this.printArea ?? null;
+    const cached = this.legacyViews?.[0];
+
+    if (cached === undefined || cached.image !== image || cached.printArea !== printArea) {
+      this.legacyViews = [{ id: LEGACY_VIEW_ID, image, label: 'Default', printArea }];
+    }
+
+    return this.legacyViews;
+  }
+
+  private getActiveView(): ArticleView {
+    const views = this.getViews();
+    return views.find(v => v.id === this.currentViewId) ?? views[0];
+  }
+
+  /**
+   * The active view's print area, together with whether that is the final answer.
+   *
+   * The two are returned as one because they come from the same three conditions, and
+   * validation needs both: `undefined` because the decoration has no print area is a
+   * finding, `undefined` because the normalization has not finished yet is not. Deriving
+   * them separately meant two places that had to keep agreeing.
+   */
+  private activePrintArea(): { area: PrintArea | undefined; known: boolean } {
+    const view = this.getActiveView();
+    if (this.resolvedPrintAreas.has(view.id)) {
+      return { area: this.resolvedPrintAreas.get(view.id) ?? undefined, known: true };
+    }
+
+    // Not normalized yet. A pixel area read as 0-1 would place logos and guides thousands
+    // of pixels off the canvas, so having no print area is the safer intermediate state.
+    const pending = view.printArea != null && isPixelPrintArea(view.printArea);
+    return { area: pending ? undefined : view.printArea ?? undefined, known: !pending };
+  }
+
+  /**
+   * The single way the product image reaches the canvas. Records what is on there, and
+   * never rejects: a product image the shop's file server will not serve must leave the
+   * customer with a blank canvas and a working toolbar, not an editor where every
+   * `addLogo` and `addText` throws the load error back at the host.
+   *
+   * @param prepare Teardown of the outgoing decoration, run only once the incoming image
+   *   is decoded (or has definitively failed). Tearing down before the download meant a
+   *   blank canvas at the wrong size — with the print area drawn across it — for however
+   *   long the product image takes; the outgoing view now stays on screen instead.
+   */
+  private setBackground(image: string, prepare?: () => void | Promise<void>): Promise<void> {
+    if (this.canvas === undefined) return Promise.resolve();
+    this.canvasImage = image;
+
+    this.backgroundReady = (async () => {
+      const img = image === '' ? null : await loadBackgroundImage(image).catch(() => null);
+
+      await prepare?.();
+      if (this.canvas === undefined) return;
+
+      if (img !== null) {
+        applyCanvasBackground(this.canvas, img);
+        this.failedImages.delete(image);
+      } else {
+        clearCanvasBackground(this.canvas);
+        // Degrading beats throwing, but it must not be silent: the envelope would
+        // otherwise name a product image that is not on the canvas and say nothing.
+        // The host learns about it through the decoration's `issues`.
+        if (image !== '') this.failedImages.add(image);
+      }
+    })();
+    return this.backgroundReady;
+  }
+
+  private getActiveImage(): string {
+    return this.getActiveView().image;
+  }
+
+  /**
+   * Warms the cache for the decorations that are not on screen, and gives the strip a
+   * small thumbnail per view while it is at it.
+   *
+   * Both address the same measurement: the first switch to each decoration paid a full
+   * product-image download (~450 KB, 860 ms on ordinary broadband), and the strip pulled
+   * the same full-resolution images just to show them at 72px. After this, switching hits
+   * the warm cache and the strip renders data URLs of thumbnail size.
+   *
+   * Called only after the active view's own image has settled — these loads must not
+   * compete with the one the customer is actually waiting for.
+   */
+  private preloadViewImages(): void {
+    const articleKey = this.loadedArticleKey;
+
+    for (const view of this.getViews()) {
+      if (view.id === this.currentViewId || view.image === '') continue;
+
+      void createImageThumbnail(view.image, PREVIEW_SIZE).then(thumbnail => {
+        // The article may have changed, or a design preview may already fill the slot,
+        // by the time this resolves — see shouldApplyPreloadedThumbnail.
+        if (thumbnail === null) return;
+        if (!shouldApplyPreloadedThumbnail(articleKey, this.loadedArticleKey, this.viewPreviews[view.id])) return;
+        this.viewPreviews = { ...this.viewPreviews, [view.id]: thumbnail };
+      });
+    }
   }
 
   disconnectedCallback() {
@@ -64,9 +321,10 @@ export class WtpEditor {
   @Watch('productImage')
   onProductImageChange() {
     if (this.canvas !== undefined && this.productImage !== undefined) {
-      // Reset to bounding box before setCanvasBackground auto-sizes
-      this.canvas.setDimensions({ width: this.width, height: this.height });
-      this.backgroundReady = setCanvasBackground(this.canvas, this.productImage);
+      void this.setBackground(this.productImage, () => {
+        // Reset to the prop box only once the image is decoded; contain-fit sizes from it.
+        this.canvas?.setDimensions({ width: this.width, height: this.height });
+      });
     }
   }
 
@@ -75,8 +333,9 @@ export class WtpEditor {
   onSizeChange() {
     if (this.canvas !== undefined) {
       this.canvas.setDimensions({ width: this.width, height: this.height });
-      if (this.productImage !== undefined && this.productImage !== '') {
-        this.backgroundReady = setCanvasBackground(this.canvas, this.productImage);
+      const image = this.getActiveImage();
+      if (image !== '') {
+        void this.setBackground(image);
       }
       this.canvas.renderAll();
     }
@@ -87,14 +346,79 @@ export class WtpEditor {
     this.canvas?.renderAll();
   }
 
+  @Watch('activeViewId')
+  onActiveViewIdChange(next: string | undefined) {
+    if (next === undefined || next === this.currentViewId) return;
+    if (!this.getViews().some(v => v.id === next)) return;
+    void this.setActiveView(next);
+  }
+
+  @Watch('articleId')
+  onArticleIdChange() {
+    this.onViewsChange();
+  }
+
+  @Watch('views')
+  onViewsChange() {
+    const views = this.getViews();
+    this.assertValidViews(views);
+
+    // A different article means the old per-view state is meaningless — even when the
+    // new decorations happen to reuse an id like "front".
+    const key = this.buildArticleKey(views);
+    if (key !== this.loadedArticleKey) {
+      this.loadedArticleKey = key;
+      this.resetViewState();
+      this.currentViewId = this.resolveInitialViewId(views);
+      // Only once there are real decorations. Hosts assign `articleId` and `views` in
+      // separate statements, and in between `getViews()` still answers with the implicit
+      // single-decoration fallback — writing back then would overwrite the decoration the
+      // host asked for with `default`, and it would be gone by the time `views` arrives.
+      if (this.views.length > 0) this.activeViewId = this.currentViewId;
+      void this.enqueue(async () => {
+        await this.activateView(this.getActiveView());
+        await this.placeInitialLogo();
+        this.preloadViewImages();
+      });
+    } else if (this.getActiveImage() !== this.canvasImage) {
+      // Same article, but this decoration's product image was swapped — a colour variant,
+      // or a late-arriving image URL. Only the background is replaced: re-activating the
+      // view would throw away whatever the customer has placed on it.
+      void this.enqueue(async () => {
+        await this.setBackground(this.getActiveImage(), () => {
+          this.canvas?.setDimensions({ width: this.width, height: this.height });
+        });
+        this.canvas?.renderAll();
+      });
+    }
+
+    void this.resolvePrintAreas();
+  }
+
+  /** Normalizes every view's print area to 0-1, loading images only when needed. */
+  private resolvePrintAreas(): Promise<void> {
+    this.printAreasReady = Promise.all(
+      this.getViews().map(async view => {
+        const resolved = await resolveViewPrintArea(view);
+        this.resolvedPrintAreas.set(view.id, resolved);
+      }),
+    ).then(() => {
+      this.canvas?.renderAll();
+    });
+    return this.printAreasReady;
+  }
+
   @Watch('printArea')
   async onPrintAreaChange() {
+    // The normalized area is cached per view id, so the new one has to replace it —
+    // otherwise `getActivePrintArea` keeps answering with what was resolved at init.
+    await this.resolvePrintAreas();
     // Wait for background to finish loading so canvas dimensions are final
     await this.backgroundReady;
     // Re-constrain existing user objects to the new bounds
     if (this.canvas !== undefined) {
       for (const obj of this.objectMap.values()) {
-        this.clampObjectToPrintArea(obj);
+        this.clampToActivePrintArea(obj);
       }
       this.canvas.renderAll();
     }
@@ -105,8 +429,10 @@ export class WtpEditor {
   async addLogo(logoData: LogoData): Promise<string> {
     if (this.canvas === undefined) throw new Error('Canvas not initialized');
 
-    // Wait for background image to load so canvas dimensions are final
+    // Wait for background image to load so canvas dimensions are final, and for the
+    // print areas to be normalized — otherwise the logo is fitted to nothing.
     await this.backgroundReady;
+    await this.printAreasReady;
 
     const id = generateObjectId();
     const { dataUrl } = upscaleSvgDataUrl(logoData.dataUrl);
@@ -114,9 +440,10 @@ export class WtpEditor {
     const canvasWidth = this.canvas.getWidth();
     const canvasHeight = this.canvas.getHeight();
 
-    if (this.printArea !== undefined) {
+    const activePrintArea = this.activePrintArea().area;
+    if (activePrintArea !== undefined) {
       // Fit logo into the print area: 0-1 coords map directly to canvas pixels
-      const transform = fitLogoToPrintArea(img.width ?? 100, img.height ?? 100, this.printArea, canvasWidth, canvasHeight);
+      const transform = fitLogoToPrintArea(img.width ?? 100, img.height ?? 100, activePrintArea, canvasWidth, canvasHeight);
       img.set({
         left: transform.x,
         top: transform.y,
@@ -143,8 +470,9 @@ export class WtpEditor {
       });
     }
 
-    (img as FabricObject & { _objectId?: string })._objectId = id;
+    setObjectId(img, id);
     this.objectMap.set(id, img);
+    this.placedLogoData.set(id, logoData);
     if (logoData.previewDataUrl !== undefined) {
       this.previewUrlMap.set(id, logoData.previewDataUrl);
     }
@@ -162,15 +490,18 @@ export class WtpEditor {
   async addText(text: string, options?: { fontFamily?: string; fontSize?: number; fill?: string }): Promise<string> {
     if (this.canvas === undefined) throw new Error('Canvas not initialized');
 
-    // Wait for background image to load so canvas dimensions are final
+    // Wait for background image to load so canvas dimensions are final, and for the
+    // print areas to be normalized — otherwise the text is centred on nothing.
     await this.backgroundReady;
+    await this.printAreasReady;
 
     const id = generateObjectId();
     let centerX = this.canvas.getWidth() / 2;
     let centerY = this.canvas.getHeight() / 2;
 
-    if (this.printArea !== undefined) {
-      const corners = printAreaToPixelCorners(this.printArea, this.canvas.getWidth(), this.canvas.getHeight());
+    const textPrintArea = this.activePrintArea().area;
+    if (textPrintArea !== undefined) {
+      const corners = printAreaToPixelCorners(textPrintArea, this.canvas.getWidth(), this.canvas.getHeight());
       centerX = (corners[0].x + corners[1].x + corners[2].x + corners[3].x) / 4;
       centerY = (corners[0].y + corners[1].y + corners[2].y + corners[3].y) / 4;
     }
@@ -185,7 +516,7 @@ export class WtpEditor {
       fill: options?.fill ?? '#000000',
     });
 
-    (iText as FabricObject & { _objectId?: string })._objectId = id;
+    setObjectId(iText, id);
     this.objectMap.set(id, iText);
 
     this.canvas.add(iText);
@@ -204,53 +535,442 @@ export class WtpEditor {
     if (obj !== undefined) {
       this.canvas.remove(obj);
       this.objectMap.delete(id);
+      this.placedLogoData.delete(id);
       this.canvas.renderAll();
       this.emitStateChanged();
     }
   }
 
-  /** Export the current editor state as a serializable object. */
+  /** Export the state of every decoration as a versioned envelope. */
   @Method()
-  async exportState(): Promise<EditorState> {
-    return this.buildEditorState();
+  async exportState(): Promise<ArticleEditorState> {
+    // This envelope gets persisted, so its findings have to be the real ones rather than
+    // the ones skipped while the print areas were still being normalized.
+    await this.printAreasReady;
+    return this.persistableArticleState(true);
   }
 
-  /** Load a previously exported editor state. */
+  /** Switch to another decoration, storing the current one first. */
   @Method()
-  async loadState(state: EditorState): Promise<void> {
+  async setActiveView(viewId: string): Promise<void> {
+    const views = this.getViews();
+    const target = views.find(v => v.id === viewId);
+    if (target === undefined) throw new Error(`wtp-editor: unknown view id "${viewId}".`);
+    if (target.id === this.currentViewId) return;
+
+    await this.visitView(target, { withPreview: true });
+    this.wtpEditorViewChanged.emit({ viewId: target.id, index: views.indexOf(target) });
+  }
+
+  /**
+   * Puts a decoration on the canvas. Bulk operations use this directly so one logical
+   * action does not emit a view-change event or re-encode a thumbnail per hop.
+   */
+  private visitView(target: ArticleView, options: { withPreview: boolean }): Promise<void> {
+    return this.enqueue(() => this.transitionToView(target, options));
+  }
+
+  /**
+   * The view transition itself, without enqueuing. `visitView` wraps one of these in the
+   * transition queue; a compound operation that must stay atomic across several
+   * transitions (`applyLogoToAllViews`) runs a sequence of these inside a single enqueue,
+   * so a user's view switch cannot interleave and land content on the wrong decoration.
+   */
+  private async transitionToView(target: ArticleView, options: { withPreview: boolean }): Promise<void> {
+    if (target.id === this.currentViewId) return;
+
+    // The outgoing view's findings are stored here and never recomputed — it is about to
+    // stop being the active view, and the object bounds go with it. So they have to be
+    // computed against a resolved print area, not a pending one.
+    await this.printAreasReady;
+    this.flushActiveView(options.withPreview);
+
+    // The outgoing view stays visible while the incoming image decodes (see setBackground).
+    // Freeze it: drop the selection, make its objects non-interactive, and suppress change
+    // events. Otherwise a drag during the decode is attributed to the target view
+    // (currentViewId is already the target) and then silently discarded when activateView
+    // reloads the target's stored state.
+    this.canvas?.discardActiveObject();
+    this.setSnapshotInteractive(false);
+    this.switching = true;
+
+    this.currentViewId = target.id;
+    this.activeViewId = target.id;
+    this.selectedObjectId = null;
+    this.selectedObjectType = null;
+
+    try {
+      await this.activateView(target);
+    } finally {
+      this.switching = false;
+      if (this.canvas !== undefined) this.canvas.selection = true;
+    }
+  }
+
+  /**
+   * Makes the current user objects (not the background) interactive or frozen. Used to
+   * freeze the outgoing decoration for the duration of a switch; the incoming view's
+   * objects are created fresh and interactive, so only re-enabling canvas selection is
+   * needed afterwards.
+   */
+  private setSnapshotInteractive(on: boolean): void {
+    if (this.canvas === undefined) return;
+    this.canvas.selection = on;
+    for (const obj of this.canvas.getObjects()) {
+      if (isBackgroundObject(obj)) continue;
+      obj.selectable = on;
+      obj.evented = on;
+    }
+  }
+
+  /**
+   * Runs canvas transitions one after another. Overlapping switches would otherwise
+   * flush the canvas that is still on screen into the state of the view being opened.
+   */
+  private enqueue(work: () => Promise<void>): Promise<void> {
+    this.transition = this.transition.then(work, work);
+    return this.transition;
+  }
+
+  private resetViewState(): void {
+    this.viewStates.clear();
+    this.viewIssues.clear();
+    this.placedLogoData.clear();
+    this.viewPreviews = {};
+  }
+
+  private async visitViewById(viewId: string, options: { withPreview: boolean }): Promise<void> {
+    const target = this.getViews().find(v => v.id === viewId);
+    if (target !== undefined) await this.visitView(target, options);
+  }
+
+  /**
+   * Places the given logo on every decoration that is still empty, fitted to that
+   * decoration's own print area. Decorations that already carry a design are left alone.
+   * Returns the ids of the views that received the logo.
+   */
+  @Method()
+  async applyLogoToAllViews(logoId: string): Promise<string[]> {
+    const source = this.placedLogoData.get(logoId);
+    if (source === undefined) throw new Error(`wtp-editor: unknown logo id "${logoId}".`);
+
+    const applied: string[] = [];
+
+    // The whole sweep runs inside one enqueued transition. Each view is a visit + a place;
+    // if those were separate queue entries, a strip click between a view's visit and its
+    // addLogo would move currentViewId and drop the logo on the user's view instead.
+    await this.enqueue(async () => {
+      const originalViewId = this.currentViewId;
+
+      for (const view of this.getViews()) {
+        if (view.id === originalViewId) continue;
+
+        const stored = this.viewStates.get(view.id);
+        const isEmpty = stored === undefined || (stored.logos.length === 0 && stored.texts.length === 0);
+        if (!isEmpty) continue;
+
+        await this.transitionToView(view, { withPreview: false });
+        await this.addLogo(source);
+        applied.push(view.id);
+      }
+
+      const original = this.getViews().find(v => v.id === originalViewId);
+      if (original !== undefined) await this.transitionToView(original, { withPreview: false });
+    });
+
+    return applied;
+  }
+
+  /**
+   * Renders one decoration to an image, whether or not it is the one on screen. The
+   * decoration is put on the canvas, exported, and the original one restored — so a host
+   * building its own switcher can render a thumbnail for any decoration.
+   *
+   * The round trip goes through the same path as a manual switch, so it clears the
+   * current selection when the requested decoration is not the active one.
+   */
+  @Method()
+  async exportViewImage(viewId: string, format: 'png' | 'jpeg' = 'png', quality: number = 1): Promise<string> {
+    const target = this.getViews().find(v => v.id === viewId);
+    if (target === undefined) throw new Error(`wtp-editor: unknown view id "${viewId}".`);
+    if (target.id === this.currentViewId) return this.exportImage(format, quality);
+
+    const originalViewId = this.currentViewId;
+    try {
+      await this.visitView(target, { withPreview: false });
+      return await this.exportImage(format, quality);
+    } finally {
+      await this.visitViewById(originalViewId, { withPreview: false });
+    }
+  }
+
+  /**
+   * Renders a high-resolution mockup per decoration, keyed by view id — the input the
+   * PDF export needs. Only the editor can produce these, because each decoration has to
+   * be put on the canvas first. The originally active decoration is restored afterwards.
+   */
+  @Method()
+  async renderMockups(viewIds?: string[], multiplier: number = 3): Promise<Record<string, { dataUrl: string; width: number; height: number }>> {
+    const originalViewId = this.currentViewId;
+    const targets = this.getViews().filter(v => viewIds === undefined || viewIds.includes(v.id));
+    const mockups: Record<string, { dataUrl: string; width: number; height: number }> = {};
+
+    for (const view of targets) {
+      await this.visitView(view, { withPreview: false });
+      mockups[view.id] = await this.exportImageHighRes('png', 1, multiplier);
+    }
+
+    await this.visitViewById(originalViewId, { withPreview: false });
+
+    return mockups;
+  }
+
+  /**
+   * Renders the proof PDF for every designed decoration and triggers the download.
+   *
+   * Hosts can also call `exportArticlePdf` themselves — but importing the library's ESM
+   * bundle into a page that already loaded the components pulls in a second Stencil
+   * runtime, so going through the component is the safer route.
+   * Requires jsPDF to be loaded globally.
+   */
+  @Method()
+  async exportPdf(article: Article, config?: Partial<PdfExportConfig>): Promise<void> {
+    const state = await this.exportState();
+    const viewIds = selectPrintableDecorations(state, config?.viewIds).map(d => d.viewId);
+    if (viewIds.length === 0) throw new Error('wtp-editor: no designed decoration to export.');
+
+    const mockups = await this.renderMockups(viewIds);
+    await exportArticlePdf(state, article, mockups, config);
+  }
+
+  /** Load a previously exported state — the v2 envelope or a legacy single-view state. */
+  @Method()
+  async loadState(state: ArticleEditorState | EditorState): Promise<void> {
     if (this.canvas === undefined) throw new Error('Canvas not initialized');
 
-    // Clear canvas
-    this.canvas.clear();
-    this.objectMap.clear();
-    this.previewUrlMap.clear();
+    if (this.isArticleState(state)) {
+      this.resetViewState();
+      const previews: Record<string, string> = {};
 
-    // Rebuild preview URL map from state
-    for (const logo of state.logos) {
-      if (logo.previewDataUrl !== undefined) {
-        this.previewUrlMap.set(logo.id, logo.previewDataUrl);
+      for (const decoration of state.decorations) {
+        this.viewStates.set(decoration.viewId, decoration.state);
+        this.viewIssues.set(decoration.viewId, decoration.issues);
+        if (decoration.previewDataUrl !== undefined) previews[decoration.viewId] = decoration.previewDataUrl;
+        this.rememberPlacedLogos(decoration.state);
       }
+
+      this.viewPreviews = previews;
+      await this.enqueue(() => this.activateView(this.getActiveView()));
+      this.preloadViewImages();
+      return;
     }
 
-    this.canvas.setDimensions({ width: state.width, height: state.height });
+    // Legacy v1 state belongs to the default view.
+    this.resetViewState();
+    this.viewStates.set(this.getActiveView().id, state);
+    this.rememberPlacedLogos(state);
+    await this.loadEditorState(state);
+    this.preloadViewImages();
+  }
 
-    // Restore from fabricJson first (loadFromJSON clears the canvas)
-    if (state.fabricJson !== undefined && state.fabricJson !== '') {
-      await this.canvas.loadFromJSON(state.fabricJson);
-      // Rebuild object map from loaded objects
-      for (const obj of this.canvas.getObjects()) {
-        const id = (obj as FabricObject & { _objectId?: string })._objectId;
-        if (id !== undefined && id !== '') {
-          this.objectMap.set(id, obj);
+  /**
+   * Restores the logo lookup from a loaded state. Only what the envelope carries is
+   * known — the upload metadata is not persisted, so it is reconstructed from the
+   * source file information where available.
+   */
+  private rememberPlacedLogos(state: EditorState): void {
+    for (const logo of state.logos) {
+      this.placedLogoData.set(logo.id, {
+        dataUrl: logo.dataUrl,
+        ...(logo.previewDataUrl !== undefined ? { previewDataUrl: logo.previewDataUrl } : {}),
+        ...(logo.source !== undefined ? { source: logo.source } : {}),
+        metadata: {
+          format: 'unknown',
+          width: 0,
+          height: 0,
+          dpiX: null,
+          dpiY: null,
+          fileSize: logo.source?.fileSize ?? 0,
+          fileName: logo.source?.fileName ?? '',
+          mimeType: logo.source?.mimeType ?? '',
+          hasTransparency: false,
+        },
+      });
+    }
+  }
+
+  private isArticleState(state: ArticleEditorState | EditorState): state is ArticleEditorState {
+    return (state as ArticleEditorState).version === 2 && Array.isArray((state as ArticleEditorState).decorations);
+  }
+
+  /** Restore a single view's canvas state, or start it empty. */
+  private async activateView(view: ArticleView): Promise<void> {
+    if (this.canvas === undefined) return;
+
+    const stored = this.viewStates.get(view.id);
+    if (stored !== undefined) {
+      await this.loadEditorState(stored);
+    } else {
+      await this.setBackground(view.image, () => {
+        if (this.canvas === undefined) return;
+        this.canvas.clear();
+        this.objectMap.clear();
+        this.previewUrlMap.clear();
+        this.canvas.setDimensions({ width: this.width, height: this.height });
+        this.canvas.backgroundColor = '#ffffff';
+      });
+      this.canvas.renderAll();
+    }
+
+    // The strip falls back to the full-resolution product image until a thumbnail
+    // exists; capture one now, while the freshly decoded image is on the canvas.
+    if (view.image !== '' && this.viewPreviews[view.id] === undefined) {
+      this.capturePreview(view.id);
+    }
+  }
+
+  /**
+   * Places the catalog logo on the decoration the editor opens on.
+   *
+   * Runs again after an article reset rather than once at startup: hosts create the
+   * element first and assign `views`/`articleId` once the article has been fetched, and
+   * that reset clears the canvas. Placing only at startup loses the logo — nondeterministically,
+   * since it races the image decode. Re-placing is safe because a reset means a new
+   * article, so there is nothing of the customer's to overwrite.
+   *
+   * Failures are swallowed on purpose: a logo that cannot be decoded must not stop the
+   * editor from coming up — the customer can still upload another one.
+   */
+  private async placeInitialLogo(): Promise<void> {
+    if (this.initialLogo === undefined) return;
+    if (this.initialState !== undefined && this.initialState !== '') return;
+
+    try {
+      await this.addLogo(this.initialLogo);
+    } catch {
+      // Undecodable initial logo; the editor stays usable without it.
+    }
+  }
+
+  /**
+   * Stores the canvas state of the currently edited view. The thumbnail is only
+   * refreshed when explicitly asked for: `text:changed` fires per keystroke, and a
+   * toDataURL of a 2400px product image per character is far too expensive.
+   */
+  private flushActiveView(withPreview: boolean = false): void {
+    if (this.canvas === undefined) return;
+    const state = this.buildEditorState();
+    this.viewStates.set(this.currentViewId, state);
+    this.viewIssues.set(this.currentViewId, this.validateActiveView(state));
+    if (withPreview) this.capturePreview(this.currentViewId);
+  }
+
+  /**
+   * Runs the per-decoration checks for the view on the canvas right now. Bounds come
+   * from Fabric, so this only works while the view is active — which is why the result
+   * is cached per view.
+   */
+  private validateActiveView(state: EditorState): LogoValidationIssue[] {
+    if (this.canvas === undefined) return [];
+
+    const bounds: ObjectBounds[] = [];
+    const sizes: ObjectSize[] = [];
+    for (const obj of this.objectMap.values()) {
+      const rect = obj.getBoundingRect();
+      bounds.push({ left: rect.left, top: rect.top, width: rect.width, height: rect.height });
+      // getBoundingRect is the world-space box, which is up to 1.41x the real size once
+      // the object is rotated to match a tilted print area. Both geometry checks work in
+      // the area's own frame instead — the same frame the drag clamp uses.
+      const center = obj.getCenterPoint();
+      sizes.push({
+        centerX: center.x,
+        centerY: center.y,
+        width: (obj.width ?? 0) * (obj.scaleX ?? 1),
+        height: (obj.height ?? 0) * (obj.scaleY ?? 1),
+        angle: obj.angle ?? 0,
+      });
+    }
+
+    const printArea = this.activePrintArea();
+
+    // Only the logos actually on this decoration — the map is article-wide.
+    const logoMetadata: LogoMetadata[] = [];
+    for (const logo of state.logos) {
+      const metadata = this.placedLogoData.get(logo.id)?.metadata;
+      if (metadata !== undefined) logoMetadata.push(metadata);
+    }
+
+    return validateDecoration({
+      view: this.getActiveView(),
+      state,
+      bounds,
+      sizes,
+      printArea: printArea.known ? printArea.area ?? null : 'pending',
+      canvasWidth: this.canvas.getWidth(),
+      canvasHeight: this.canvas.getHeight(),
+      logoMetadata,
+      productImageFailed: this.failedImages.has(this.getActiveImage()),
+      labels: this.getLabels().issues,
+    });
+  }
+
+  /**
+   * Renders a small thumbnail of the current canvas. Only called when a view is left
+   * (and on export) — a full-size toDataURL on every object change is far too expensive
+   * for 2400px product images.
+   */
+  private capturePreview(viewId: string): void {
+    if (this.canvas === undefined) return;
+
+    const width = this.canvas.getWidth();
+    const height = this.canvas.getHeight();
+    if (width <= 0 || height <= 0) return;
+
+    const multiplier = PREVIEW_SIZE / Math.max(width, height);
+    try {
+      const dataUrl = this.canvas.toDataURL({ multiplier: Math.min(multiplier, 1), format: 'png', quality: 1 });
+      this.viewPreviews = { ...this.viewPreviews, [viewId]: dataUrl };
+    } catch {
+      // Cross-origin product images taint the canvas; the strip falls back to a label.
+    }
+  }
+
+  private handleViewSelect = (e: MouseEvent) => {
+    const viewId = (e.currentTarget as HTMLElement).dataset.viewId;
+    if (viewId !== undefined && viewId !== '') void this.setActiveView(viewId);
+  };
+
+  private async loadEditorState(state: EditorState): Promise<void> {
+    if (this.canvas === undefined) throw new Error('Canvas not initialized');
+
+    // The whole restore runs inside the prepare callback, once the product image is
+    // decoded: clear, rebuild the objects from fabricJson, then let setBackground insert
+    // the image beneath them at index 0 (loadFromJSON clears the canvas, so the order
+    // background-last is what keeps it at the bottom).
+    await this.setBackground(state.productImage ?? '', async () => {
+      if (this.canvas === undefined) return;
+
+      this.canvas.clear();
+      this.objectMap.clear();
+      this.previewUrlMap.clear();
+
+      for (const logo of state.logos) {
+        if (logo.previewDataUrl !== undefined) {
+          this.previewUrlMap.set(logo.id, logo.previewDataUrl);
         }
       }
-    }
 
-    // Restore product image after JSON load so it inserts at index 0
-    if (state.productImage !== null && state.productImage !== undefined && state.productImage !== '') {
-      this.backgroundReady = setCanvasBackground(this.canvas, state.productImage);
-      await this.backgroundReady;
-    }
+      this.canvas.setDimensions({ width: state.width, height: state.height });
+
+      if (state.fabricJson !== undefined && state.fabricJson !== '') {
+        await this.canvas.loadFromJSON(state.fabricJson);
+        // Rebuild object map from loaded objects
+        for (const obj of this.canvas.getObjects()) {
+          const id = getObjectId(obj);
+          if (id !== undefined) this.objectMap.set(id, obj);
+        }
+      }
+    });
 
     this.canvas.renderAll();
   }
@@ -263,6 +983,11 @@ export class WtpEditor {
     for (const obj of this.canvas.getObjects().slice()) {
       this.canvas.remove(obj);
     }
+    // Only this decoration's logos: the map is article-wide, and the other decorations
+    // still need theirs for `applyLogoToAllViews` and the export's `source` lookup.
+    for (const id of this.objectMap.keys()) {
+      this.placedLogoData.delete(id);
+    }
     this.objectMap.clear();
     this.previewUrlMap.clear();
     this.selectedObjectId = null;
@@ -272,6 +997,14 @@ export class WtpEditor {
     this.canvas.requestRenderAll();
   }
 
+  /** Cross-origin product images taint the canvas; explain that instead of leaking the DOM error. */
+  private asExportError(e: unknown): Error {
+    if (e instanceof DOMException && e.name === 'SecurityError') {
+      return new Error('Cannot export: product image is cross-origin. Use a CORS proxy or serve images from the same domain.');
+    }
+    return e instanceof Error ? e : new Error(String(e));
+  }
+
   /** Export the canvas as a data URL image. */
   @Method()
   async exportImage(format: 'png' | 'jpeg' = 'png', quality: number = 1): Promise<string> {
@@ -279,16 +1012,13 @@ export class WtpEditor {
     try {
       return this.canvas.toDataURL({ multiplier: 1, format, quality });
     } catch (e) {
-      if (e instanceof DOMException && e.name === 'SecurityError') {
-        throw new Error('Cannot export: product image is cross-origin. Use a CORS proxy or serve images from the same domain.');
-      }
-      throw e;
+      throw this.asExportError(e);
     }
   }
 
   /** Export the canvas as a high-resolution data URL image (for PDF/print).
    *  Returns the data URL plus the actual canvas dimensions (which may differ
-   *  from the width/height props after setCanvasBackground resizes the canvas). */
+   *  from the width/height props after the background image resizes the canvas). */
   @Method()
   async exportImageHighRes(format: 'png' | 'jpeg' = 'png', quality: number = 1, multiplier: number = 3): Promise<{ dataUrl: string; width: number; height: number }> {
     if (this.canvas === undefined) throw new Error('Canvas not initialized');
@@ -296,30 +1026,18 @@ export class WtpEditor {
     // Hide selection handles
     this.canvas.discardActiveObject();
 
-    // Temporarily disable debug overlay during export
-    const wasDebug = this.debug;
-    this.debug = false;
+    this.suppressDebug = true;
     this.canvas.renderAll();
 
-    let dataUrl: string;
     try {
-      dataUrl = this.canvas.toDataURL({ multiplier, format, quality });
+      const dataUrl = this.canvas.toDataURL({ multiplier, format, quality });
+      return { dataUrl, width: this.canvas.getWidth(), height: this.canvas.getHeight() };
     } catch (e) {
-      this.debug = wasDebug;
+      throw this.asExportError(e);
+    } finally {
+      this.suppressDebug = false;
       this.canvas.renderAll();
-      if (e instanceof DOMException && e.name === 'SecurityError') {
-        throw new Error('Cannot export: product image is cross-origin. Use a CORS proxy or serve images from the same domain.');
-      }
-      throw e;
     }
-    const width = this.canvas.getWidth();
-    const height = this.canvas.getHeight();
-
-    // Restore debug state
-    this.debug = wasDebug;
-    this.canvas.renderAll();
-
-    return { dataUrl, width, height };
   }
 
   /** Get a list of all objects on the canvas with their IDs and types. */
@@ -376,25 +1094,37 @@ export class WtpEditor {
     });
 
     this.canvas.on('object:moving', e => {
-      if (e.target !== undefined) this.clampObjectToPrintArea(e.target);
+      if (e.target !== undefined) this.clampToActivePrintArea(e.target);
     });
 
     this.canvas.on('object:scaling', e => {
-      if (e.target !== undefined) this.clampObjectToPrintArea(e.target);
+      if (e.target !== undefined) this.clampToActivePrintArea(e.target);
     });
 
     this.canvas.on('after:render', () => this.drawDebugOverlay());
 
+    // Normalize pixel print areas before anything is placed on the canvas
+    void this.resolvePrintAreas();
+
     // Load initial state if provided
     if (this.initialState !== undefined && this.initialState !== '') {
       try {
-        const state = JSON.parse(this.initialState) as EditorState;
-        this.loadState(state);
+        const state = JSON.parse(this.initialState) as ArticleEditorState | EditorState;
+        void this.loadState(state);
       } catch {
         // Invalid JSON, ignore
       }
-    } else if (this.productImage !== undefined && this.productImage !== '') {
-      this.backgroundReady = setCanvasBackground(this.canvas, this.productImage);
+    } else {
+      if (this.getActiveImage() !== '') {
+        void this.setBackground(this.getActiveImage());
+      }
+      void this.enqueue(async () => {
+        // Preload only once the active view's own image has settled — these loads must
+        // not compete with the one the customer is looking at.
+        await this.backgroundReady;
+        await this.placeInitialLogo();
+        this.preloadViewImages();
+      });
     }
 
     this.wtpEditorReady.emit();
@@ -403,162 +1133,30 @@ export class WtpEditor {
 
   /** Draw print area outline and bounding box on the canvas when debug mode is active. */
   private drawDebugOverlay() {
-    if (!this.debug || this.canvas === undefined || this.printArea === undefined) return;
+    if (!this.debug || this.suppressDebug || this.canvas === undefined) return;
 
-    const ctx = this.canvas.getContext() as CanvasRenderingContext2D;
-    const corners = printAreaToPixelCorners(this.printArea, this.canvas.getWidth(), this.canvas.getHeight());
+    const printArea = this.activePrintArea().area;
+    if (printArea === undefined) return;
 
-    ctx.save();
-
-    // Draw the quad outline (actual print area shape)
-    ctx.beginPath();
-    ctx.moveTo(corners[0].x, corners[0].y);
-    ctx.lineTo(corners[1].x, corners[1].y);
-    ctx.lineTo(corners[2].x, corners[2].y);
-    ctx.lineTo(corners[3].x, corners[3].y);
-    ctx.closePath();
-    ctx.fillStyle = 'rgba(37, 99, 235, 0.08)';
-    ctx.fill();
-    ctx.strokeStyle = '#2563eb';
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([6, 4]);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // Draw corner dots
-    for (const c of corners) {
-      ctx.beginPath();
-      ctx.arc(c.x, c.y, 4, 0, Math.PI * 2);
-      ctx.fillStyle = '#2563eb';
-      ctx.fill();
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-    }
-
-    // Draw axis-aligned bounding box (used for clamping)
-    const xs = corners.map(c => c.x);
-    const ys = corners.map(c => c.y);
-    const minX = Math.min(...xs);
-    const maxX = Math.max(...xs);
-    const minY = Math.min(...ys);
-    const maxY = Math.max(...ys);
-    ctx.strokeStyle = 'rgba(220, 38, 38, 0.5)';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([3, 3]);
-    ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
-    ctx.setLineDash([]);
-
-    // Corner labels
-    ctx.font = '10px monospace';
-    ctx.fillStyle = '#2563eb';
-    const labels = ['TL', 'TR', 'BR', 'BL'];
-    for (let i = 0; i < 4; i++) {
-      ctx.fillText(labels[i], corners[i].x + 6, corners[i].y - 6);
-    }
-
-    ctx.restore();
+    drawPrintAreaOverlay(this.canvas.getContext() as CanvasRenderingContext2D, printArea, this.canvas.getWidth(), this.canvas.getHeight());
   }
 
-  /**
-   * Get the print area's rotated frame: center, local axes, and dimensions
-   * along those axes. This lets us clamp in the print area's own coordinate
-   * system instead of using an axis-aligned bounding box.
-   */
-  private getPrintAreaFrame(): { cx: number; cy: number; halfW: number; halfH: number; cos: number; sin: number } | null {
-    if (this.printArea === undefined || this.canvas === undefined) return null;
-    const corners = printAreaToPixelCorners(this.printArea, this.canvas.getWidth(), this.canvas.getHeight());
-    const [tl, tr, br, bl] = corners;
-
-    const cx = (tl.x + tr.x + br.x + bl.x) / 4;
-    const cy = (tl.y + tr.y + br.y + bl.y) / 4;
-
-    const topLen = Math.hypot(tr.x - tl.x, tr.y - tl.y);
-    const botLen = Math.hypot(br.x - bl.x, br.y - bl.y);
-    const leftLen = Math.hypot(bl.x - tl.x, bl.y - tl.y);
-    const rightLen = Math.hypot(br.x - tr.x, br.y - tr.y);
-
-    const halfW = (topLen + botLen) / 4;
-    const halfH = (leftLen + rightLen) / 4;
-
-    // Angle from bottom edge (same as fitLogoToPrintArea)
-    const angle = Math.atan2(br.y - bl.y, br.x - bl.x);
-    return { cx, cy, halfW, halfH, cos: Math.cos(angle), sin: Math.sin(angle) };
+  /** The active print area's own coordinate system, or null when it has none. */
+  private getPrintAreaFrame(): PrintAreaFrame | null {
+    const printArea = this.activePrintArea().area;
+    if (printArea === undefined || this.canvas === undefined) return null;
+    return printAreaFrame(printArea, this.canvas.getWidth(), this.canvas.getHeight());
   }
 
-  private clampObjectToPrintArea(obj: FabricObject) {
+  private clampToActivePrintArea(obj: FabricObject) {
     const frame = this.getPrintAreaFrame();
-    if (frame === null) return;
-
-    // Skip background objects
-    if ((obj as FabricObject & { _isBackground?: boolean })._isBackground === true) return;
-
-    const { cx, cy, halfW, halfH, cos, sin } = frame;
-
-    // Use the actual visual size of the object (not getBoundingRect which includes control handles)
-    const objW = (obj.width ?? 0) * (obj.scaleX ?? 1);
-    const objH = (obj.height ?? 0) * (obj.scaleY ?? 1);
-
-    // Relative angle between object and print area frame
-    const objAngleRad = ((obj.angle ?? 0) * Math.PI) / 180;
-    const frameAngle = Math.atan2(sin, cos);
-    const relAngle = objAngleRad - frameAngle;
-    const relCos = Math.abs(Math.cos(relAngle));
-    const relSin = Math.abs(Math.sin(relAngle));
-
-    // Object's half-size projected onto the print area's local axes
-    let projHalfW = (objW * relCos + objH * relSin) / 2;
-    let projHalfH = (objW * relSin + objH * relCos) / 2;
-
-    // Cap scale if the object exceeds the print area in its local frame
-    if (projHalfW > halfW || projHalfH > halfH) {
-      const scaleRatio = Math.min(halfW / Math.max(projHalfW, 1), halfH / Math.max(projHalfH, 1));
-      obj.set({
-        scaleX: (obj.scaleX ?? 1) * scaleRatio,
-        scaleY: (obj.scaleY ?? 1) * scaleRatio,
-      });
-      obj.setCoords();
-
-      // Recompute projected sizes after scaling
-      const newObjW = (obj.width ?? 0) * (obj.scaleX ?? 1);
-      const newObjH = (obj.height ?? 0) * (obj.scaleY ?? 1);
-      projHalfW = (newObjW * relCos + newObjH * relSin) / 2;
-      projHalfH = (newObjW * relSin + newObjH * relCos) / 2;
-    }
-
-    // Object center in world coords (use getCenterPoint for accuracy with all origins)
-    obj.setCoords();
-    const objCenter = obj.getCenterPoint();
-
-    // Transform object center into the print area's local frame
-    const relX = objCenter.x - cx;
-    const relY = objCenter.y - cy;
-    const localX = relX * cos + relY * sin;
-    const localY = -relX * sin + relY * cos;
-
-    // Clamp in local frame so the visual object stays within the print area
-    const clampedX = Math.max(-halfW + projHalfW, Math.min(halfW - projHalfW, localX));
-    const clampedY = Math.max(-halfH + projHalfH, Math.min(halfH - projHalfH, localY));
-
-    if (clampedX !== localX || clampedY !== localY) {
-      // Transform back to world coordinates
-      const newCx = cx + clampedX * cos - clampedY * sin;
-      const newCy = cy + clampedX * sin + clampedY * cos;
-      const dx = newCx - objCenter.x;
-      const dy = newCy - objCenter.y;
-
-      obj.set({
-        left: (obj.left ?? 0) + dx,
-        top: (obj.top ?? 0) + dy,
-      });
-      obj.setCoords();
-    }
+    if (frame !== null) clampToPrintAreaFrame(obj, frame);
   }
 
   private handleSelection(obj: FabricObject | undefined) {
     if (obj === undefined) return;
-    const id = (obj as FabricObject & { _objectId?: string })._objectId;
-    if (id !== undefined && id !== '') {
+    const id = getObjectId(obj);
+    if (id !== undefined) {
       this.selectedObjectId = id;
       this.selectedObjectType = obj.type ?? null;
       if (obj.type === 'i-text') {
@@ -580,17 +1178,23 @@ export class WtpEditor {
     };
   }
 
-  private buildEditorState(): EditorState {
+  /**
+   * @param withFabricJson Serializing the whole canvas costs a multi-MB base64 string
+   *   (every logo src is included). Only the persistence paths need it.
+   */
+  private buildEditorState(withFabricJson: boolean = true): EditorState {
     const logos: PlacedLogo[] = [];
     const texts: PlacedText[] = [];
 
     for (const [id, obj] of this.objectMap) {
       if (obj.type === 'image') {
         const previewDataUrl = this.previewUrlMap.get(id);
+        const source = this.placedLogoData.get(id)?.source;
         logos.push({
           id,
           dataUrl: (obj as FabricImage).getSrc(),
           ...(previewDataUrl !== undefined ? { previewDataUrl } : {}),
+          ...(source !== undefined ? { source } : {}),
           transform: this.getObjectTransform(obj),
         });
       } else if (obj.type === 'i-text') {
@@ -607,17 +1211,80 @@ export class WtpEditor {
     }
 
     return {
-      fabricJson: this.canvas !== undefined ? JSON.stringify(this.canvas.toJSON()) : '',
+      // `_objectId` must be serialized explicitly — toJSON() drops custom properties,
+      // which would leave the object map empty after a reload.
+      fabricJson: withFabricJson && this.canvas !== undefined ? JSON.stringify(this.canvas.toObject(['_objectId']) as unknown) : '',
       logos,
       texts,
-      productImage: this.productImage ?? null,
+      productImage: this.getActiveImage() !== '' ? this.getActiveImage() : null,
+      width: this.width,
+      height: this.height,
+    };
+  }
+
+  /**
+   * The envelope to persist: complete, with `fabricJson` for every decoration. The active
+   * view is stored first — otherwise the decoration the customer is working on right now
+   * would be reported as empty.
+   */
+  private persistableArticleState(withPreview: boolean = false): ArticleEditorState {
+    this.flushActiveView(withPreview);
+    return this.composeArticleState();
+  }
+
+  /**
+   * The envelope for the change event: cheap. The active decoration is read straight off
+   * the canvas without serializing it or writing it back, so it carries no `fabricJson`.
+   * `text:changed` fires per keystroke, and persistence uses the stored state anyway.
+   */
+  private liveArticleState(): ArticleEditorState {
+    const activeState = this.canvas !== undefined ? this.buildEditorState(false) : undefined;
+    const activeIssues = activeState !== undefined ? this.validateActiveView(activeState) : undefined;
+    return this.composeArticleState(activeState, activeIssues);
+  }
+
+  /**
+   * Assembles one `DecorationState` per view from what is stored. The two callers differ
+   * only in where the active decoration comes from: stored (persistable) or passed in
+   * live (change event).
+   */
+  private composeArticleState(activeState?: EditorState, activeIssues?: LogoValidationIssue[]): ArticleEditorState {
+    const decorations: DecorationState[] = this.getViews().map(view => {
+      const isActive = view.id === this.currentViewId;
+      const state = (isActive ? activeState : undefined) ?? this.viewStates.get(view.id) ?? this.emptyEditorState(view);
+      const issues = (isActive ? activeIssues : undefined) ?? this.viewIssues.get(view.id) ?? [];
+      const designed = state.logos.length > 0 || state.texts.length > 0;
+
+      return {
+        viewId: view.id,
+        label: view.label,
+        ...decorationMetaOf(view),
+        status: designed ? 'designed' : 'empty',
+        state,
+        ...(this.viewPreviews[view.id] !== undefined ? { previewDataUrl: this.viewPreviews[view.id] } : {}),
+        issues,
+      };
+    });
+
+    return { version: 2, articleId: this.articleId, decorations };
+  }
+
+  private emptyEditorState(view: ArticleView): EditorState {
+    return {
+      fabricJson: '',
+      logos: [],
+      texts: [],
+      productImage: view.image !== '' ? view.image : null,
       width: this.width,
       height: this.height,
     };
   }
 
   private emitStateChanged() {
-    this.wtpEditorStateChanged.emit(this.buildEditorState());
+    // A view switch keeps the outgoing decoration on screen while the next image decodes;
+    // an event fired in that window would attribute the old objects to the incoming view.
+    if (this.switching) return;
+    this.wtpEditorStateChanged.emit(this.liveArticleState());
   }
 
   private handleAddText = () => {
@@ -653,12 +1320,78 @@ export class WtpEditor {
     }
   };
 
+  private handleApplyToAll = () => {
+    if (this.selectedObjectId !== null) void this.applyLogoToAllViews(this.selectedObjectId);
+  };
+
   private handleDeleteSelected = () => {
     if (this.selectedObjectId !== null) {
       this.removeObject(this.selectedObjectId);
       this.selectedObjectId = null;
     }
   };
+
+  /** Horizontal strip of decoration thumbnails, showing which ones already carry a design. */
+  /**
+   * Hover/focus hint for a decoration thumbnail: the print method and area, which the
+   * label under the thumbnail does not show. Returns null when the view carries neither,
+   * so the tooltip is not an empty box.
+   */
+  private viewTooltip(view: ArticleView): string | null {
+    const parts: string[] = [];
+    if (view.impMethod !== undefined) parts.push(view.impMethod);
+    if (view.impDiameterMm !== undefined && view.impDiameterMm > 0) parts.push(`⌀ ${view.impDiameterMm} mm`);
+    else if (view.impWidthMm !== undefined && view.impHeightMm !== undefined) parts.push(`${view.impWidthMm} × ${view.impHeightMm} mm`);
+    return parts.length > 0 ? parts.join(' · ') : null;
+  }
+
+  private renderViewStrip() {
+    const views = this.getViews();
+    if (!this.showViewStrip || views.length < 2) return null;
+
+    const labels = this.getLabels();
+
+    return (
+      <div class="view-strip" role="tablist" aria-label={labels.viewStripLabel}>
+        {views.map(view => {
+          const isActive = view.id === this.currentViewId;
+          const state = view.id === this.currentViewId ? undefined : this.viewStates.get(view.id);
+          const designed = isActive ? this.objectMap.size > 0 : state !== undefined && (state.logos.length > 0 || state.texts.length > 0);
+          const preview = this.viewPreviews[view.id];
+          const tooltip = this.viewTooltip(view);
+
+          return (
+            <button
+              key={view.id}
+              class={{ 'view-thumb': true, active: isActive, designed }}
+              role="tab"
+              aria-selected={isActive ? 'true' : 'false'}
+              aria-label={tooltip !== null ? `${view.label} — ${tooltip}` : view.label}
+              data-view-id={view.id}
+              onClick={this.handleViewSelect}
+            >
+              <span class="view-thumb-image">
+                {preview !== undefined ? <img src={preview} alt="" /> : view.image !== '' ? <img src={view.image} alt="" /> : null}
+                {designed && (
+                  <span class="view-thumb-badge" title={labels.viewDesignedBadge}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </span>
+                )}
+              </span>
+              <span class="view-thumb-label">{view.label}</span>
+              {tooltip !== null && (
+                <span class="view-thumb-tooltip" role="tooltip">
+                  {view.label} <span class="view-thumb-tooltip-meta">{tooltip}</span>
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
 
   render() {
     const labels = this.getLabels();
@@ -687,6 +1420,16 @@ export class WtpEditor {
             <input class="color-input" type="color" value={this.selectedTextColor} onInput={this.handleColorChange} title={labels.colorPickerTooltip} />
           )}
 
+          {this.selectedObjectType === 'image' && this.getViews().length > 1 && (
+            <button class="toolbar-btn" onClick={this.handleApplyToAll} title={labels.applyToAllTooltip}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="12" height="12" rx="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+              <span>{labels.applyToAllButton}</span>
+            </button>
+          )}
+
           <div class="toolbar-separator" />
 
           <button
@@ -706,6 +1449,8 @@ export class WtpEditor {
         <div class="canvas-container">
           <canvas ref={el => (this.canvasEl = el)} />
         </div>
+
+        {this.renderViewStrip()}
       </div>
     );
   }

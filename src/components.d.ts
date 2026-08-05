@@ -5,14 +5,20 @@
  * It contains typing information for all components that exist in this project.
  */
 import { HTMLStencilElement, JSXBase } from "@stencil/core/internal";
-import { BgRemovalConfig, EditorLabels, EditorState, LogoData, LogoUploadLabels, LogoValidationConfig, LogoValidationIssue, PlacedLogo, PrintArea } from "./types";
-import { FabricObject, IText } from "fabric";
+import { Article, ArticleEditorState, ArticleView, BgRemovalConfig, EditorLabels, EditorState, LogoData, LogoUploadLabels, LogoValidationConfig, LogoValidationIssue, PlacedLogo, PrintArea } from "./types";
+import { PdfExportConfig } from "./utils/pdf-export";
+import { IText } from "fabric";
 import { RenderLayer } from "./utils/html-render-helpers";
-export { BgRemovalConfig, EditorLabels, EditorState, LogoData, LogoUploadLabels, LogoValidationConfig, LogoValidationIssue, PlacedLogo, PrintArea } from "./types";
-export { FabricObject, IText } from "fabric";
+export { Article, ArticleEditorState, ArticleView, BgRemovalConfig, EditorLabels, EditorState, LogoData, LogoUploadLabels, LogoValidationConfig, LogoValidationIssue, PlacedLogo, PrintArea } from "./types";
+export { PdfExportConfig } from "./utils/pdf-export";
+export { IText } from "fabric";
 export { RenderLayer } from "./utils/html-render-helpers";
 export namespace Components {
     interface WtpEditor {
+        /**
+          * Id of the decoration currently being edited. Two-way: assign a valid id to switch, and read it back (as a DOM **property**, not the attribute) to learn the shown view — the editor writes the resolved view onto it once real `views` exist, including the initial one. Defaults to the `isDefault` view, else the first. An id not in `views` is ignored by the watcher (the imperative `setActiveView` throws instead) and corrected to the default on the next `views` change — so after assigning an unknown id the property is momentarily stale until then.
+         */
+        "activeViewId": string | undefined;
         /**
           * Add a logo image to the canvas and return its object ID.
          */
@@ -21,6 +27,15 @@ export namespace Components {
           * Add a text object to the canvas and return its object ID.
          */
         "addText": (text: string, options?: { fontFamily?: string; fontSize?: number; fill?: string; }) => Promise<string>;
+        /**
+          * Places the given logo on every decoration that is still empty, fitted to that decoration's own print area. Decorations that already carry a design are left alone. Returns the ids of the views that received the logo.
+         */
+        "applyLogoToAllViews": (logoId: string) => Promise<string[]>;
+        /**
+          * Article id written into the exported envelope.
+          * @default ''
+         */
+        "articleId": string;
         /**
           * Show print area overlay and bounding box for debugging.
           * @default false
@@ -31,13 +46,21 @@ export namespace Components {
          */
         "exportImage": (format?: "png" | "jpeg", quality?: number) => Promise<string>;
         /**
-          * Export the canvas as a high-resolution data URL image (for PDF/print). Returns the data URL plus the actual canvas dimensions (which may differ from the width/height props after setCanvasBackground resizes the canvas).
+          * Export the canvas as a high-resolution data URL image (for PDF/print). Returns the data URL plus the actual canvas dimensions (which may differ from the width/height props after the background image resizes the canvas).
          */
         "exportImageHighRes": (format?: "png" | "jpeg", quality?: number, multiplier?: number) => Promise<{ dataUrl: string; width: number; height: number; }>;
         /**
-          * Export the current editor state as a serializable object.
+          * Renders the proof PDF for every designed decoration and triggers the download.  Hosts can also call `exportArticlePdf` themselves — but importing the library's ESM bundle into a page that already loaded the components pulls in a second Stencil runtime, so going through the component is the safer route. Requires jsPDF to be loaded globally.
          */
-        "exportState": () => Promise<EditorState>;
+        "exportPdf": (article: Article, config?: Partial<PdfExportConfig>) => Promise<void>;
+        /**
+          * Export the state of every decoration as a versioned envelope.
+         */
+        "exportState": () => Promise<ArticleEditorState>;
+        /**
+          * Renders one decoration to an image, whether or not it is the one on screen. The decoration is put on the canvas, exported, and the original one restored — so a host building its own switcher can render a thumbnail for any decoration.  The round trip goes through the same path as a manual switch, so it clears the current selection when the requested decoration is not the active one.
+         */
+        "exportViewImage": (viewId: string, format?: "png" | "jpeg", quality?: number) => Promise<string>;
         /**
           * Available font families for the text tool.
           * @default ['Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Verdana']
@@ -53,6 +76,10 @@ export namespace Components {
          */
         "height": number;
         /**
+          * Logo the customer already picked in the catalog, placed once when the editor initializes. It lands in the decoration the editor opens on and nowhere else: `status: 'designed'` is what the shop charges for, so auto-filling every decoration would order — and bill — positions the customer never chose. `applyLogoToAllViews` is the one visible click that extends it. Ignored when `initialState` is set.
+         */
+        "initialLogo": LogoData | undefined;
+        /**
           * JSON-serialized initial editor state.
          */
         "initialState": string | undefined;
@@ -62,15 +89,17 @@ export namespace Components {
          */
         "labels": Partial<EditorLabels>;
         /**
-          * Load a previously exported editor state.
+          * Load a previously exported state — the v2 envelope or a legacy single-view state.
          */
-        "loadState": (state: EditorState) => Promise<void>;
+        "loadState": (state: ArticleEditorState | EditorState) => Promise<void>;
         /**
           * Print area definition (0-1 relative coordinates) to constrain objects.
+          * @deprecated Single-decoration fallback used only when `views` is empty.
          */
         "printArea": PrintArea | undefined;
         /**
           * Product background image URL.
+          * @deprecated Single-decoration fallback used only when `views` is empty.
          */
         "productImage": string | undefined;
         /**
@@ -78,13 +107,31 @@ export namespace Components {
          */
         "removeObject": (id: string) => Promise<void>;
         /**
+          * Renders a high-resolution mockup per decoration, keyed by view id — the input the PDF export needs. Only the editor can produce these, because each decoration has to be put on the canvas first. The originally active decoration is restored afterwards.
+         */
+        "renderMockups": (viewIds?: string[], multiplier?: number) => Promise<Record<string, { dataUrl: string; width: number; height: number; }>>;
+        /**
           * Clear all user objects from the canvas, keeping the instance alive.
          */
         "resetCanvas": () => Promise<void>;
         /**
+          * Switch to another decoration, storing the current one first.
+         */
+        "setActiveView": (viewId: string) => Promise<void>;
+        /**
+          * Show the built-in decoration strip. Turn off to build your own switcher around `activeViewId`. Defaults to true on purpose: the strip is the editor's out-of-the-box way to reach the other decorations, so it must be present unless a host opts out.
+          * @default true
+         */
+        "showViewStrip": boolean;
+        /**
           * Update the text content of a text object by its ID.
          */
         "updateText": (id: string, text: string) => Promise<void>;
+        /**
+          * Decoration options (Veredelungen) of the article. Each view needs a stable `id`.
+          * @default []
+         */
+        "views": ArticleView[];
         /**
           * Canvas width in pixels.
           * @default 800
@@ -125,10 +172,13 @@ export namespace Components {
          */
         "width": number;
     }
+    /**
+     * Logo upload with drag-and-drop, format detection and print validation.
+     */
     interface WtpLogoUpload {
         /**
           * Accepted file MIME types for the file input.
-          * @default 'image/png,image/jpeg,image/svg+xml,image/tiff,image/avif'
+          * @default 'image/png,image/jpeg,image/svg+xml,image/tiff,image/avif,application/pdf,.ai'
          */
         "accept": string;
         /**
@@ -143,7 +193,7 @@ export namespace Components {
         "bgRemovalConfig": Partial<BgRemovalConfig>;
         /**
           * Validation rules for uploaded logos.
-          * @default DEFAULT_VALIDATION_CONFIG
+          * @default {   minDpi: 300,   maxFileSize: 50 * 1024 * 1024, // 50MB   minWidth: 100,   minHeight: 100,   allowedFormats: ['png', 'jpeg', 'svg', 'tiff', 'avif', 'pdf', 'ai'], }
          */
         "config": LogoValidationConfig;
         /**
@@ -215,7 +265,8 @@ export interface WtpPrintAreaEditorCustomEvent<T> extends CustomEvent<T> {
 declare global {
     interface HTMLWtpEditorElementEventMap {
         "wtpEditorReady": void;
-        "wtpEditorStateChanged": EditorState;
+        "wtpEditorStateChanged": ArticleEditorState;
+        "wtpEditorViewChanged": { viewId: string; index: number };
         "wtpEditorObjectSelected": { id: string; type: string };
         "wtpEditorObjectDeselected": void;
     }
@@ -257,6 +308,9 @@ declare global {
         "wtpLogoProcessing": boolean;
         "wtpLogoSelected": LogoData;
     }
+    /**
+     * Logo upload with drag-and-drop, format detection and print validation.
+     */
     interface HTMLWtpLogoUploadElement extends Components.WtpLogoUpload, HTMLStencilElement {
         addEventListener<K extends keyof HTMLWtpLogoUploadElementEventMap>(type: K, listener: (this: HTMLWtpLogoUploadElement, ev: WtpLogoUploadCustomEvent<HTMLWtpLogoUploadElementEventMap[K]>) => any, options?: boolean | AddEventListenerOptions): void;
         addEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
@@ -298,6 +352,15 @@ declare global {
 declare namespace LocalJSX {
     interface WtpEditor {
         /**
+          * Id of the decoration currently being edited. Two-way: assign a valid id to switch, and read it back (as a DOM **property**, not the attribute) to learn the shown view — the editor writes the resolved view onto it once real `views` exist, including the initial one. Defaults to the `isDefault` view, else the first. An id not in `views` is ignored by the watcher (the imperative `setActiveView` throws instead) and corrected to the default on the next `views` change — so after assigning an unknown id the property is momentarily stale until then.
+         */
+        "activeViewId"?: string | undefined;
+        /**
+          * Article id written into the exported envelope.
+          * @default ''
+         */
+        "articleId"?: string;
+        /**
           * Show print area overlay and bounding box for debugging.
           * @default false
          */
@@ -312,6 +375,10 @@ declare namespace LocalJSX {
           * @default 600
          */
         "height"?: number;
+        /**
+          * Logo the customer already picked in the catalog, placed once when the editor initializes. It lands in the decoration the editor opens on and nowhere else: `status: 'designed'` is what the shop charges for, so auto-filling every decoration would order — and bill — positions the customer never chose. `applyLogoToAllViews` is the one visible click that extends it. Ignored when `initialState` is set.
+         */
+        "initialLogo"?: LogoData | undefined;
         /**
           * JSON-serialized initial editor state.
          */
@@ -336,15 +403,31 @@ declare namespace LocalJSX {
         /**
           * Fires when the editor state changes (object add/move/remove).
          */
-        "onWtpEditorStateChanged"?: (event: WtpEditorCustomEvent<EditorState>) => void;
+        "onWtpEditorStateChanged"?: (event: WtpEditorCustomEvent<ArticleEditorState>) => void;
+        /**
+          * Fires when the edited decoration changes.
+         */
+        "onWtpEditorViewChanged"?: (event: WtpEditorCustomEvent<{ viewId: string; index: number }>) => void;
         /**
           * Print area definition (0-1 relative coordinates) to constrain objects.
+          * @deprecated Single-decoration fallback used only when `views` is empty.
          */
         "printArea"?: PrintArea | undefined;
         /**
           * Product background image URL.
+          * @deprecated Single-decoration fallback used only when `views` is empty.
          */
         "productImage"?: string | undefined;
+        /**
+          * Show the built-in decoration strip. Turn off to build your own switcher around `activeViewId`. Defaults to true on purpose: the strip is the editor's out-of-the-box way to reach the other decorations, so it must be present unless a host opts out.
+          * @default true
+         */
+        "showViewStrip"?: boolean;
+        /**
+          * Decoration options (Veredelungen) of the article. Each view needs a stable `id`.
+          * @default []
+         */
+        "views"?: ArticleView[];
         /**
           * Canvas width in pixels.
           * @default 800
@@ -389,10 +472,13 @@ declare namespace LocalJSX {
          */
         "width"?: number;
     }
+    /**
+     * Logo upload with drag-and-drop, format detection and print validation.
+     */
     interface WtpLogoUpload {
         /**
           * Accepted file MIME types for the file input.
-          * @default 'image/png,image/jpeg,image/svg+xml,image/tiff,image/avif'
+          * @default 'image/png,image/jpeg,image/svg+xml,image/tiff,image/avif,application/pdf,.ai'
          */
         "accept"?: string;
         /**
@@ -407,7 +493,7 @@ declare namespace LocalJSX {
         "bgRemovalConfig"?: Partial<BgRemovalConfig>;
         /**
           * Validation rules for uploaded logos.
-          * @default DEFAULT_VALIDATION_CONFIG
+          * @default {   minDpi: 300,   maxFileSize: 50 * 1024 * 1024, // 50MB   minWidth: 100,   minHeight: 100,   allowedFormats: ['png', 'jpeg', 'svg', 'tiff', 'avif', 'pdf', 'ai'], }
          */
         "config"?: LogoValidationConfig;
         /**
@@ -439,7 +525,7 @@ declare namespace LocalJSX {
          */
         "onWtpLogoRejected"?: (event: WtpLogoUploadCustomEvent<{ file: File; issues: LogoValidationIssue[] }>) => void;
         /**
-          * Fires when a logo is selected from the preview gallery.
+          * Fires when the customer picks a logo: once after a fresh upload, and on every click in the preview gallery — deliberately also on the logo that is already selected, so hosts can place the same logo again (e.g. on another decoration). Does not fire for the automatic re-selection after a removal: nothing was picked there, and a click-to-place host would otherwise add a logo as a side effect of deleting one.
          */
         "onWtpLogoSelected"?: (event: WtpLogoUploadCustomEvent<LogoData>) => void;
         /**
@@ -475,8 +561,11 @@ declare namespace LocalJSX {
     interface WtpEditorAttributes {
         "width": number;
         "height": number;
+        "articleId": string;
+        "activeViewId": string | undefined;
         "productImage": string | undefined;
         "initialState": string | undefined;
+        "showViewStrip": boolean;
         "debug": boolean;
     }
     interface WtpLogoRendererAttributes {
@@ -511,6 +600,9 @@ declare module "@stencil/core" {
         interface IntrinsicElements {
             "wtp-editor": LocalJSX.IntrinsicElements["wtp-editor"] & JSXBase.HTMLAttributes<HTMLWtpEditorElement>;
             "wtp-logo-renderer": LocalJSX.IntrinsicElements["wtp-logo-renderer"] & JSXBase.HTMLAttributes<HTMLWtpLogoRendererElement>;
+            /**
+             * Logo upload with drag-and-drop, format detection and print validation.
+             */
             "wtp-logo-upload": LocalJSX.IntrinsicElements["wtp-logo-upload"] & JSXBase.HTMLAttributes<HTMLWtpLogoUploadElement>;
             "wtp-print-area-editor": LocalJSX.IntrinsicElements["wtp-print-area-editor"] & JSXBase.HTMLAttributes<HTMLWtpPrintAreaEditorElement>;
         }

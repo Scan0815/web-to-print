@@ -13,6 +13,10 @@
     "target": "es2022",
     "noUnusedLocals": true,
     "noUnusedParameters": true,
+    "types": [
+      "vitest/globals",
+      "node"
+    ],
     "jsx": "react",
     "jsxFactory": "h",
     "jsxFragmentFactory": "h.Fragment"
