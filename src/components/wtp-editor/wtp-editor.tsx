@@ -93,7 +93,12 @@ export class WtpEditor {
    * @deprecated Single-decoration fallback used only when `views` is empty.
    */
   @Prop() printArea: PrintArea | undefined;
-  /** Show the built-in decoration strip. Turn off to build your own switcher around `activeViewId`. */
+  /**
+   * Show the built-in decoration strip. Turn off to build your own switcher around
+   * `activeViewId`. Defaults to true on purpose: the strip is the editor's out-of-the-box
+   * way to reach the other decorations, so it must be present unless a host opts out.
+   */
+  // eslint-disable-next-line stencil/ban-default-true -- an opt-out control, on by default by design
   @Prop() showViewStrip: boolean = true;
   /** Show print area overlay and bounding box for debugging. */
   @Prop() debug: boolean = false;

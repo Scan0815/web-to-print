@@ -119,7 +119,7 @@ export namespace Components {
          */
         "setActiveView": (viewId: string) => Promise<void>;
         /**
-          * Show the built-in decoration strip. Turn off to build your own switcher around `activeViewId`.
+          * Show the built-in decoration strip. Turn off to build your own switcher around `activeViewId`. Defaults to true on purpose: the strip is the editor's out-of-the-box way to reach the other decorations, so it must be present unless a host opts out.
           * @default true
          */
         "showViewStrip": boolean;
@@ -419,7 +419,7 @@ declare namespace LocalJSX {
          */
         "productImage"?: string | undefined;
         /**
-          * Show the built-in decoration strip. Turn off to build your own switcher around `activeViewId`.
+          * Show the built-in decoration strip. Turn off to build your own switcher around `activeViewId`. Defaults to true on purpose: the strip is the editor's out-of-the-box way to reach the other decorations, so it must be present unless a host opts out.
           * @default true
          */
         "showViewStrip"?: boolean;
