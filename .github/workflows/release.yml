@@ -63,11 +63,13 @@ jobs:
           fi
 
       # --- Build and test against the final version ---
-      - name: Run unit tests
-        run: npm run test.spec
-
+      # Build first: vitest-setup.ts imports the built bundle (dist/), so the spec run
+      # needs it present. (test.spec alone does not build — only `npm test` does.)
       - name: Build
         run: npm run build
+
+      - name: Run unit tests
+        run: npm run test.spec
 
       # --- Publish ---
       - name: Check if version is already published
