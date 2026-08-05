@@ -186,8 +186,8 @@ describe('pdf-export', () => {
   const PNG = 'data:image/png;base64,AAA';
 
   /** Minimal jsPDF stand-in that records the page structure. */
-  function installFakeJsPDF(): { pages: string[][]; saved: string[]; lines: number[][] } {
-    const record = { pages: [[]] as string[][], saved: [] as string[], lines: [] as number[][] };
+  function installFakeJsPDF(): { pages: string[][]; saved: string[]; lines: number[][]; images: { dataUrl: string; format: string }[] } {
+    const record = { pages: [[]] as string[][], saved: [] as string[], lines: [] as number[][], images: [] as { dataUrl: string; format: string }[] };
     let current = 0;
 
     class FakeDoc {
@@ -202,7 +202,15 @@ describe('pdf-export', () => {
       text(value: string) {
         record.pages[current].push(value);
       }
-      addImage() {}
+      // Faithful to jsPDF: it decodes the bytes and rejects a data URL whose content does
+      // not match the declared format (e.g. a raw PDF passed as 'PNG').
+      addImage(dataUrl: string, format: string) {
+        record.images.push({ dataUrl, format });
+        const ok =
+          (format === 'PNG' && dataUrl.startsWith('data:image/png')) ||
+          (format === 'JPEG' && (dataUrl.startsWith('data:image/jpeg') || dataUrl.startsWith('data:image/jpg')));
+        if (!ok) throw new Error(`Unsupported image type for ${format}: ${dataUrl.slice(0, 24)}`);
+      }
       setFontSize() {}
       setFont() {}
       setDrawColor() {}
@@ -295,6 +303,29 @@ describe('pdf-export', () => {
         expect(y1).toBeGreaterThanOrEqual(0);
         expect(y2).toBeLessThanOrEqual(297);
       }
+    });
+
+    it('embeds the canvas raster for a PDF/AI source, not the raw original', async () => {
+      // A PDF/AI upload keeps the raw file as source.dataUrl and a rasterized page-1 PNG
+      // as logo.dataUrl. The logo source page must embed the PNG — passing the raw PDF to
+      // jsPDF.addImage(...,'PNG') throws and fails the whole export.
+      const record = installFakeJsPDF();
+      const pngRaster = 'data:image/png;base64,UkFTVEVS';
+      const rawPdf = 'data:application/pdf;base64,JVBERi0xLjc';
+      const logo: PlacedLogo = {
+        id: 'l1',
+        dataUrl: pngRaster,
+        source: { dataUrl: rawPdf, mimeType: 'application/pdf', fileName: 'logo.pdf', fileSize: 2048 },
+      };
+
+      await exportArticlePdf(state([decoration('front', 'Front', 'designed', [logo])]), article, mockups);
+
+      const embedded = record.images.map(i => i.dataUrl);
+      expect(embedded).toContain(pngRaster);
+      expect(embedded).not.toContain(rawPdf);
+      expect(record.saved).toEqual(['A-1.pdf']);
+      // The source page tells the shop the original travels with the order.
+      expect(record.pages.flat().some(t => t.includes('rasterized preview'))).toBe(true);
     });
 
     it('throws when a designed decoration has no mockup', async () => {

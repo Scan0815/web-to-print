@@ -16,7 +16,7 @@ export { RenderLayer } from "./utils/html-render-helpers";
 export namespace Components {
     interface WtpEditor {
         /**
-          * Id of the decoration currently being edited. Two-way: set it to switch, read it (as a DOM **property**, not the attribute) to learn what is shown — the editor writes the resolved view back once real `views` exist, including the initial one. Defaults to the `isDefault` view, else the first. An id that is not in `views` is replaced with that default rather than kept.
+          * Id of the decoration currently being edited. Two-way: assign a valid id to switch, and read it back (as a DOM **property**, not the attribute) to learn the shown view — the editor writes the resolved view onto it once real `views` exist, including the initial one. Defaults to the `isDefault` view, else the first. An id not in `views` is ignored by the watcher (the imperative `setActiveView` throws instead) and corrected to the default on the next `views` change — so after assigning an unknown id the property is momentarily stale until then.
          */
         "activeViewId": string | undefined;
         /**
@@ -352,7 +352,7 @@ declare global {
 declare namespace LocalJSX {
     interface WtpEditor {
         /**
-          * Id of the decoration currently being edited. Two-way: set it to switch, read it (as a DOM **property**, not the attribute) to learn what is shown — the editor writes the resolved view back once real `views` exist, including the initial one. Defaults to the `isDefault` view, else the first. An id that is not in `views` is replaced with that default rather than kept.
+          * Id of the decoration currently being edited. Two-way: assign a valid id to switch, and read it back (as a DOM **property**, not the attribute) to learn the shown view — the editor writes the resolved view onto it once real `views` exist, including the initial one. Defaults to the `isDefault` view, else the first. An id not in `views` is ignored by the watcher (the imperative `setActiveView` throws instead) and corrected to the default on the next `views` change — so after assigning an unknown id the property is momentarily stale until then.
          */
         "activeViewId"?: string | undefined;
         /**

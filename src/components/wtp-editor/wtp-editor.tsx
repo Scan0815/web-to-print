@@ -28,12 +28,14 @@ import {
   printAreaFrame,
   clampToPrintAreaFrame,
   drawPrintAreaOverlay,
+  isBackgroundObject,
   getObjectId,
   setObjectId,
   type PrintAreaFrame,
 } from '../../utils/canvas-helpers';
 import { decorationMetaOf } from '../../utils/decoration-meta';
 import { isPixelPrintArea, resolveViewPrintArea } from '../../utils/print-area';
+import { shouldApplyPreloadedThumbnail } from '../../utils/view-preview';
 import { validateDecoration, type ObjectBounds, type ObjectSize } from '../../utils/decoration-validation';
 import { exportArticlePdf, selectPrintableDecorations, type PdfExportConfig } from '../../utils/pdf-export';
 
@@ -60,11 +62,13 @@ export class WtpEditor {
   /** Article id written into the exported envelope. */
   @Prop() articleId: string = '';
   /**
-   * Id of the decoration currently being edited. Two-way: set it to switch, read it (as a
-   * DOM **property**, not the attribute) to learn what is shown — the editor writes the
-   * resolved view back once real `views` exist, including the initial one. Defaults to the
-   * `isDefault` view, else the first. An id that is not in `views` is replaced with that
-   * default rather than kept.
+   * Id of the decoration currently being edited. Two-way: assign a valid id to switch, and
+   * read it back (as a DOM **property**, not the attribute) to learn the shown view — the
+   * editor writes the resolved view onto it once real `views` exist, including the initial
+   * one. Defaults to the `isDefault` view, else the first. An id not in `views` is ignored
+   * by the watcher (the imperative `setActiveView` throws instead) and corrected to the
+   * default on the next `views` change — so after assigning an unknown id the property is
+   * momentarily stale until then.
    */
   @Prop({ mutable: true }) activeViewId: string | undefined;
   /**
@@ -147,6 +151,8 @@ export class WtpEditor {
   private loadedArticleKey: string = '';
   /** Serializes canvas transitions — two overlapping switches would flush into the wrong view. */
   private transition: Promise<void> = Promise.resolve();
+  /** True while a view transition is in flight; suppresses change events for the frozen outgoing view. */
+  private switching: boolean = false;
 
   componentWillLoad() {
     const views = this.getViews();
@@ -294,12 +300,10 @@ export class WtpEditor {
       if (view.id === this.currentViewId || view.image === '') continue;
 
       void createImageThumbnail(view.image, PREVIEW_SIZE).then(thumbnail => {
-        // View ids repeat across articles ("front"), so a thumbnail that resolves after
-        // the customer switched articles must not land in the new article's strip. And a
-        // preview captured on view exit shows the design — never replace it with the
-        // bare product shot.
-        if (thumbnail === null || articleKey !== this.loadedArticleKey) return;
-        if (this.viewPreviews[view.id] !== undefined) return;
+        // The article may have changed, or a design preview may already fill the slot,
+        // by the time this resolves — see shouldApplyPreloadedThumbnail.
+        if (thumbnail === null) return;
+        if (!shouldApplyPreloadedThumbnail(articleKey, this.loadedArticleKey, this.viewPreviews[view.id])) return;
         this.viewPreviews = { ...this.viewPreviews, [view.id]: thumbnail };
       });
     }
@@ -557,28 +561,61 @@ export class WtpEditor {
    * Puts a decoration on the canvas. Bulk operations use this directly so one logical
    * action does not emit a view-change event or re-encode a thumbnail per hop.
    */
-  private async visitView(target: ArticleView, options: { withPreview: boolean }): Promise<void> {
-    await this.enqueue(async () => {
-      if (target.id === this.currentViewId) return;
+  private visitView(target: ArticleView, options: { withPreview: boolean }): Promise<void> {
+    return this.enqueue(() => this.transitionToView(target, options));
+  }
 
-      // The outgoing view's findings are stored here and never recomputed — it is about to
-      // stop being the active view, and the object bounds go with it. So they have to be
-      // computed against a resolved print area, not a pending one.
-      await this.printAreasReady;
-      this.flushActiveView(options.withPreview);
+  /**
+   * The view transition itself, without enqueuing. `visitView` wraps one of these in the
+   * transition queue; a compound operation that must stay atomic across several
+   * transitions (`applyLogoToAllViews`) runs a sequence of these inside a single enqueue,
+   * so a user's view switch cannot interleave and land content on the wrong decoration.
+   */
+  private async transitionToView(target: ArticleView, options: { withPreview: boolean }): Promise<void> {
+    if (target.id === this.currentViewId) return;
 
-      // The outgoing view stays visible while the incoming image decodes (see
-      // setBackground), so drop its selection handles — it is a snapshot now.
-      this.canvas?.discardActiveObject();
-      this.canvas?.renderAll();
+    // The outgoing view's findings are stored here and never recomputed — it is about to
+    // stop being the active view, and the object bounds go with it. So they have to be
+    // computed against a resolved print area, not a pending one.
+    await this.printAreasReady;
+    this.flushActiveView(options.withPreview);
 
-      this.currentViewId = target.id;
-      this.activeViewId = target.id;
-      this.selectedObjectId = null;
-      this.selectedObjectType = null;
+    // The outgoing view stays visible while the incoming image decodes (see setBackground).
+    // Freeze it: drop the selection, make its objects non-interactive, and suppress change
+    // events. Otherwise a drag during the decode is attributed to the target view
+    // (currentViewId is already the target) and then silently discarded when activateView
+    // reloads the target's stored state.
+    this.canvas?.discardActiveObject();
+    this.setSnapshotInteractive(false);
+    this.switching = true;
 
+    this.currentViewId = target.id;
+    this.activeViewId = target.id;
+    this.selectedObjectId = null;
+    this.selectedObjectType = null;
+
+    try {
       await this.activateView(target);
-    });
+    } finally {
+      this.switching = false;
+      if (this.canvas !== undefined) this.canvas.selection = true;
+    }
+  }
+
+  /**
+   * Makes the current user objects (not the background) interactive or frozen. Used to
+   * freeze the outgoing decoration for the duration of a switch; the incoming view's
+   * objects are created fresh and interactive, so only re-enabling canvas selection is
+   * needed afterwards.
+   */
+  private setSnapshotInteractive(on: boolean): void {
+    if (this.canvas === undefined) return;
+    this.canvas.selection = on;
+    for (const obj of this.canvas.getObjects()) {
+      if (isBackgroundObject(obj)) continue;
+      obj.selectable = on;
+      obj.evented = on;
+    }
   }
 
   /**
@@ -612,22 +649,29 @@ export class WtpEditor {
     const source = this.placedLogoData.get(logoId);
     if (source === undefined) throw new Error(`wtp-editor: unknown logo id "${logoId}".`);
 
-    const originalViewId = this.currentViewId;
     const applied: string[] = [];
 
-    for (const view of this.getViews()) {
-      if (view.id === originalViewId) continue;
+    // The whole sweep runs inside one enqueued transition. Each view is a visit + a place;
+    // if those were separate queue entries, a strip click between a view's visit and its
+    // addLogo would move currentViewId and drop the logo on the user's view instead.
+    await this.enqueue(async () => {
+      const originalViewId = this.currentViewId;
 
-      const stored = this.viewStates.get(view.id);
-      const isEmpty = stored === undefined || (stored.logos.length === 0 && stored.texts.length === 0);
-      if (!isEmpty) continue;
+      for (const view of this.getViews()) {
+        if (view.id === originalViewId) continue;
 
-      await this.visitView(view, { withPreview: false });
-      await this.addLogo(source);
-      applied.push(view.id);
-    }
+        const stored = this.viewStates.get(view.id);
+        const isEmpty = stored === undefined || (stored.logos.length === 0 && stored.texts.length === 0);
+        if (!isEmpty) continue;
 
-    await this.visitViewById(originalViewId, { withPreview: false });
+        await this.transitionToView(view, { withPreview: false });
+        await this.addLogo(source);
+        applied.push(view.id);
+      }
+
+      const original = this.getViews().find(v => v.id === originalViewId);
+      if (original !== undefined) await this.transitionToView(original, { withPreview: false });
+    });
 
     return applied;
   }
@@ -1232,6 +1276,9 @@ export class WtpEditor {
   }
 
   private emitStateChanged() {
+    // A view switch keeps the outgoing decoration on screen while the next image decodes;
+    // an event fired in that window would attribute the old objects to the incoming view.
+    if (this.switching) return;
     this.wtpEditorStateChanged.emit(this.liveArticleState());
   }
 

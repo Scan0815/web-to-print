@@ -217,6 +217,30 @@ describe('validateDecoration', () => {
       expect(finding?.message).toContain('100');
     });
 
+    it('reports one real element for the size warning, not an axis-mix across objects', () => {
+      // Two logos: A wide-and-short (240 x 40 px), B narrow-and-tall (40 x 240 px), in a
+      // 200 x 200 px area declared 100 x 100 mm (0.5 mm/px). Per-axis maxima would report
+      // "120 x 120 mm" — a size neither logo has. The worst offender is one of them.
+      const issues = validateDecoration({
+        view: sized(),
+        state: state({ logos: [logo, { id: 'l2', dataUrl: 'data:image/png;base64,abc' }] }),
+        bounds: [],
+        sizes: [
+          { centerX: 200, centerY: 200, width: 240, height: 40, angle: 0 },
+          { centerX: 200, centerY: 200, width: 40, height: 240, angle: 0 },
+        ],
+        printArea: PRINT_AREA,
+        canvasWidth: 400,
+        canvasHeight: 400,
+      });
+
+      const finding = issues.find(i => i.code === 'sizeOverflow');
+      expect(finding).toBeDefined();
+      // The reported pair is one real logo: 120 x 20 mm or 20 x 120 mm, never 120 x 120.
+      expect(finding?.message).not.toContain('120 × 120');
+      expect(finding?.message === undefined ? '' : finding.message).toMatch(/120 × 20|20 × 120/);
+    });
+
     it('accepts an element fitted exactly to the print area', () => {
       const issues = validateDecoration({
         view: sized(),

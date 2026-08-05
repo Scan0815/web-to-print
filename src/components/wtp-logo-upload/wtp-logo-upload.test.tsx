@@ -229,24 +229,27 @@ describe('wtp-logo-upload browser', () => {
     expect(validatedSpy).toHaveReceivedEvent();
   });
 
-  it('activates a preview with the keyboard', async () => {
+  it('exposes each preview as a native button so it is keyboard-operable', async () => {
+    // A dispatched KeyboardEvent does not trigger native activation, so simulating Enter
+    // proves nothing. The real guarantee is the element itself: a native <button> is
+    // activated by Enter/Space and sits in the tab order for free, whereas a div with
+    // role="button" would need an onKeyDown the component does not add.
     const { root, spyOnEvent, waitForChanges } = await render(<wtp-logo-upload></wtp-logo-upload>);
     selectFile(root, new File([VALID_SVG], 'first.svg', { type: 'image/svg+xml' }));
     await waitForChanges();
     await new Promise(r => setTimeout(r, 400));
     await waitForChanges();
 
-    const selectedSpy = spyOnEvent('wtpLogoSelected');
     const target = root.shadowRoot?.querySelector('.preview-select') as HTMLElement | null;
     expect(target).not.toBeNull();
-
+    expect(target?.tagName).toBe('BUTTON');
+    expect((target as HTMLButtonElement).type).toBe('button');
+    // Focusable, and clicking it (Enter/Space route to the same handler natively) selects.
+    const selectedSpy = spyOnEvent('wtpLogoSelected');
     target?.focus();
     expect(root.shadowRoot?.activeElement).toBe(target);
-    // A real button activates on Enter; a div with role="button" does not.
-    target?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     target?.click();
     await waitForChanges();
-
     expect(selectedSpy).toHaveReceivedEvent();
   });
 

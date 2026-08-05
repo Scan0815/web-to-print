@@ -296,20 +296,31 @@ describe('wtp-editor browser', () => {
     const { root } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
     const el = root as EditorElement;
 
-    const canvas = root.querySelector('canvas') as HTMLCanvasElement;
+    // capturePreview runs toDataURL on Fabric's OWN offscreen canvas, not the on-screen
+    // element — patch the prototype so every canvas is counted, or the assertion below
+    // can never fail.
+    const proto = HTMLCanvasElement.prototype;
+    const original = proto.toDataURL;
     let toDataUrlCalls = 0;
-    const original = canvas.toDataURL.bind(canvas);
-    canvas.toDataURL = (...args: Parameters<HTMLCanvasElement['toDataURL']>) => {
+    proto.toDataURL = function patched(this: HTMLCanvasElement, ...args: Parameters<HTMLCanvasElement['toDataURL']>) {
       toDataUrlCalls++;
-      return original(...args);
+      return original.apply(this, args);
     };
 
-    // Every state change (addText fires one) must not cost a full canvas encode
-    await el.addText('a');
-    await el.addText('b');
-    await el.addText('c');
+    try {
+      // Typing (each addText fires a state change) must not cost a full canvas encode.
+      await el.addText('a');
+      await el.addText('b');
+      await el.addText('c');
+      expect(toDataUrlCalls).toBe(0);
 
-    expect(toDataUrlCalls).toBe(0);
+      // Leaving the view captures exactly one preview — proving the counter is live, so
+      // the zero above is a real absence of encodes, not a dead instrument.
+      await el.setActiveView('back');
+      expect(toDataUrlCalls).toBeGreaterThan(0);
+    } finally {
+      proto.toDataURL = original;
+    }
   });
 
   it('survives views, activeViewId and loadState arriving in the same tick', async () => {
@@ -411,6 +422,41 @@ describe('wtp-editor browser', () => {
   it('rejects an unknown logo id', async () => {
     const { root } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
     await expect((root as EditorElement).applyLogoToAllViews('nope')).rejects.toThrow(/unknown logo id/);
+  });
+
+  it('is not corrupted by a view switch fired during the sweep', async () => {
+    // apply-to-all is one atomic transition: a strip click that lands mid-sweep must run
+    // entirely after it, not interleave between a view's visit and its addLogo (which
+    // would drop the logo on the clicked view). Without the enqueue wrap this races.
+    const { root } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
+    const el = root as EditorElement;
+
+    const logoId = await el.addLogo({ dataUrl: LOGO_DATA_URL, metadata: LOGO_METADATA });
+
+    // Start the sweep and, without awaiting, race a user switch onto the queue.
+    const sweep = el.applyLogoToAllViews(logoId);
+    const switched = el.setActiveView('wrap');
+    const [applied] = await Promise.all([sweep, switched]);
+
+    // Every originally-empty view got exactly one logo; none got two, none was skipped.
+    expect(applied.sort()).toEqual(['back', 'wrap']);
+    const envelope = await el.exportState();
+    for (const d of envelope.decorations) {
+      expect(d.state.logos.length).toBe(1);
+    }
+  });
+
+  it('restores canvas interaction after a view switch', async () => {
+    // The switch freezes the outgoing decoration while the next image decodes; it must
+    // thaw again, or the customer cannot edit the decoration they switched to.
+    const { root } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
+    const el = root as EditorElement;
+
+    await el.setActiveView('back');
+    const id = await el.addText('editable');
+    // A freshly added object is active/selectable → the canvas is interactive again.
+    const objects = await el.getObjects();
+    expect(objects.some(o => o.id === id)).toBe(true);
   });
 
   // --- Per-decoration validation ---
@@ -768,6 +814,12 @@ describe('wtp-editor browser', () => {
     expect(thumbs[1].src.startsWith('data:image/png')).toBe(true);
     expect(thumbs[1].src).not.toBe(WIDE_PNG);
   });
+
+  // Note: the article-key guard that stops a late preload thumbnail from leaking into a
+  // switched-away article's strip cannot be pinned deterministically here — with a fast
+  // data URL the thumbnail resolves before the switch, and the real leak needs a slow
+  // network image. Its decision is unit-tested as a pure function in
+  // src/utils/view-preview.spec.ts (shouldApplyPreloadedThumbnail).
 
   it('does not replace a design preview with the bare product shot', async () => {
     const views: ArticleView[] = [

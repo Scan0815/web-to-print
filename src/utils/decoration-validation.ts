@@ -199,23 +199,27 @@ function validatePhysicalSize(
   const mmPerPxX = impWidthMm / (frame.halfW * 2);
   const mmPerPxY = impHeightMm / (frame.halfH * 2);
 
-  // Report the worst offender rather than one finding per object — the customer fixes
-  // the oversized element, then re-validates.
-  let widthMm = 0;
-  let heightMm = 0;
+  // Report the single worst offender — the customer shrinks that element, then
+  // re-validates. Taking a per-axis maximum across objects would report a width and
+  // height belonging to two different logos, describing no element actually on the canvas.
+  let worst: { widthMm: number; heightMm: number; overshoot: number } | null = null;
   for (const size of sizes) {
     const projected = projectOntoFrame(size, frame);
-    widthMm = Math.max(widthMm, projected.halfW * 2 * mmPerPxX);
-    heightMm = Math.max(heightMm, projected.halfH * 2 * mmPerPxY);
+    const widthMm = projected.halfW * 2 * mmPerPxX;
+    const heightMm = projected.halfH * 2 * mmPerPxY;
+    const overshoot = Math.max(widthMm - impWidthMm, heightMm - impHeightMm);
+    if (overshoot > SIZE_TOLERANCE_MM && (worst === null || overshoot > worst.overshoot)) {
+      worst = { widthMm, heightMm, overshoot };
+    }
   }
 
-  if (widthMm <= impWidthMm + SIZE_TOLERANCE_MM && heightMm <= impHeightMm + SIZE_TOLERANCE_MM) return [];
+  if (worst === null) return [];
 
   return [
     {
       code: 'sizeOverflow',
       severity: 'warning',
-      message: labels.sizeOverflow(view.label, round1(widthMm), round1(heightMm), impWidthMm, impHeightMm),
+      message: labels.sizeOverflow(view.label, round1(worst.widthMm), round1(worst.heightMm), impWidthMm, impHeightMm),
     },
   ];
 }

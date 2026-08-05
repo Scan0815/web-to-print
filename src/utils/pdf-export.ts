@@ -50,6 +50,21 @@ export function dataUrlToImageFormat(dataUrl: string): 'PNG' | 'JPEG' {
   return 'PNG';
 }
 
+/**
+ * Whether jsPDF can embed this data URL as an image once SVG is rasterized. It accepts
+ * PNG and JPEG directly, and SVG is rasterized downstream. Anything else — a PDF or AI
+ * original kept for the print shop, or an octet-stream .ai — is not a browser-decodable
+ * image, so the source page must fall back to the logo's canvas raster instead.
+ */
+export function isEmbeddableSourceImage(dataUrl: string): boolean {
+  return (
+    dataUrl.startsWith('data:image/png') ||
+    dataUrl.startsWith('data:image/jpeg') ||
+    dataUrl.startsWith('data:image/jpg') ||
+    isSvgDataUrl(dataUrl)
+  );
+}
+
 /** Returns true if the data URL is an SVG (which jsPDF cannot embed directly). */
 export function isSvgDataUrl(dataUrl: string): boolean {
   return dataUrl.startsWith('data:image/svg+xml');
@@ -220,9 +235,12 @@ export interface DecorationMockup {
 
 /** A distinct logo file, plus the decorations it is used on. */
 export interface LogoSourcePage {
-  /** Deduplication key — the source data URL. */
+  /** Deduplication key and note discriminant — the original source data URL. */
   key: string;
+  /** The image actually embedded on the page — browser-decodable (see isEmbeddableSourceImage). */
   dataUrl: string;
+  /** True when `dataUrl` is the canvas raster standing in for a non-image original (PDF/AI). */
+  rasterizedFromOriginal?: boolean;
   fileName?: string;
   mimeType?: string;
   fileSize?: number;
@@ -256,10 +274,15 @@ export function collectLogoSources(decorations: DecorationState[], metadataByKey
         continue;
       }
 
+      // The page image must be browser-decodable. A PDF/AI original is not, so embed the
+      // logo's canvas raster (the rasterized page-1 PNG) instead of the raw file, which
+      // jsPDF would reject as an invalid PNG and fail the whole export.
+      const embeddable = isEmbeddableSourceImage(key);
       viewIdsPerPage.set(key, new Set([decoration.viewId]));
       pages.set(key, {
         key,
-        dataUrl: key,
+        dataUrl: embeddable ? key : logo.dataUrl,
+        ...(embeddable ? {} : { rasterizedFromOriginal: true }),
         ...(metadataByKey?.[key] !== undefined ? { metadata: metadataByKey[key] } : {}),
         ...(logo.source?.fileName !== undefined ? { fileName: logo.source.fileName } : {}),
         ...(logo.source?.mimeType !== undefined ? { mimeType: logo.source.mimeType } : {}),
@@ -335,8 +358,10 @@ function renderLogoSourcePage(
     rows.push(['DPI', meta.dpiX !== null ? `${meta.dpiX} x ${meta.dpiY ?? meta.dpiX}` : 'Not available']);
     rows.push(['Transparency', meta.hasTransparency ? 'Yes' : 'No']);
   }
-  if (isSvgDataUrl(source.dataUrl)) {
+  if (isSvgDataUrl(source.key)) {
     rows.push(['Note', 'Source is SVG; rasterized here. Request the vector file from the customer.']);
+  } else if (source.rasterizedFromOriginal === true) {
+    rows.push(['Note', 'Source is a print file (e.g. PDF/AI); a rasterized preview is shown here. The original travels with the order — the print shop extracts the artwork from it.']);
   }
 
   // Anchored to the reserved box, not the fitted image, so the table sits in the same
