@@ -430,15 +430,20 @@
         });
 
       // --- Logo upload/selection handler ---
-      uploader.addEventListener('wtpLogoSelected', (e) => {
+      // Both uploaders feed the same "chosen logo": whichever logo is selected last —
+      // on the start page or inside the editor — is what the catalog previews and what
+      // the next product opens with.
+      function adoptLogo(e) {
         currentLogo = e.detail;
         if (articles.length > 0) showProducts();
-      });
+      }
+      uploader.addEventListener('wtpLogoSelected', adoptLogo);
 
       // --- Additional logos, uploaded from inside the editor ---
-      // They land on the decoration currently being edited; "Apply to all" in the
-      // editor toolbar extends a selected logo to the remaining decorations.
+      // A fresh upload lands on the decoration currently being edited; "Apply to all"
+      // in the editor toolbar extends a selected logo to the remaining decorations.
       const editorUploader = document.getElementById('editor-uploader');
+      editorUploader.addEventListener('wtpLogoSelected', adoptLogo);
       editorUploader.addEventListener('wtpLogoValidated', (e) => {
         editorEl.addLogo(e.detail);
       });
@@ -606,8 +611,16 @@
         editorEl.articleId = article.id;
         editorEl.views = article.views;
 
-        if (editorStates[article.id]) {
-          await editorEl.loadState(editorStates[article.id]);
+        const saved = editorStates[article.id];
+        if (saved) {
+          await editorEl.loadState(saved);
+          // The saved state wins over initialLogo by design — but when it holds no
+          // design at all (the product was merely opened and closed before the logo
+          // was chosen), the customer expects the chosen logo, not the stale blank.
+          const hasDesign = saved.decorations.some(d => d.status === 'designed');
+          if (!hasDesign && currentLogo) {
+            await editorEl.addLogo(currentLogo);
+          }
         }
       }
 
