@@ -334,7 +334,7 @@
 
     <div class="filebase-note" id="filebase-note" style="display:none;">
       <div class="inner">
-        <span>Kein Fileserver konfiguriert &mdash; Produktbilder werden als generierte Platzhalter angezeigt. Basis-URL des Shop-Fileservers:</span>
+        <span>Produktbilder konnten nicht vom Bildserver geladen werden &mdash; es werden generierte Platzhalter angezeigt. Basis-URL &uuml;berschreiben:</span>
         <input id="filebase-input" type="url" placeholder="https://files.mein-shop.de" />
         <button id="filebase-save">Speichern &amp; neu laden</button>
       </div>
@@ -425,23 +425,30 @@
       // ==========================================================================
 
       // --- File server -----------------------------------------------------------
-      // The payload references shop-relative paths (/images/…, print-areas/…). Without
-      // a configured file server the page generates placeholder mockups in the variant
-      // colour, so the whole flow stays playable offline.
-      const FILE_BASE = (localStorage.getItem('wtpFileBase') || '').replace(/\/+$/, '');
+      // The payload references shop-relative paths (/images/…, print-areas/…). They are
+      // served by the connect-shop picture server under the shop's id — the same
+      // FILE_SERVER + shopId + path scheme the shop client's buildPreviewUrl uses. The
+      // server answers with Access-Control-Allow-Origin: *, so the editor loads the
+      // mockups with CORS intact and exports keep working. A localStorage override
+      // (wtpFileBase) stays available for pointing at another environment; generated
+      // placeholders remain the per-image fallback.
+      const CONNECT_PIC_SERVER = 'https://pic.connect-shop.net/file/shop-';
+      let fileBase = (localStorage.getItem('wtpFileBase') || '').replace(/\/+$/, '');
 
-      const filebaseNote = document.getElementById('filebase-note');
-      if (!FILE_BASE) filebaseNote.style.display = 'block';
-      document.getElementById('filebase-input').value = FILE_BASE;
+      document.getElementById('filebase-input').value = fileBase;
       document.getElementById('filebase-save').addEventListener('click', () => {
         localStorage.setItem('wtpFileBase', document.getElementById('filebase-input').value.trim());
         location.reload();
       });
 
+      /** Shown only when the picture server does not answer for this article's images. */
+      function showFilebaseNote() {
+        document.getElementById('filebase-note').style.display = 'block';
+      }
+
       function assetUrl(path, placeholder) {
-        if (!path) return placeholder;
-        if (!FILE_BASE) return placeholder;
-        return FILE_BASE + '/' + String(path).replace(/^\/+/, '');
+        if (!path || !fileBase) return placeholder;
+        return fileBase + '/' + String(path).replace(/^\/+/, '');
       }
 
       // --- Placeholder artwork ---------------------------------------------------
@@ -594,7 +601,7 @@
           .map((p, i) => assetUrl(p, productPlaceholder(currentVariant, i)));
 
         main.src = images[0];
-        main.onerror = () => { main.src = productPlaceholder(currentVariant, 0); };
+        main.onerror = () => { main.src = productPlaceholder(currentVariant, 0); showFilebaseNote(); };
         thumbs.innerHTML = '';
         images.forEach((src, i) => {
           const b = document.createElement('button');
@@ -816,6 +823,9 @@
         .then(r => r.json())
         .then(data => {
           article = data;
+          // The shop id in the payload names the tenant on the picture server.
+          if (!fileBase && article.shopId) fileBase = CONNECT_PIC_SERVER + article.shopId;
+          if (!fileBase) showFilebaseNote();
           variants = Object.entries(article.options || {}).map(([extId, arr]) => ({ extId: Number(extId), ...arr[0] }));
           currentVariant = variants[0];
           renderStatic();
