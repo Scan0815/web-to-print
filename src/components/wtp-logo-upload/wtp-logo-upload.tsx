@@ -306,9 +306,15 @@ export class WtpLogoUpload {
 
   private handleInputChange = (e: Event) => {
     const input = e.target as HTMLInputElement;
-    if (input.files !== null) {
-      this.processFiles(input.files);
-    }
+    if (input.files === null) return;
+
+    // Copy the selection out, then clear the input: a file input only fires `change`
+    // when its value differs from the last one, so without this, picking the same file
+    // twice in a row — the same logo for a second decoration — silently does nothing.
+    // The copy matters, because clearing `value` also empties the live FileList.
+    const files = Array.from(input.files);
+    input.value = '';
+    void this.processFiles(files);
   };
 
   private handleClick = () => {

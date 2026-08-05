@@ -292,6 +292,33 @@ describe('wtp-logo-upload browser', () => {
     expect([...new Set(idsOf())]).toEqual([before[1]]);
   });
 
+  it('accepts the same file picked twice in a row', async () => {
+    // A file input fires `change` only when its value differs from the last pick. The
+    // component must clear it after processing, or uploading the same logo again — for
+    // a second decoration — silently does nothing.
+    const { root, spyOnEvent, waitForChanges } = await render(<wtp-logo-upload></wtp-logo-upload>);
+    const validated = spyOnEvent('wtpLogoValidated');
+    const input = root.shadowRoot?.querySelector('input[type="file"]') as HTMLInputElement;
+
+    const pick = () => {
+      const dt = new DataTransfer();
+      dt.items.add(new File([VALID_SVG], 'same.svg', { type: 'image/svg+xml' }));
+      input.files = dt.files;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+
+    pick();
+    await waitForChanges();
+    await new Promise(r => setTimeout(r, 400));
+    // The precondition for the second `change` ever firing in a real browser.
+    expect(input.value).toBe('');
+
+    pick();
+    await waitForChanges();
+    await new Promise(r => setTimeout(r, 400));
+    expect(validated.events.length).toBe(2);
+  });
+
   it('SVG emits wtpLogoValidated immediately even with enable-background-removal', async () => {
     const { root, spyOnEvent, waitForChanges } = await render(<wtp-logo-upload enable-background-removal></wtp-logo-upload>);
     const validatedSpy = spyOnEvent('wtpLogoValidated');

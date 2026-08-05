@@ -195,7 +195,7 @@
         background: #fff;
         border-radius: 16px;
         box-shadow: 0 24px 64px rgba(0,0,0,0.2);
-        max-width: 920px;
+        max-width: 1240px;
         width: 100%;
         max-height: 90vh;
         overflow: hidden;
@@ -263,9 +263,42 @@
 
       .editor-body {
         overflow: auto;
+        display: flex;
+        align-items: flex-start;
+      }
+
+      .editor-main {
+        flex: 1;
+        min-width: 0;
         padding: 16px 20px;
         display: flex;
         justify-content: center;
+      }
+
+      .editor-sidebar {
+        width: 280px;
+        flex-shrink: 0;
+        padding: 16px 20px;
+        border-left: 1px solid #e2e8f0;
+        align-self: stretch;
+      }
+      .editor-sidebar h4 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+      .editor-sidebar .sidebar-hint { font-size: 12px; color: #64748b; margin-bottom: 12px; line-height: 1.5; }
+
+      .optional-badge {
+        font-size: 11px;
+        font-weight: 500;
+        color: #64748b;
+        background: #f1f5f9;
+        border-radius: 999px;
+        padding: 2px 8px;
+        vertical-align: middle;
+        margin-left: 6px;
+      }
+
+      @media (max-width: 1100px) {
+        .editor-body { flex-direction: column; align-items: stretch; }
+        .editor-sidebar { width: auto; border-left: none; border-top: 1px solid #e2e8f0; }
       }
     </style>
   </head>
@@ -273,30 +306,25 @@
 
     <div class="header">
       <h1>Web-to-Print Configurator</h1>
-      <p>Upload your logo and preview it on promotional products. Click a product to customize.</p>
+      <p>Pick a product to start customizing — or upload your logo first to preview it on every product.</p>
       <p style="margin-top:4px;"><a href="/tool-print-area.html" style="color:#2563eb;font-size:13px;text-decoration:none;">Define print areas &rarr;</a></p>
     </div>
 
     <div class="container">
 
-      <!-- Step 1: Logo Upload -->
+      <!-- Optional: upload a logo up front to preview it on every product -->
       <div class="upload-section">
-        <h2>Your Logo</h2>
-        <p class="hint">Upload a print-ready logo (min 300 DPI for raster, SVG preferred). It will be placed on all products below.</p>
+        <h2>Your Logo <span class="optional-badge">optional</span></h2>
+        <p class="hint">Upload a print-ready logo (min 300 DPI for raster, SVG preferred) to preview it on all products below. You can also upload logos later, inside the editor.</p>
         <wtp-logo-upload id="uploader" enable-background-removal allow-url-upload></wtp-logo-upload>
       </div>
 
-      <!-- Step 2: Product catalog with auto-rendered logos -->
+      <!-- Product catalog from the demo articles.json -->
       <div class="products-section">
         <h2>Products</h2>
 
         <div id="products-empty" class="products-empty">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="17 8 12 3 7 8"/>
-            <line x1="12" y1="3" x2="12" y2="15"/>
-          </svg>
-          <p>Upload a logo above to see it on products</p>
+          <p>Loading products&hellip;</p>
         </div>
 
         <div id="products-grid" class="products-grid" style="display:none;"></div>
@@ -321,7 +349,14 @@
         </div>
         <div id="editor-imprint" class="editor-imprint" style="display:none;"></div>
         <div class="editor-body">
-          <wtp-editor id="editor" width="860" height="540" debug></wtp-editor>
+          <div class="editor-main">
+            <wtp-editor id="editor" width="860" height="540" debug></wtp-editor>
+          </div>
+          <div class="editor-sidebar">
+            <h4>Add a logo</h4>
+            <p class="sidebar-hint">Placed on the decoration you are editing. Use &ldquo;Apply to all&rdquo; in the toolbar to extend it to the other decorations.</p>
+            <wtp-logo-upload id="editor-uploader" enable-background-removal></wtp-logo-upload>
+          </div>
         </div>
       </div>
     </div>
@@ -385,15 +420,27 @@
       }
 
       // --- Load articles catalog ---
+      // The catalog is browsable right away — uploading a logo up front is optional.
       fetch('/demo-article/articles.json')
         .then(r => r.json())
         .then(data => normalizeArticles(data))
-        .then(data => { articles = data; });
+        .then(data => {
+          articles = data;
+          showProducts();
+        });
 
       // --- Logo upload/selection handler ---
       uploader.addEventListener('wtpLogoSelected', (e) => {
         currentLogo = e.detail;
-        showProducts();
+        if (articles.length > 0) showProducts();
+      });
+
+      // --- Additional logos, uploaded from inside the editor ---
+      // They land on the decoration currently being edited; "Apply to all" in the
+      // editor toolbar extends a selected logo to the remaining decorations.
+      const editorUploader = document.getElementById('editor-uploader');
+      editorUploader.addEventListener('wtpLogoValidated', (e) => {
+        editorEl.addLogo(e.detail);
       });
 
       // --- Imprint info helpers ---
