@@ -1267,6 +1267,19 @@ export class WtpEditor {
   };
 
   /** Horizontal strip of decoration thumbnails, showing which ones already carry a design. */
+  /**
+   * Hover/focus hint for a decoration thumbnail: the print method and area, which the
+   * label under the thumbnail does not show. Returns null when the view carries neither,
+   * so the tooltip is not an empty box.
+   */
+  private viewTooltip(view: ArticleView): string | null {
+    const parts: string[] = [];
+    if (view.impMethod !== undefined) parts.push(view.impMethod);
+    if (view.impDiameterMm !== undefined && view.impDiameterMm > 0) parts.push(`⌀ ${view.impDiameterMm} mm`);
+    else if (view.impWidthMm !== undefined && view.impHeightMm !== undefined) parts.push(`${view.impWidthMm} × ${view.impHeightMm} mm`);
+    return parts.length > 0 ? parts.join(' · ') : null;
+  }
+
   private renderViewStrip() {
     const views = this.getViews();
     if (!this.showViewStrip || views.length < 2) return null;
@@ -1280,6 +1293,7 @@ export class WtpEditor {
           const state = view.id === this.currentViewId ? undefined : this.viewStates.get(view.id);
           const designed = isActive ? this.objectMap.size > 0 : state !== undefined && (state.logos.length > 0 || state.texts.length > 0);
           const preview = this.viewPreviews[view.id];
+          const tooltip = this.viewTooltip(view);
 
           return (
             <button
@@ -1287,7 +1301,7 @@ export class WtpEditor {
               class={{ 'view-thumb': true, active: isActive, designed }}
               role="tab"
               aria-selected={isActive ? 'true' : 'false'}
-              title={view.impMethod !== undefined ? `${view.label} — ${view.impMethod}` : view.label}
+              aria-label={tooltip !== null ? `${view.label} — ${tooltip}` : view.label}
               data-view-id={view.id}
               onClick={this.handleViewSelect}
             >
@@ -1302,6 +1316,11 @@ export class WtpEditor {
                 )}
               </span>
               <span class="view-thumb-label">{view.label}</span>
+              {tooltip !== null && (
+                <span class="view-thumb-tooltip" role="tooltip">
+                  {view.label} <span class="view-thumb-tooltip-meta">{tooltip}</span>
+                </span>
+              )}
             </button>
           );
         })}

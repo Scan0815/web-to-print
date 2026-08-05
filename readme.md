@@ -182,7 +182,7 @@ Interactive canvas editor with a built-in toolbar for adding text, changing font
 | `views` | — | `ArticleView[]` | `[]` | The article's decoration options (Veredelungen). Every view needs a stable `id` |
 | `articleId` | `article-id` | `string` | `''` | Written into the exported envelope |
 | `activeViewId` | `active-view-id` | `string \| undefined` | `undefined` | Decoration currently edited. Defaults to the `isDefault` view, else the first |
-| `showViewStrip` | `show-view-strip` | `boolean` | `true` | Built-in decoration strip (hidden for a single decoration) |
+| `showViewStrip` | `show-view-strip` | `boolean` | `true` | Built-in decoration strip (hidden for a single decoration). Each thumbnail shows a hover/focus tooltip with the decoration's print method and area |
 | `initialLogo` | — | `LogoData \| undefined` | `undefined` | Logo picked in the catalog, placed once into the decoration the editor opens on — and nowhere else. Ignored when `initialState` is set |
 | `productImage` | `product-image` | `string \| undefined` | `undefined` | **Deprecated** — single-decoration fallback, used only when `views` is empty |
 | `initialState` | `initial-state` | `string \| undefined` | `undefined` | JSON-serialized initial editor state |

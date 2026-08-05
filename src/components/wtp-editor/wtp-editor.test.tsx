@@ -452,6 +452,26 @@ describe('wtp-editor browser', () => {
     expect(root.querySelector('.view-strip')).toBeNull();
   });
 
+  it('gives each thumbnail a tooltip with the print method and area', async () => {
+    const views: ArticleView[] = [
+      { id: 'front', image: '', label: 'Front', printArea: null, impMethod: 'Siebdruck', impWidthMm: 100, impHeightMm: 80 },
+      { id: 'back', image: '', label: 'Back', printArea: null, impMethod: 'Stick', impDiameterMm: 40 },
+      { id: 'plain', image: '', label: 'Plain', printArea: null },
+    ];
+    const { root } = await mount(<wtp-editor views={views}></wtp-editor>);
+    const thumbs = Array.from(root.querySelectorAll('.view-thumb'));
+
+    const front = thumbs[0].querySelector('.view-thumb-tooltip');
+    expect(front?.textContent).toContain('Siebdruck');
+    expect(front?.textContent).toContain('100 × 80 mm');
+    // Round areas read as a diameter.
+    expect(thumbs[1].querySelector('.view-thumb-tooltip')?.textContent).toContain('⌀ 40 mm');
+    expect(thumbs[0].getAttribute('aria-label')).toBe('Front — Siebdruck · 100 × 80 mm');
+    // No method or size → no tooltip box, and the aria-label falls back to the label.
+    expect(thumbs[2].querySelector('.view-thumb-tooltip')).toBeNull();
+    expect(thumbs[2].getAttribute('aria-label')).toBe('Plain');
+  });
+
   it('hides the strip when showViewStrip is off', async () => {
     const { root, setProps, waitForChanges } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
 
