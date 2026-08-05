@@ -59,7 +59,13 @@ export class WtpEditor {
   @Prop() views: ArticleView[] = [];
   /** Article id written into the exported envelope. */
   @Prop() articleId: string = '';
-  /** Id of the decoration currently being edited. Defaults to the `isDefault` view, else the first. */
+  /**
+   * Id of the decoration currently being edited. Two-way: set it to switch, read it (as a
+   * DOM **property**, not the attribute) to learn what is shown — the editor writes the
+   * resolved view back once real `views` exist, including the initial one. Defaults to the
+   * `isDefault` view, else the first. An id that is not in `views` is replaced with that
+   * default rather than kept.
+   */
   @Prop({ mutable: true }) activeViewId: string | undefined;
   /**
    * Product background image URL.
@@ -146,6 +152,13 @@ export class WtpEditor {
     const views = this.getViews();
     this.assertValidViews(views);
     this.currentViewId = this.resolveInitialViewId(views);
+    // Reflect the resolved view so `activeViewId` is a trustworthy output from the first
+    // render — for views present at mount (declarative `<wtp-editor views=…>`, or a
+    // property assigned before the lazy component hydrated). `@Watch('views')` does not
+    // fire for those, so without this the prop stayed undefined until the first switch.
+    // Guarded like `onViewsChange`: never write from the empty single-decoration
+    // placeholder, or a host mid-assignment would see its requested view clobbered.
+    if (this.views.length > 0) this.activeViewId = this.currentViewId;
     this.loadedArticleKey = this.buildArticleKey(views);
   }
 

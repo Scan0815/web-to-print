@@ -452,6 +452,25 @@ describe('wtp-editor browser', () => {
     expect(root.querySelector('.view-strip')).toBeNull();
   });
 
+  it('reflects the resolved view in activeViewId when mounted with views', async () => {
+    // Declarative mount: `@Watch('views')` does not fire, so this is the path that left
+    // activeViewId undefined until the first switch. A host must be able to read it now.
+    const { root } = await mount(<wtp-editor views={VIEWS}></wtp-editor>);
+    expect((root as EditorElement).activeViewId).toBe('front');
+  });
+
+  it('keeps a host-provided activeViewId when mounted with it', async () => {
+    // The clobbering direction: the mirror must write back the same value the host asked
+    // for, not the default.
+    const { root } = await mount(<wtp-editor views={VIEWS} active-view-id="back"></wtp-editor>);
+    const el = root as EditorElement;
+    expect(el.activeViewId).toBe('back');
+    await el.addText('on back');
+    const envelope = await el.exportState();
+    expect(envelope.decorations.find(d => d.viewId === 'back')?.status).toBe('designed');
+    expect(envelope.decorations.find(d => d.viewId === 'front')?.status).toBe('empty');
+  });
+
   it('gives each thumbnail a tooltip with the print method and area', async () => {
     const views: ArticleView[] = [
       { id: 'front', image: '', label: 'Front', printArea: null, impMethod: 'Siebdruck', impWidthMm: 100, impHeightMm: 80 },

@@ -504,10 +504,6 @@
       let currentVariant = null;
       const ordered = new Set();       // printCodeSKUs the customer wants to order
       let lastEnvelope = null;         // latest ArticleEditorState from the editor
-      // Tracked from wtpEditorViewChanged, seeded per variant. The editor's activeViewId
-      // prop is only written on an actual switch, so it stays undefined while the default
-      // decoration is shown — this is the reliable source of "which view is active".
-      let activeViewId = null;
 
       const editorEl = document.getElementById('editor');
 
@@ -637,7 +633,7 @@
           const designed = !!state && state.status === 'designed';
           const opt = decorationOption(view.id);
           const name = optionName(view.id, view.impMethod);
-          const active = activeViewId === view.id;
+          const active = editorEl.activeViewId === view.id;
 
           const row = document.createElement('div');
           row.className = 'deco-row' + (designed ? ' designed' : '') + (active ? ' active-view' : '');
@@ -708,12 +704,7 @@
         const previous = currentVariant;
         currentVariant = variant;
 
-        // Seed the active view: the editor opens on the first decoration and fires no
-        // view-changed event for that initial state.
         const views = mapViews(variant);
-        if (activeViewId === null || !views.some(v => v.id === activeViewId)) {
-          activeViewId = views.length > 0 ? views[0].id : null;
-        }
 
         if (previous && lastEnvelope) {
           const env = await editorEl.exportState();
@@ -751,10 +742,11 @@
         renderDecorations();
         renderTotal();
       });
-      editorEl.addEventListener('wtpEditorViewChanged', e => {
-        activeViewId = e.detail.viewId;
-        renderDecorations();
-      });
+      editorEl.addEventListener('wtpEditorViewChanged', () => renderDecorations());
+      // On first load the decoration list renders before the lazy editor has hydrated, so
+      // its active-view highlight reads an undefined activeViewId. Re-render once the
+      // editor is ready and the resolved view is on the prop.
+      editorEl.addEventListener('wtpEditorReady', () => renderDecorations());
 
       // A fresh upload emits wtpLogoValidated and wtpLogoSelected; a gallery click emits
       // only wtpLogoSelected — including on the logo that is already selected. Listening

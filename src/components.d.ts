@@ -16,7 +16,7 @@ export { RenderLayer } from "./utils/html-render-helpers";
 export namespace Components {
     interface WtpEditor {
         /**
-          * Id of the decoration currently being edited. Defaults to the `isDefault` view, else the first.
+          * Id of the decoration currently being edited. Two-way: set it to switch, read it (as a DOM **property**, not the attribute) to learn what is shown — the editor writes the resolved view back once real `views` exist, including the initial one. Defaults to the `isDefault` view, else the first. An id that is not in `views` is replaced with that default rather than kept.
          */
         "activeViewId": string | undefined;
         /**
@@ -352,7 +352,7 @@ declare global {
 declare namespace LocalJSX {
     interface WtpEditor {
         /**
-          * Id of the decoration currently being edited. Defaults to the `isDefault` view, else the first.
+          * Id of the decoration currently being edited. Two-way: set it to switch, read it (as a DOM **property**, not the attribute) to learn what is shown — the editor writes the resolved view back once real `views` exist, including the initial one. Defaults to the `isDefault` view, else the first. An id that is not in `views` is replaced with that default rather than kept.
          */
         "activeViewId"?: string | undefined;
         /**
