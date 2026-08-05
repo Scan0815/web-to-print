@@ -534,9 +534,12 @@ Trigger the **Release** workflow from the Actions tab with a bump (`patch`/`mino
 
 ### Prerequisites
 
-1. **`NPM_TOKEN`** secret on the repo (Settings → Secrets and variables → Actions). Create an [automation token](https://docs.npmjs.com/creating-and-viewing-access-tokens) on npmjs.com that allows publish.
-2. The package name in `package.json` must be available on npm (or use a scoped name like `@your-org/web-to-print`). Provenance requires the workflow to run on a public repo, so make sure the repo is public when publishing.
-3. The workflow skips publish if the same `name@version` already exists on npm — no need to manually guard against accidental re-runs.
+1. **[Trusted publishing](https://docs.npmjs.com/trusted-publishers/) (OIDC) — no npm token.** On npmjs.com: package → Settings → Trusted Publisher → GitHub Actions, with the organization/user, repository, and workflow filename (`release.yml`) entered exactly (the fields are case-sensitive). The workflow authenticates through its `id-token`, so npm mints a short-lived token per run and **no `NPM_TOKEN` secret is stored anywhere** — long-lived publish tokens are exactly what npm-worm campaigns harvest. Provenance is generated automatically, so the workflow does not pass `--provenance`.
+2. Trusted publishing needs **npm CLI ≥ 11.5.1** (Node 22 still ships npm 10.x), which the workflow installs before publishing.
+3. The package name in `package.json` must be available on npm (or use a scoped name like `@your-org/web-to-print`). Provenance requires a public repo and package.
+4. The workflow skips publish if the same `name@version` already exists on npm — no need to manually guard against accidental re-runs.
+
+> A tag-triggered run checks out the code **at that tag**, not `main`. If you fix the workflow after tagging, move the tag onto the fixed commit (`git tag -f -a v<version> <commit> && git push --force origin v<version>`) — otherwise the run replays the old workflow.
 
 ## Project Structure
 
