@@ -114,43 +114,82 @@ describe('wtp-logo-upload browser', () => {
     expect(logo.metadata.width).toBeGreaterThan(0);
   });
 
-  // The fake above cannot prove that a PDF is actually parsed and drawn — this runs the
-  // pdf.js bundled with the library against a real vector PDF, with no host setup at all.
-  it('rasterizes a real vector PDF with the bundled pdf.js', async () => {
-    expect((window as unknown as Record<string, unknown>)['pdfjsLib']).toBeUndefined();
+  // The fake above cannot prove that a PDF is actually parsed and drawn — these run the
+  // pdf.js bundled with the library against real vector PDFs, with no host setup at all.
+  describe('with the bundled pdf.js', () => {
+    /** Uploads a jsPDF document and returns the logo plus a pixel reader for its raster. */
+    async function uploadPdf(doc: jsPDF): Promise<{ logo: LogoData; pixel: (x: number, y: number) => number[] }> {
+      expect((window as unknown as Record<string, unknown>)['pdfjsLib']).toBeUndefined();
+      const file = new File([doc.output('arraybuffer')], 'vector.pdf', { type: 'application/pdf' });
 
-    // A 100x100 mm page with a red square covering its centre.
-    const doc = new jsPDF({ unit: 'mm', format: [100, 100] });
-    doc.setFillColor(255, 0, 0);
-    doc.rect(25, 25, 50, 50, 'F');
-    const file = new File([doc.output('arraybuffer')], 'vector.pdf', { type: 'application/pdf' });
+      const { root, spyOnEvent, waitForChanges } = await render(<wtp-logo-upload></wtp-logo-upload>);
+      const validatedSpy = spyOnEvent('wtpLogoValidated');
+      const rejectedSpy = spyOnEvent('wtpLogoRejected');
 
-    const { root, spyOnEvent, waitForChanges } = await render(<wtp-logo-upload></wtp-logo-upload>);
-    const validatedSpy = spyOnEvent('wtpLogoValidated');
-    const rejectedSpy = spyOnEvent('wtpLogoRejected');
+      selectFile(root, file);
+      await expect.poll(() => validatedSpy.length + rejectedSpy.length, { timeout: 10000 }).toBeGreaterThan(0);
+      await waitForChanges();
 
-    selectFile(root, file);
-    await expect.poll(() => validatedSpy.length + rejectedSpy.length, { timeout: 10000 }).toBeGreaterThan(0);
-    await waitForChanges();
+      expect(rejectedSpy).not.toHaveReceivedEvent();
+      const logo = validatedSpy.lastEvent?.detail as LogoData;
 
-    expect(rejectedSpy).not.toHaveReceivedEvent();
-    const logo = validatedSpy.lastEvent?.detail as LogoData;
-    expect(logo.metadata.format).toBe('pdf');
-    expect(logo.metadata.width).toBe(2000);
-    expect(logo.metadata.height).toBe(2000);
-    expect(logo.source?.dataUrl.startsWith('data:application/pdf')).toBe(true);
+      const img = new Image();
+      img.src = logo.dataUrl;
+      await img.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+      ctx.drawImage(img, 0, 0);
 
-    const img = new Image();
-    img.src = logo.dataUrl;
-    await img.decode();
-    const canvas = document.createElement('canvas');
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-    ctx.drawImage(img, 0, 0);
+      return { logo, pixel: (x, y) => Array.from(ctx.getImageData(x, y, 1, 1).data) };
+    }
 
-    const [r, g, b, a] = ctx.getImageData(1000, 1000, 1, 1).data;
-    expect([r, g, b, a]).toEqual([255, 0, 0, 255]);
+    it('trims the page to the artwork and renders it at full resolution', async () => {
+      // A small red square on an A4 page: 20x20 mm of 210x297 mm.
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+      doc.setFillColor(255, 0, 0);
+      doc.rect(60, 100, 20, 20, 'F');
+
+      const { logo, pixel } = await uploadPdf(doc);
+
+      expect(logo.metadata.format).toBe('pdf');
+      expect(logo.source?.dataUrl.startsWith('data:application/pdf')).toBe(true);
+      // The square, not the page, fills the raster — and at far more than the ~135 px a
+      // crop of the 2000 px page render would have left.
+      expect(logo.metadata.width / logo.metadata.height).toBeCloseTo(1, 1);
+      expect(logo.metadata.width).toBeGreaterThan(1000);
+      expect(pixel(logo.metadata.width >> 1, logo.metadata.height >> 1)).toEqual([255, 0, 0, 255]);
+      expect(pixel(40, 40)).toEqual([255, 0, 0, 255]);
+      expect(pixel(logo.metadata.width - 40, logo.metadata.height - 40)).toEqual([255, 0, 0, 255]);
+    });
+
+    it('keeps the area around the artwork transparent', async () => {
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+      doc.setFillColor(255, 0, 0);
+      doc.circle(105, 148, 40, 'F');
+
+      const { logo, pixel } = await uploadPdf(doc);
+
+      expect(pixel(logo.metadata.width >> 1, logo.metadata.height >> 1)).toEqual([255, 0, 0, 255]);
+      expect(pixel(3, 3)[3]).toBe(0);
+    });
+
+    // Known limitation, pinned so it is not mistaken for working: a PDF that paints its
+    // own white page background is opaque edge to edge, so nothing is trimmed or cleared.
+    it('leaves a PDF with a painted page background untrimmed', async () => {
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+      doc.setFillColor(255, 255, 255);
+      doc.rect(0, 0, 210, 297, 'F');
+      doc.setFillColor(255, 0, 0);
+      doc.circle(105, 148, 40, 'F');
+
+      const { logo, pixel } = await uploadPdf(doc);
+
+      expect(logo.metadata.width).toBe(1414);
+      expect(logo.metadata.height).toBe(2000);
+      expect(pixel(3, 3)).toEqual([255, 255, 255, 255]);
+    });
   });
 
   it('explains an AI file saved without PDF compatibility', async () => {

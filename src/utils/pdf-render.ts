@@ -7,14 +7,16 @@
  * the first PDF/AI upload.
  */
 
+import { findOpaqueBoundingBox } from './background-removal';
+
 interface PdfPageViewport {
   width: number;
   height: number;
 }
 
 interface PdfPage {
-  getViewport(params: { scale: number }): PdfPageViewport;
-  render(params: { canvasContext: CanvasRenderingContext2D; viewport: PdfPageViewport }): { promise: Promise<void> };
+  getViewport(params: { scale: number; offsetX?: number; offsetY?: number }): PdfPageViewport;
+  render(params: { canvasContext: CanvasRenderingContext2D; viewport: PdfPageViewport; background?: string }): { promise: Promise<void> };
 }
 
 interface PdfDocument {
@@ -28,14 +30,35 @@ interface PdfJsLib {
   version?: string;
 }
 
-export interface RenderedPdfPage {
-  dataUrl: string;
+/** A region of the page as 0-1 fractions, measured from the top-left corner. */
+export interface PdfTrimBox {
+  x: number;
+  y: number;
   width: number;
   height: number;
 }
 
-/** Longest side of the rasterized page, in pixels. */
+export interface RenderedPdfPage {
+  dataUrl: string;
+  width: number;
+  height: number;
+  /** The part of the page the raster shows; the full page when nothing was trimmed. */
+  trimBox: PdfTrimBox;
+}
+
+/** Longest side of the rasterized artwork, in pixels. */
 const DEFAULT_MAX_SIZE = 2000;
+
+/** Transparent margin kept around the trimmed artwork, in measuring-pass pixels. */
+const TRIM_PADDING = 2;
+
+/** Artwork covering at least this share of both page sides is not worth a second render. */
+const TRIM_MIN_GAIN = 0.98;
+
+/** Upper bound for the zoom of the trimmed render, so a speck cannot request a huge scale. */
+const MAX_TRIM_ZOOM = 8;
+
+const FULL_PAGE: PdfTrimBox = { x: 0, y: 0, width: 1, height: 1 };
 
 /**
  * Always true since pdf.js ships with the library.
@@ -105,16 +128,49 @@ export async function renderPdfFirstPage(file: File, maxSize: number = DEFAULT_M
   const page = await document_.getPage(1);
   const baseViewport = page.getViewport({ scale: 1 });
   const scale = maxSize / Math.max(baseViewport.width, baseViewport.height);
-  const viewport = page.getViewport({ scale });
 
+  // Pass 1: the whole page, to find where the artwork sits.
+  const pageCanvas = await renderRegion(page, scale, 0, 0, Math.round(baseViewport.width * scale), Math.round(baseViewport.height * scale));
+  const fullPage: RenderedPdfPage = { dataUrl: pageCanvas.toDataURL('image/png'), width: pageCanvas.width, height: pageCanvas.height, trimBox: FULL_PAGE };
+
+  const pixels = pageCanvas.getContext('2d')?.getImageData(0, 0, pageCanvas.width, pageCanvas.height);
+  const box = pixels !== undefined ? findOpaqueBoundingBox(pixels) : null;
+  if (box === null) return fullPage;
+
+  const left = Math.max(0, box[0] - TRIM_PADDING);
+  const top = Math.max(0, box[1] - TRIM_PADDING);
+  const boxW = Math.min(pageCanvas.width, box[2] + 1 + TRIM_PADDING) - left;
+  const boxH = Math.min(pageCanvas.height, box[3] + 1 + TRIM_PADDING) - top;
+  if (boxW >= pageCanvas.width * TRIM_MIN_GAIN && boxH >= pageCanvas.height * TRIM_MIN_GAIN) return fullPage;
+
+  // Pass 2: only the artwork, zoomed so it — not the page — gets the full resolution.
+  // Cropping pass 1 instead would leave a small logo on a large page badly pixelated.
+  const zoom = Math.min(maxSize / Math.max(boxW, boxH), MAX_TRIM_ZOOM);
+  const trimmed = await renderRegion(page, scale * zoom, left * zoom, top * zoom, Math.round(boxW * zoom), Math.round(boxH * zoom));
+
+  return {
+    dataUrl: trimmed.toDataURL('image/png'),
+    width: trimmed.width,
+    height: trimmed.height,
+    trimBox: { x: left / pageCanvas.width, y: top / pageCanvas.height, width: boxW / pageCanvas.width, height: boxH / pageCanvas.height },
+  };
+}
+
+/**
+ * Draws a region of the page — given in pixels at `scale` — onto a canvas of its own.
+ * The background stays transparent: pdf.js would otherwise paint the page white, which
+ * puts a white sheet around the logo on any coloured product.
+ */
+async function renderRegion(page: PdfPage, scale: number, x: number, y: number, width: number, height: number): Promise<HTMLCanvasElement> {
   const canvas = document.createElement('canvas');
-  canvas.width = Math.round(viewport.width);
-  canvas.height = Math.round(viewport.height);
+  canvas.width = width;
+  canvas.height = height;
 
   const context = canvas.getContext('2d');
   if (context === null) throw new Error('Could not create a 2D context to rasterize the PDF.');
 
-  await page.render({ canvasContext: context, viewport }).promise;
+  const viewport = page.getViewport({ scale, offsetX: -x, offsetY: -y });
+  await page.render({ canvasContext: context, viewport, background: 'rgba(0,0,0,0)' }).promise;
 
-  return { dataUrl: canvas.toDataURL('image/png'), width: canvas.width, height: canvas.height };
+  return canvas;
 }
