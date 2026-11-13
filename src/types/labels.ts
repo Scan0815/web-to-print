@@ -20,6 +20,12 @@ export interface LogoUploadLabels {
   bgRemovalUseRemoved: string;
   bgRemovalFailed: string;
   rejectionDpiUnit: string;
+  /**
+   * Warning for a raster logo that is too small for the configured print area: the DPI
+   * it would have filling the area, the recommended DPI, and the size in millimetres up
+   * to which it stays at the recommended DPI.
+   */
+  lowPrintResolution: (dpi: number, minDpi: number, sharpWidthMm: number, sharpHeightMm: number) => string;
 }
 
 export const DEFAULT_LOGO_UPLOAD_LABELS: LogoUploadLabels = {
@@ -41,6 +47,8 @@ export const DEFAULT_LOGO_UPLOAD_LABELS: LogoUploadLabels = {
   bgRemovalUseRemoved: 'Without Background',
   bgRemovalFailed: 'Failed',
   rejectionDpiUnit: 'DPI',
+  lowPrintResolution: (dpi, minDpi, sharpWidthMm, sharpHeightMm) =>
+    `Only ${dpi} DPI when printed across the full print area (${minDpi} DPI recommended). Sharp up to ${sharpWidthMm} × ${sharpHeightMm} mm.`,
 };
 
 /**

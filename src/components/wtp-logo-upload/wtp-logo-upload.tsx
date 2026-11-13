@@ -1,7 +1,7 @@
 import { Component, h, Prop, State, Event, EventEmitter } from '@stencil/core';
 import { LogoValidationConfig, LogoData, LogoSource, LogoValidationIssue, LogoMetadata, DEFAULT_VALIDATION_CONFIG, BgRemovalConfig, LogoUploadLabels, DEFAULT_LOGO_UPLOAD_LABELS } from '../../types';
 import { renderPdfFirstPage } from '../../utils/pdf-render';
-import { validateLogo } from '../../utils/logo-validation';
+import { printResolutionHint, validateLogo } from '../../utils/logo-validation';
 import { removeBackground } from '../../utils/background-removal';
 import { generatePreviewDataUrl } from '../../utils/image-preview';
 import { trimSvgWhitespace, parseSvgDimensions, generateObjectId } from '../../utils/canvas-helpers';
@@ -86,7 +86,16 @@ export class WtpLogoUpload {
 
   private async buildLogoData(dataUrl: string, metadata: LogoMetadata, source?: LogoSource): Promise<LogoData> {
     const previewDataUrl = await generatePreviewDataUrl(dataUrl);
-    return { dataUrl, previewDataUrl, ...(source !== undefined ? { source } : {}), metadata };
+
+    // Measured on the final pixels — after a background removal the logo is cropped, and
+    // those are the pixels that end up on the product.
+    const hint = printResolutionHint(metadata, this.config.printSizeMm, this.config.minDpi);
+    const issues: LogoValidationIssue[] =
+      hint === null
+        ? []
+        : [{ code: 'LOW_PRINT_RESOLUTION', severity: 'warning', message: this.getLabels().lowPrintResolution(hint.dpi, this.config.minDpi, hint.sharpWidthMm, hint.sharpHeightMm) }];
+
+    return { dataUrl, previewDataUrl, ...(source !== undefined ? { source } : {}), metadata, ...(issues.length > 0 ? { issues } : {}) };
   }
 
   private isRasterFormat(format: string): boolean {
@@ -571,6 +580,18 @@ export class WtpLogoUpload {
               </div>
             ))}
           </div>
+        )}
+
+        {this.previews.some(preview => preview.issues !== undefined) && (
+          <ul class="preview-warnings" part="preview-warnings">
+            {this.previews.map(preview =>
+              (preview.issues ?? []).map(issue => (
+                <li class="warning">
+                  <strong>{preview.metadata.fileName}</strong>: {issue.message}
+                </li>
+              )),
+            )}
+          </ul>
         )}
       </div>
     );

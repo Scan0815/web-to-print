@@ -93,6 +93,40 @@ async function extractImageDimensions(file: File, format: LogoFormat): Promise<{
   return { width: 0, height: 0 };
 }
 
+const MM_PER_INCH = 25.4;
+
+/** What a raster logo's pixels are good for at a given print size. */
+export interface PrintResolutionHint {
+  /** DPI of the logo when it is fitted into the print area, as the editor places it. */
+  dpi: number;
+  /** Size in millimetres up to which the logo keeps `minDpi`. */
+  sharpWidthMm: number;
+  sharpHeightMm: number;
+}
+
+/**
+ * Checks whether a raster logo has enough pixels for a print area. Returns null when it
+ * has, when the logo is a vector format, or when a size is missing — and a hint otherwise.
+ *
+ * This is a forecast for a logo filling the area. The editor makes the binding check
+ * (`lowDpi`) on the size the logo is actually placed at.
+ */
+export function printResolutionHint(metadata: LogoMetadata, printSizeMm: { width: number; height: number } | undefined, minDpi: number): PrintResolutionHint | null {
+  const isRaster = metadata.format === 'png' || metadata.format === 'jpeg' || metadata.format === 'tiff' || metadata.format === 'avif';
+  if (!isRaster || printSizeMm === undefined) return null;
+  if (!(metadata.width > 0) || !(metadata.height > 0) || !(printSizeMm.width > 0) || !(printSizeMm.height > 0) || !(minDpi > 0)) return null;
+
+  // Fitted into the area, the axis with more pixels per millimetre decides the scale.
+  const dpi = Math.round(Math.max(metadata.width / printSizeMm.width, metadata.height / printSizeMm.height) * MM_PER_INCH);
+  if (dpi >= minDpi) return null;
+
+  return {
+    dpi,
+    sharpWidthMm: Math.floor((metadata.width / minDpi) * MM_PER_INCH),
+    sharpHeightMm: Math.floor((metadata.height / minDpi) * MM_PER_INCH),
+  };
+}
+
 export async function validateLogo(
   file: File,
   config: LogoValidationConfig = DEFAULT_VALIDATION_CONFIG,

@@ -1,5 +1,5 @@
-import { validateLogo } from './logo-validation';
-import { LogoValidationConfig } from '../types';
+import { printResolutionHint, validateLogo } from './logo-validation';
+import { LogoMetadata, LogoValidationConfig } from '../types';
 
 // Minimal PNG: 1x1 white pixel (no EXIF data)
 const MINIMAL_PNG_BYTES = [
@@ -98,5 +98,42 @@ describe('validateLogo', () => {
       mimeType: 'image/svg+xml',
       hasTransparency: true,
     }));
+  });
+
+  describe('printResolutionHint', () => {
+    const png = (width: number, height: number): LogoMetadata => ({ format: 'png', width, height, dpiX: null, dpiY: null, fileSize: 1, fileName: 'logo.png', mimeType: 'image/png', hasTransparency: true });
+    const AREA = { width: 45, height: 50 };
+
+    it('warns about a logo with too few pixels for the print area', () => {
+      // Fitted into 45 x 50 mm, a 240 x 120 px logo is 45 mm wide: 240 px / 45 mm = 135 DPI.
+      expect(printResolutionHint(png(240, 120), AREA, 300)).toEqual({ dpi: 135, sharpWidthMm: 20, sharpHeightMm: 10 });
+    });
+
+    it('lets the axis that limits the fit decide', () => {
+      // A tall logo is limited by the 50 mm height: 500 px / 50 mm = 254 DPI.
+      expect(printResolutionHint(png(100, 500), AREA, 300)?.dpi).toBe(254);
+    });
+
+    it('says nothing about a logo with enough pixels', () => {
+      expect(printResolutionHint(png(2400, 1200), AREA, 300)).toBeNull();
+    });
+
+    it('ignores the DPI tag of the file', () => {
+      expect(printResolutionHint({ ...png(240, 120), dpiX: 600, dpiY: 600 }, AREA, 300)?.dpi).toBe(135);
+      expect(printResolutionHint({ ...png(2400, 1200), dpiX: 72, dpiY: 72 }, AREA, 300)).toBeNull();
+    });
+
+    it('does not judge vector formats', () => {
+      expect(printResolutionHint({ ...png(240, 120), format: 'svg' }, AREA, 300)).toBeNull();
+      expect(printResolutionHint({ ...png(240, 120), format: 'pdf' }, AREA, 300)).toBeNull();
+      expect(printResolutionHint({ ...png(240, 120), format: 'ai' }, AREA, 300)).toBeNull();
+    });
+
+    it('says nothing when a size is unknown', () => {
+      expect(printResolutionHint(png(240, 120), undefined, 300)).toBeNull();
+      expect(printResolutionHint(png(0, 0), AREA, 300)).toBeNull();
+      expect(printResolutionHint(png(240, 120), { width: 0, height: 50 }, 300)).toBeNull();
+      expect(printResolutionHint(png(240, 120), AREA, 0)).toBeNull();
+    });
   });
 });

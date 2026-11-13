@@ -42,23 +42,24 @@ Logo upload with drag-and-drop, format detection and print validation.
 
 ## Shadow Parts
 
-| Part                | Description |
-| ------------------- | ----------- |
-| `"choice-card"`     |             |
-| `"choice-option"`   |             |
-| `"divider"`         |             |
-| `"pending-choices"` |             |
-| `"preview-select"`  |             |
-| `"previews"`        |             |
-| `"prompt-hint"`     |             |
-| `"prompt-text"`     |             |
-| `"rejection-item"`  |             |
-| `"rejections"`      |             |
-| `"remove-btn"`      |             |
-| `"root"`            |             |
-| `"url-error"`       |             |
-| `"url-input"`       |             |
-| `"url-submit-btn"`  |             |
+| Part                 | Description |
+| -------------------- | ----------- |
+| `"choice-card"`      |             |
+| `"choice-option"`    |             |
+| `"divider"`          |             |
+| `"pending-choices"`  |             |
+| `"preview-select"`   |             |
+| `"preview-warnings"` |             |
+| `"previews"`         |             |
+| `"prompt-hint"`      |             |
+| `"prompt-text"`      |             |
+| `"rejection-item"`   |             |
+| `"rejections"`       |             |
+| `"remove-btn"`       |             |
+| `"root"`             |             |
+| `"url-error"`        |             |
+| `"url-input"`        |             |
+| `"url-submit-btn"`   |             |
 
 
 ----------------------------------------------
