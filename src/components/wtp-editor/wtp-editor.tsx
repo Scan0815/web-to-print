@@ -36,7 +36,7 @@ import {
 import { decorationMetaOf } from '../../utils/decoration-meta';
 import { isPixelPrintArea, resolveViewPrintArea } from '../../utils/print-area';
 import { shouldApplyPreloadedThumbnail } from '../../utils/view-preview';
-import { validateDecoration, type ObjectBounds, type ObjectSize } from '../../utils/decoration-validation';
+import { isRasterLogo, validateDecoration, type ObjectBounds, type ObjectSize, type PlacedRaster } from '../../utils/decoration-validation';
 import { exportArticlePdf, selectPrintableDecorations, type PdfExportConfig } from '../../utils/pdf-export';
 
 /** Id of the implicit view used when the host supplies productImage/printArea instead of views. */
@@ -875,29 +875,41 @@ export class WtpEditor {
 
     const bounds: ObjectBounds[] = [];
     const sizes: ObjectSize[] = [];
-    for (const obj of this.objectMap.values()) {
+    const sizeById = new Map<string, ObjectSize>();
+    for (const [id, obj] of this.objectMap) {
       const rect = obj.getBoundingRect();
       bounds.push({ left: rect.left, top: rect.top, width: rect.width, height: rect.height });
       // getBoundingRect is the world-space box, which is up to 1.41x the real size once
       // the object is rotated to match a tilted print area. Both geometry checks work in
       // the area's own frame instead — the same frame the drag clamp uses.
       const center = obj.getCenterPoint();
-      sizes.push({
+      const size: ObjectSize = {
         centerX: center.x,
         centerY: center.y,
         width: (obj.width ?? 0) * (obj.scaleX ?? 1),
         height: (obj.height ?? 0) * (obj.scaleY ?? 1),
         angle: obj.angle ?? 0,
-      });
+      };
+      sizes.push(size);
+      sizeById.set(id, size);
     }
 
     const printArea = this.activePrintArea();
 
     // Only the logos actually on this decoration — the map is article-wide.
     const logoMetadata: LogoMetadata[] = [];
+    const rasters: PlacedRaster[] = [];
     for (const logo of state.logos) {
       const metadata = this.placedLogoData.get(logo.id)?.metadata;
       if (metadata !== undefined) logoMetadata.push(metadata);
+
+      // The image on the canvas is the upload at full resolution, so its intrinsic size
+      // is the pixel count the print resolution is measured from.
+      const obj = this.objectMap.get(logo.id);
+      const size = sizeById.get(logo.id);
+      if (obj !== undefined && size !== undefined && isRasterLogo(logo) && (obj.width ?? 0) > 0 && (obj.height ?? 0) > 0) {
+        rasters.push({ fileName: logo.source?.fileName ?? metadata?.fileName ?? logo.id, widthPx: obj.width ?? 0, heightPx: obj.height ?? 0, size });
+      }
     }
 
     return validateDecoration({
@@ -909,6 +921,7 @@ export class WtpEditor {
       canvasWidth: this.canvas.getWidth(),
       canvasHeight: this.canvas.getHeight(),
       logoMetadata,
+      rasters,
       productImageFailed: this.failedImages.has(this.getActiveImage()),
       labels: this.getLabels().issues,
     });

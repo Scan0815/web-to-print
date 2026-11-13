@@ -98,9 +98,13 @@ Validates uploaded files against configurable print-quality rules (format, DPI, 
   maxFileSize: 50 * 1024 * 1024, // 50 MB
   minWidth: 100,
   minHeight: 100,
-  allowedFormats: ['png', 'jpeg', 'svg', 'pdf', 'tiff', 'avif'],
+  allowedFormats: ['png', 'jpeg', 'svg', 'pdf', 'ai', 'tiff', 'avif'],
 }
 ```
+
+The upload does not reject or flag a file by its DPI tag (`DPI_TOO_LOW` and `DPI_UNKNOWN`
+are gone): the tag says nothing about print quality. `minDpi` is the resolution the editor
+checks at the printed size — see the `lowDpi` finding.
 
 #### Events
 
@@ -264,7 +268,7 @@ render your own text:
 | `sizeOverflow` | An element is physically larger than `impWidthMm × impHeightMm`. Skipped when the catalog declares no mm dimensions |
 | `colourLimit` | More text colours than `maxColours` allows. Skipped for `'full color'` |
 | `singleColourPrint` | A one-colour method with a logo placed — the colour count of an uploaded logo cannot be measured, so the customer is asked to confirm |
-| `lowDpi` | An uploaded raster logo is below 300 DPI. Only reported for logos placed in the current session; the envelope does not persist upload metadata |
+| `lowDpi` | A raster logo has less than 300 DPI at the size it is placed: its pixels divided by the inches it covers in the print area, re-checked after every resize. The DPI tag inside the file is ignored. SVG and PDF/AI logos are exempt. Needs `impWidthMm × impHeightMm`; without them it falls back to the file's DPI tag, and then only for logos uploaded in the current session |
 | `productImageUnavailable` | The decoration's product image could not be loaded. The editor stays usable on a blank canvas, so this finding is how you learn there is no mockup behind the design |
 
 ## External dependencies at runtime

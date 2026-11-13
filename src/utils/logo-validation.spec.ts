@@ -58,15 +58,12 @@ describe('validateLogo', () => {
     expect(result.issues.some(i => i.code === 'FILE_TOO_LARGE')).toBe(true);
   });
 
-  it('warns about unknown DPI for raster images', async () => {
-    const file = createMockPng();
-    // In JSDOM, Image doesn't load blobs, so dimensions will be 0
-    const result = await validateLogo(file, testConfig);
+  it('does not judge a raster image by its DPI tag', async () => {
+    // The tag says nothing about print quality; the editor checks the resolution at the
+    // printed size instead. A file without a tag, or with a low one, must not be flagged.
+    const result = await validateLogo(createMockPng(), testConfig);
     expect(result.metadata.format).toBe('png');
-    expect(result.issues.some(i => i.code === 'DPI_UNKNOWN')).toBe(true);
-    // DPI_UNKNOWN is a warning, so the file is still valid if no other errors
-    const dpiIssue = result.issues.find(i => i.code === 'DPI_UNKNOWN');
-    expect(dpiIssue?.severity).toBe('warning');
+    expect(result.issues.map(i => i.code).filter(code => code.startsWith('DPI_'))).toEqual([]);
   });
 
   it('rejects SVG with invalid content', async () => {

@@ -1,4 +1,4 @@
-import type { ArticleView, EditorState, PrintArea } from '../types/editor';
+import type { ArticleView, EditorState, PlacedLogo, PrintArea } from '../types/editor';
 import { DEFAULT_VALIDATION_CONFIG, type LogoMetadata, type LogoValidationIssue } from '../types/logo';
 import { DEFAULT_DECORATION_ISSUE_LABELS, type DecorationIssueLabels } from '../types/labels';
 import { printAreaFrame, printAreaToPixelCorners, projectOntoFrame, toFrameLocal, type PrintAreaFrame } from './canvas-helpers';
@@ -26,6 +26,26 @@ export interface ObjectSize {
   angle: number;
 }
 
+/** A raster logo as it sits on the canvas: its own pixels and the size it is placed at. */
+export interface PlacedRaster {
+  fileName: string;
+  /** Intrinsic pixel size of the image on the canvas. */
+  widthPx: number;
+  heightPx: number;
+  size: ObjectSize;
+}
+
+/**
+ * Whether a placed logo is pixel data. SVG and print files (PDF/AI) scale losslessly, so
+ * a resolution check on their canvas raster would warn about something that is not printed.
+ * Decided from the persisted logo alone, so it also holds for a restored state.
+ */
+export function isRasterLogo(logo: PlacedLogo): boolean {
+  const original = logo.source?.dataUrl ?? logo.dataUrl;
+  if (original.startsWith('data:image/svg+xml')) return false;
+  return !original.startsWith('data:') || original.startsWith('data:image/');
+}
+
 /**
  * The decoration's print area, or why there is none to check against.
  *
@@ -51,7 +71,15 @@ export interface DecorationValidationInput {
   printArea: PrintAreaInput;
   canvasWidth: number;
   canvasHeight: number;
-  /** Upload metadata of the logos placed on this decoration, for the DPI check. */
+  /**
+   * The raster logos on the canvas, for the resolution check at print size. Only used
+   * when the view declares `impWidthMm` and `impHeightMm`.
+   */
+  rasters?: PlacedRaster[];
+  /**
+   * Upload metadata of the logos placed on this decoration. Only the fallback for the
+   * resolution check on views without declared print dimensions.
+   */
   logoMetadata?: LogoMetadata[];
   /** Recommended print resolution; defaults to the shared validation config. */
   minDpi?: number;
@@ -128,7 +156,15 @@ export function validateDecoration(input: DecorationValidationInput): LogoValida
   }
 
   issues.push(...validateColours(view, state, labels));
-  issues.push(...validateResolution(view, input.logoMetadata ?? [], input.minDpi ?? DEFAULT_VALIDATION_CONFIG.minDpi, labels));
+
+  // With declared print dimensions the resolution is measured at print size, which needs
+  // the print area. Without them only the DPI tag of the file is left to go by.
+  const minDpi = input.minDpi ?? DEFAULT_VALIDATION_CONFIG.minDpi;
+  if (view.impWidthMm === undefined || view.impHeightMm === undefined) {
+    issues.push(...validateTaggedResolution(view, input.logoMetadata ?? [], minDpi, labels));
+  } else if (!pending) {
+    issues.push(...validatePrintResolution(view, input.rasters ?? [], printArea, canvasWidth, canvasHeight, minDpi, labels));
+  }
 
   return issues;
 }
@@ -228,12 +264,59 @@ function round1(value: number): number {
   return Math.round(value * 10) / 10;
 }
 
+const MM_PER_INCH = 25.4;
+
 /**
- * Surfaces the upload DPI per decoration. The upload component already reports this at
- * pick time, but the envelope is what the shop persists — a finding that only ever lived
- * in the upload UI is lost by the time anyone looks at the order.
+ * Resolution of each raster logo at the size it will be printed: its pixels divided by
+ * the inches it covers. The DPI tag inside the file says nothing about that — a 200 px
+ * logo tagged 300 DPI is still blurry at 50 mm, and a 4000 px one tagged 72 is fine.
  */
-function validateResolution(view: ArticleView, logoMetadata: LogoMetadata[], minDpi: number, labels: DecorationIssueLabels): LogoValidationIssue[] {
+function validatePrintResolution(
+  view: ArticleView,
+  rasters: PlacedRaster[],
+  printArea: PrintArea | null,
+  canvasWidth: number,
+  canvasHeight: number,
+  minDpi: number,
+  labels: DecorationIssueLabels,
+): LogoValidationIssue[] {
+  const { impWidthMm, impHeightMm } = view;
+  if (impWidthMm === undefined || impHeightMm === undefined || printArea == null) return [];
+
+  const frame = printAreaFrame(printArea, canvasWidth, canvasHeight);
+  if (frame.halfW <= 0 || frame.halfH <= 0) return [];
+
+  const mmPerPxX = impWidthMm / (frame.halfW * 2);
+  const mmPerPxY = impHeightMm / (frame.halfH * 2);
+
+  const issues: LogoValidationIssue[] = [];
+  for (const raster of rasters) {
+    // The logo's own edges, turned into the print area's frame. Unlike its projected
+    // extent, their length does not grow when the logo is rotated inside the area.
+    const angle = (raster.size.angle * Math.PI) / 180 - frame.angle;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const widthMm = Math.hypot(raster.size.width * cos * mmPerPxX, raster.size.width * sin * mmPerPxY);
+    const heightMm = Math.hypot(raster.size.height * sin * mmPerPxX, raster.size.height * cos * mmPerPxY);
+    if (!(widthMm > 0) || !(heightMm > 0)) continue;
+
+    // Rounded before comparing, so the message never reads "300 DPI, below 300".
+    const dpi = Math.round(Math.min((raster.widthPx / widthMm) * MM_PER_INCH, (raster.heightPx / heightMm) * MM_PER_INCH));
+    if (dpi < minDpi) {
+      issues.push({ code: 'lowDpi', severity: 'warning', message: labels.lowDpi(view.label, raster.fileName, dpi, minDpi) });
+    }
+  }
+
+  return issues;
+}
+
+/**
+ * Fallback for views without declared print dimensions: surfaces the DPI tag of the
+ * upload. The upload component already reports this at pick time, but the envelope is
+ * what the shop persists — a finding that only ever lived in the upload UI is lost by the
+ * time anyone looks at the order.
+ */
+function validateTaggedResolution(view: ArticleView, logoMetadata: LogoMetadata[], minDpi: number, labels: DecorationIssueLabels): LogoValidationIssue[] {
   const issues: LogoValidationIssue[] = [];
 
   for (const meta of logoMetadata) {

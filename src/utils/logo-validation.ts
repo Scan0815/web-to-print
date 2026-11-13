@@ -24,13 +24,13 @@ async function extractDpi(file: File, format: LogoFormat): Promise<{ dpiX: numbe
       return { dpiX, dpiY };
     }
 
-    // Try PNG pHYs chunk (pixels per meter -> DPI)
-    if (format === 'png' && 'pHYs' in tags) {
-      const pHYs = tags['pHYs'] as Record<string, { value: number | string }>;
-      const pngX = pHYs?.['Pixels Per Unit X']?.value;
-      const pngY = pHYs?.['Pixels Per Unit Y']?.value;
-      const unit = pHYs?.['Unit']?.value;
-      if (pngX !== undefined && pngX !== null && pngY !== undefined && pngY !== null && unit === 1) {
+    // PNG pHYs chunk: pixels per metre -> DPI. ExifReader files it under the `png` group.
+    if (format === 'png') {
+      const png = (tags as { png?: Record<string, { value: number | string } | undefined> }).png;
+      const pngX = png?.['Pixels Per Unit X']?.value;
+      const pngY = png?.['Pixels Per Unit Y']?.value;
+      const unit = png?.['Pixel Units']?.value;
+      if (pngX !== undefined && pngY !== undefined && unit === 1) {
         return { dpiX: Math.round(Number(pngX) / 39.3701), dpiY: Math.round(Number(pngY) / 39.3701) };
       }
     }
@@ -123,16 +123,11 @@ export async function validateLogo(
   const { dpiX, dpiY } = await extractDpi(file, format);
   const { width, height } = await extractImageDimensions(file, format);
 
-  // DPI check for raster images
+  // The DPI tag is read for the metadata but not judged: it says nothing about print
+  // quality (a 200 px logo tagged 300 DPI is still blurry at 50 mm, a 4000 px one tagged
+  // 72 is fine). Resolution is checked where the print size is known — in the editor,
+  // see validateDecoration.
   const isRaster = format === 'png' || format === 'jpeg' || format === 'tiff' || format === 'avif';
-  if (isRaster) {
-    if (dpiX === null || dpiY === null) {
-      issues.push(createIssue('DPI_UNKNOWN', 'warning', 'Could not determine image DPI. Recommended minimum is ' + config.minDpi + ' DPI'));
-    } else if (dpiX < config.minDpi || dpiY < config.minDpi) {
-      const effectiveDpi = Math.min(dpiX, dpiY);
-      issues.push(createIssue('DPI_TOO_LOW', 'error', `Image DPI (${effectiveDpi}) is below minimum ${config.minDpi} DPI`));
-    }
-  }
 
   // Dimension check for raster images only (vector formats like SVG/PDF are resolution-independent)
   if (isRaster) {

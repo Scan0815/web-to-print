@@ -1,4 +1,4 @@
-import { validateDecoration } from './decoration-validation';
+import { isRasterLogo, validateDecoration, type PlacedRaster } from './decoration-validation';
 import type { ArticleView, EditorState, PlacedText, PrintArea } from '../types/editor';
 import type { LogoMetadata } from '../types/logo';
 
@@ -353,6 +353,103 @@ describe('validateDecoration', () => {
     it('uses the lower of the two axes', () => {
       const finding = withLogo([metadata({ dpiX: 600, dpiY: 96 })]).find(i => i.code === 'lowDpi');
       expect(finding?.message).toContain('96');
+    });
+  });
+
+  // The print area is 200 x 200 canvas px; declared as 50 x 50 mm that is 0.25 mm per px.
+  describe('print resolution at print size', () => {
+    const TILT = Math.PI / 6;
+    const rotated = (x: number, y: number) => ({
+      x: (200 + x * Math.cos(TILT) - y * Math.sin(TILT)) / 400,
+      y: (200 + x * Math.sin(TILT) + y * Math.cos(TILT)) / 400,
+    });
+    /** The same 200 x 200 px area, turned 30 degrees around the canvas centre. */
+    const TILTED_AREA: PrintArea = { topLeft: rotated(-100, -100), topRight: rotated(100, -100), bottomRight: rotated(100, 100), bottomLeft: rotated(-100, 100) };
+
+    const raster = (widthPx: number, heightPx: number, width: number, height: number, angle = 0): PlacedRaster => ({
+      fileName: 'logo.png',
+      widthPx,
+      heightPx,
+      size: { centerX: 200, centerY: 200, width, height, angle },
+    });
+
+    const lowDpi = (rasters: PlacedRaster[], overrides: Partial<Parameters<typeof validateDecoration>[0]> = {}) =>
+      validateDecoration({
+        view: view({ impWidthMm: 50, impHeightMm: 50 }),
+        state: state({ logos: [{ id: 'l1', dataUrl: 'data:image/png;base64,abc' }] }),
+        bounds: [],
+        sizes: rasters.map(r => r.size),
+        printArea: PRINT_AREA,
+        canvasWidth: 400,
+        canvasHeight: 400,
+        rasters,
+        ...overrides,
+      }).filter(i => i.code === 'lowDpi');
+
+    const tagged = (dpi: number): LogoMetadata => ({ format: 'png', width: 1, height: 1, dpiX: dpi, dpiY: dpi, fileSize: 1, fileName: 'logo.png', mimeType: 'image/png', hasTransparency: false });
+
+    it('warns about a small logo printed large, whatever its DPI tag says', () => {
+      // 200 px across 50 mm is 102 DPI.
+      const findings = lowDpi([raster(200, 200, 200, 200)], { logoMetadata: [tagged(300)] });
+      expect(findings.length).toBe(1);
+      expect(findings[0].severity).toBe('warning');
+      expect(findings[0].message).toContain('logo.png');
+      expect(findings[0].message).toContain('102');
+    });
+
+    it('accepts a large logo tagged with a low DPI', () => {
+      expect(lowDpi([raster(4000, 4000, 200, 200)], { logoMetadata: [tagged(72)] })).toEqual([]);
+    });
+
+    it('stops warning once the logo is placed small enough', () => {
+      // The same 200 px logo at 16 mm is 318 DPI.
+      expect(lowDpi([raster(200, 200, 64, 64)])).toEqual([]);
+    });
+
+    it('reports the lower of the two axes for a stretched logo', () => {
+      // 400 px across 25 mm is 406 DPI, 400 px across 50 mm is 203.
+      expect(lowDpi([raster(400, 400, 100, 200)])[0].message).toContain('203');
+    });
+
+    it('measures a rotated logo by its own edges, not its bounding box', () => {
+      const straight = lowDpi([raster(200, 100, 100, 50)])[0].message;
+      expect(lowDpi([raster(200, 100, 100, 50, 45)])[0].message).toBe(straight);
+    });
+
+    it('gives the same result when print area and logo are tilted together', () => {
+      const straight = lowDpi([raster(200, 100, 100, 50)])[0].message;
+      expect(lowDpi([raster(200, 100, 100, 50, 30)], { printArea: TILTED_AREA })[0].message).toBe(straight);
+    });
+
+    it('rounds before comparing, so it never reports the limit as below the limit', () => {
+      // 590 px across 50.02 mm is 299.6 DPI.
+      expect(lowDpi([raster(590, 590, 200.08, 200.08)])).toEqual([]);
+    });
+
+    it('emits one finding per logo and never the tagged one on top', () => {
+      const findings = lowDpi([raster(200, 200, 200, 200), raster(4000, 4000, 200, 200)], { logoMetadata: [tagged(72), tagged(72)] });
+      expect(findings.length).toBe(1);
+    });
+
+    it('says nothing while the print area is still pending', () => {
+      expect(lowDpi([raster(200, 200, 200, 200)], { printArea: 'pending', logoMetadata: [tagged(72)] })).toEqual([]);
+    });
+
+    it('falls back to the DPI tag when the view declares no print dimensions', () => {
+      const findings = lowDpi([raster(4000, 4000, 200, 200)], { view: view(), logoMetadata: [tagged(72)] });
+      expect(findings.length).toBe(1);
+      expect(findings[0].message).toContain('72');
+    });
+
+    it('treats only pixel originals as raster logos', () => {
+      const pdf = { dataUrl: 'data:application/pdf;base64,AAA', mimeType: 'application/pdf', fileName: 'logo.pdf', fileSize: 1 };
+      const svg = { dataUrl: 'data:image/svg+xml;base64,AAA', mimeType: 'image/svg+xml', fileName: 'logo.svg', fileSize: 1 };
+      expect(isRasterLogo({ id: 'a', dataUrl: 'data:image/png;base64,AAA' })).toBe(true);
+      expect(isRasterLogo({ id: 'b', dataUrl: 'https://shop.example/logo.png' })).toBe(true);
+      expect(isRasterLogo({ id: 'c', dataUrl: 'data:image/svg+xml;base64,AAA' })).toBe(false);
+      // The canvas shows a PNG raster of these, but the original is what gets printed.
+      expect(isRasterLogo({ id: 'd', dataUrl: 'data:image/png;base64,AAA', source: pdf })).toBe(false);
+      expect(isRasterLogo({ id: 'e', dataUrl: 'data:image/png;base64,AAA', source: svg })).toBe(false);
     });
   });
 });
