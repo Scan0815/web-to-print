@@ -695,7 +695,9 @@ describe('wtp-editor browser', () => {
     await (root as EditorElement).addLogo({ dataUrl: LOGO_DATA_URL, metadata: LOGO_METADATA });
 
     const envelope = await (root as EditorElement).exportState();
-    expect(envelope.decorations[0].issues.map(i => i.code)).toEqual([]);
+    // The 4x4 px test logo stretched to 100 mm is rightly reported as low resolution;
+    // this test is about the geometry findings.
+    expect(envelope.decorations[0].issues.map(i => i.code).filter(code => code !== 'lowDpi')).toEqual([]);
   });
 
   // The implicit view built from productImage/printArea is cached (it is rebuilt on every
@@ -858,5 +860,76 @@ describe('wtp-editor browser', () => {
     await new Promise(r => setTimeout(r, 200));
 
     expect(stateChangedSpy).toHaveReceivedEvent();
+  });
+
+  describe('print resolution warning', () => {
+    const AREA = { topLeft: { x: 0.25, y: 0.25 }, topRight: { x: 0.75, y: 0.25 }, bottomRight: { x: 0.75, y: 0.75 }, bottomLeft: { x: 0.25, y: 0.75 } };
+    const SIZED_VIEWS: ArticleView[] = [{ id: 'front', image: '', label: 'Front', printArea: AREA, impWidthMm: 50, impHeightMm: 50 }];
+
+    function squarePng(size: number): string {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const context = canvas.getContext('2d') as CanvasRenderingContext2D;
+      context.fillStyle = '#0044cc';
+      context.fillRect(0, 0, size, size);
+      return canvas.toDataURL('image/png');
+    }
+
+    async function lowDpiFindings(logo: LogoData): Promise<string[]> {
+      const { root } = await mount(<wtp-editor views={SIZED_VIEWS} width={600} height={600}></wtp-editor>);
+      const el = root as EditorElement;
+      await el.addLogo(logo);
+      const envelope = await el.exportState();
+      return envelope.decorations[0].issues.filter(i => i.code === 'lowDpi').map(i => i.message);
+    }
+
+    it('warns about a 40 px logo fitted to a 50 mm print area, although it is tagged 300 DPI', async () => {
+      const findings = await lowDpiFindings({ dataUrl: SQUARE_PNG, metadata: { ...LOGO_METADATA, width: 40, height: 40, dpiX: 300, dpiY: 300 } });
+      expect(findings.length).toBe(1);
+      // 40 px across at most 50 mm cannot exceed 20 DPI by much; far below 300 either way.
+      expect(Number(/has (\d+) DPI/.exec(findings[0])?.[1])).toBeLessThan(60);
+    });
+
+    it('accepts a 1200 px logo in the same place, although it is tagged 72 DPI', async () => {
+      const findings = await lowDpiFindings({ dataUrl: squarePng(1200), metadata: { ...LOGO_METADATA, width: 1200, height: 1200, dpiX: 72, dpiY: 72 } });
+      expect(findings).toEqual([]);
+    });
+
+    it('reports the warning in the live change event, not only on export', async () => {
+      const { root } = await mount(<wtp-editor views={SIZED_VIEWS} width={600} height={600}></wtp-editor>);
+      const el = root as EditorElement;
+      const events: ArticleEditorState[] = [];
+      el.addEventListener('wtpEditorStateChanged', e => events.push((e as CustomEvent<ArticleEditorState>).detail));
+
+      await el.addLogo({ dataUrl: SQUARE_PNG, metadata: LOGO_METADATA });
+
+      expect(events.length).toBeGreaterThan(0);
+      expect(events[events.length - 1].decorations[0].issues.map(i => i.code)).toContain('lowDpi');
+    });
+
+    it('still warns after the state was saved and loaded into a fresh editor', async () => {
+      // A restored editor has no upload metadata; the check must work from the canvas alone.
+      const source = await mount(<wtp-editor views={SIZED_VIEWS} width={600} height={600}></wtp-editor>);
+      await (source.root as EditorElement).addLogo({ dataUrl: SQUARE_PNG, metadata: LOGO_METADATA });
+      const saved = await (source.root as EditorElement).exportState();
+      source.unmount();
+
+      const { root } = await mount(<wtp-editor views={SIZED_VIEWS} width={600} height={600}></wtp-editor>);
+      const el = root as EditorElement;
+      await el.loadState(saved);
+
+      const restored = await el.exportState();
+      expect(restored.decorations[0].issues.map(i => i.code)).toContain('lowDpi');
+    });
+
+    it('does not judge the canvas raster of a PDF original', async () => {
+      const findings = await lowDpiFindings({
+        dataUrl: SQUARE_PNG,
+        source: { dataUrl: 'data:application/pdf;base64,JVBERi0xLjc=', mimeType: 'application/pdf', fileName: 'logo.pdf', fileSize: 8 },
+        metadata: { ...LOGO_METADATA, format: 'pdf', width: 40, height: 40, dpiX: null, dpiY: null },
+      });
+      expect(findings).toEqual([]);
+    });
   });
 });

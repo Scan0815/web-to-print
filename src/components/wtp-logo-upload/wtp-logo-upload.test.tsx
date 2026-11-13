@@ -93,6 +93,55 @@ describe('wtp-logo-upload browser', () => {
 
   // --- PDF and AI uploads ---
 
+  /** A PNG of the given size carrying a pHYs chunk, i.e. tagged with that DPI. */
+  async function pngTaggedWithDpi(size: number, dpi: number): Promise<File> {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const context = canvas.getContext('2d') as CanvasRenderingContext2D;
+    context.fillStyle = '#0044cc';
+    context.fillRect(0, 0, size, size);
+    const blob = await new Promise<Blob>(resolve => canvas.toBlob(b => resolve(b as Blob), 'image/png'));
+    const png = new Uint8Array(await blob.arrayBuffer());
+
+    // pHYs: pixels per metre on both axes, unit 1 (metre), followed by the chunk CRC.
+    const chunk = new Uint8Array(4 + 4 + 9 + 4);
+    const view = new DataView(chunk.buffer);
+    const pixelsPerMetre = Math.round(dpi * 39.3701);
+    view.setUint32(0, 9);
+    chunk.set([0x70, 0x48, 0x59, 0x73], 4);
+    view.setUint32(8, pixelsPerMetre);
+    view.setUint32(12, pixelsPerMetre);
+    chunk[16] = 1;
+    let crc = 0xffffffff;
+    for (const byte of chunk.subarray(4, 17)) {
+      crc ^= byte;
+      for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ ((crc & 1) === 1 ? 0xedb88320 : 0);
+    }
+    view.setUint32(17, (crc ^ 0xffffffff) >>> 0);
+
+    // Signature (8 bytes) plus the IHDR chunk (25 bytes); pHYs has to come before IDAT.
+    return new File([png.subarray(0, 33), chunk, png.subarray(33)], 'web-logo.png', { type: 'image/png' });
+  }
+
+  it('accepts a large raster logo whose file is tagged with 72 DPI', async () => {
+    // The tag says nothing about print quality: 1200 px are plenty for a small print
+    // area. Whether a logo is sharp enough is decided in the editor, at the printed size.
+    const { root, spyOnEvent, waitForChanges } = await render(<wtp-logo-upload></wtp-logo-upload>);
+    const validatedSpy = spyOnEvent('wtpLogoValidated');
+    const rejectedSpy = spyOnEvent('wtpLogoRejected');
+
+    selectFile(root, await pngTaggedWithDpi(1200, 72));
+    await expect.poll(() => validatedSpy.length + rejectedSpy.length, { timeout: 5000 }).toBeGreaterThan(0);
+    await waitForChanges();
+
+    expect(rejectedSpy.length).toBe(0);
+    const logo = validatedSpy.events[0].detail as LogoData;
+    // The tag was really read, so this is not passing because the chunk went unnoticed.
+    expect(logo.metadata.dpiX).toBe(72);
+    expect(logo.metadata.width).toBe(1200);
+  });
+
   it('rasterizes a PDF for the canvas and keeps the original as source', async () => {
     installFakePdfJs('ok');
     const { root, spyOnEvent, waitForChanges } = await render(<wtp-logo-upload></wtp-logo-upload>);

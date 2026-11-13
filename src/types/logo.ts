@@ -27,6 +27,11 @@ export interface LogoValidationIssue {
 }
 
 export interface LogoValidationConfig {
+  /**
+   * Recommended print resolution. The upload does not judge a file by it — the DPI tag
+   * of a file says nothing about print quality. The editor warns (`lowDpi`) when a
+   * placed raster logo falls below it at its printed size.
+   */
   minDpi: number;
   maxFileSize: number;
   minWidth: number;
