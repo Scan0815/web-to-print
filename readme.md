@@ -269,14 +269,26 @@ render your own text:
 
 ## External dependencies at runtime
 
-Two features expect a global, which keeps them out of the bundle:
+PDF export expects a global, which keeps jsPDF out of the bundle:
 
 | Feature | Global | Script |
 |---|---|---|
 | PDF export (`exportPdf`, `exportArticlePdf`, `exportProductPdf`) | `window.jspdf` | `https://unpkg.com/jspdf@4.1.0/dist/jspdf.umd.min.js` |
-| PDF/AI logo upload | `window.pdfjsLib` | `https://unpkg.com/pdfjs-dist@5/build/pdf.min.mjs` |
 
-Both throw a message naming the missing script when they are used without it.
+It throws a message naming the missing script when it is used without it.
+
+PDF/AI logo upload needs nothing from the host: pdf.js ships with the library as lazily
+loaded chunks that are only requested on the first PDF/AI upload. Its worker code runs on
+the main thread, which is fine for rasterizing one logo page. To use a real worker or
+another pdf.js release, put your own build on `window.pdfjsLib` — it takes precedence:
+
+```html
+<script type="module">
+  import * as pdfjsLib from '/assets/pdf.min.mjs';
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '/assets/pdf.worker.min.mjs';
+  window.pdfjsLib = pdfjsLib;
+</script>
+```
 
 ### The PDF is a proof, not print data
 

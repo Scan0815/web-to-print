@@ -1,4 +1,5 @@
 import { render, h, describe, it, expect, afterEach } from '@stencil/vitest';
+import { jsPDF } from 'jspdf';
 import type { LogoData } from '../../types/logo';
 
 /** Feeds a file into the component's hidden file input, as a real upload would. */
@@ -113,6 +114,45 @@ describe('wtp-logo-upload browser', () => {
     expect(logo.metadata.width).toBeGreaterThan(0);
   });
 
+  // The fake above cannot prove that a PDF is actually parsed and drawn — this runs the
+  // pdf.js bundled with the library against a real vector PDF, with no host setup at all.
+  it('rasterizes a real vector PDF with the bundled pdf.js', async () => {
+    expect((window as unknown as Record<string, unknown>)['pdfjsLib']).toBeUndefined();
+
+    // A 100x100 mm page with a red square covering its centre.
+    const doc = new jsPDF({ unit: 'mm', format: [100, 100] });
+    doc.setFillColor(255, 0, 0);
+    doc.rect(25, 25, 50, 50, 'F');
+    const file = new File([doc.output('arraybuffer')], 'vector.pdf', { type: 'application/pdf' });
+
+    const { root, spyOnEvent, waitForChanges } = await render(<wtp-logo-upload></wtp-logo-upload>);
+    const validatedSpy = spyOnEvent('wtpLogoValidated');
+    const rejectedSpy = spyOnEvent('wtpLogoRejected');
+
+    selectFile(root, file);
+    await expect.poll(() => validatedSpy.length + rejectedSpy.length, { timeout: 10000 }).toBeGreaterThan(0);
+    await waitForChanges();
+
+    expect(rejectedSpy).not.toHaveReceivedEvent();
+    const logo = validatedSpy.lastEvent?.detail as LogoData;
+    expect(logo.metadata.format).toBe('pdf');
+    expect(logo.metadata.width).toBe(2000);
+    expect(logo.metadata.height).toBe(2000);
+    expect(logo.source?.dataUrl.startsWith('data:application/pdf')).toBe(true);
+
+    const img = new Image();
+    img.src = logo.dataUrl;
+    await img.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+    ctx.drawImage(img, 0, 0);
+
+    const [r, g, b, a] = ctx.getImageData(1000, 1000, 1, 1).data;
+    expect([r, g, b, a]).toEqual([255, 0, 0, 255]);
+  });
+
   it('explains an AI file saved without PDF compatibility', async () => {
     installFakePdfJs('unreadable');
     const { root, spyOnEvent, waitForChanges } = await render(<wtp-logo-upload></wtp-logo-upload>);
@@ -126,19 +166,6 @@ describe('wtp-logo-upload browser', () => {
     const detail = rejectedSpy.lastEvent?.detail as { issues: { code: string; message: string }[] };
     expect(detail.issues[0].code).toBe('PDF_RENDER_FAILED');
     expect(detail.issues[0].message).toContain('PDF compatibility');
-  });
-
-  it('rejects a PDF when pdf.js is not loaded, naming the script', async () => {
-    const { root, spyOnEvent, waitForChanges } = await render(<wtp-logo-upload></wtp-logo-upload>);
-    const rejectedSpy = spyOnEvent('wtpLogoRejected');
-
-    selectFile(root, new File([PDF_BYTES], 'logo.pdf', { type: 'application/pdf' }));
-    await waitForChanges();
-    await new Promise(r => setTimeout(r, 500));
-
-    expect(rejectedSpy).toHaveReceivedEvent();
-    const detail = rejectedSpy.lastEvent?.detail as { issues: { message: string }[] };
-    expect(detail.issues[0].message).toContain('pdf.js is required');
   });
 
   it('keeps the uploaded original for SVG uploads too', async () => {

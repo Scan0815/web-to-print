@@ -3,8 +3,8 @@
  * shown on the canvas. The uploaded original is kept separately and travels to the print
  * shop untouched — this raster is only what the browser can draw.
  *
- * pdf.js is expected as a global, the same way jsPDF is, which keeps it out of the
- * Stencil bundle (Rollup/CommonJS conflicts) and out of the library's dependencies.
+ * pdf.js is bundled as lazily loaded chunks (see loadPdfJs), so it costs nothing until
+ * the first PDF/AI upload.
  */
 
 interface PdfPageViewport {
@@ -25,6 +25,7 @@ interface PdfDocument {
 interface PdfJsLib {
   getDocument(params: { data: ArrayBuffer }): { promise: Promise<PdfDocument> };
   GlobalWorkerOptions?: { workerSrc: string };
+  version?: string;
 }
 
 export interface RenderedPdfPage {
@@ -36,28 +37,57 @@ export interface RenderedPdfPage {
 /** Longest side of the rasterized page, in pixels. */
 const DEFAULT_MAX_SIZE = 2000;
 
-export function getPdfJs(): PdfJsLib {
-  const global = typeof window !== 'undefined' ? (window as unknown as Record<string, unknown>) : undefined;
-  const lib = global?.['pdfjsLib'] as PdfJsLib | undefined;
-  if (lib?.getDocument != null) return lib;
-
-  throw new Error(
-    'pdf.js is required for PDF/AI uploads. Load it via: <script src="https://unpkg.com/pdfjs-dist@5/build/pdf.min.mjs" type="module"></script>',
-  );
+/**
+ * Always true since pdf.js ships with the library.
+ * @deprecated Kept so existing integrations keep compiling.
+ */
+export function isPdfRenderingAvailable(): boolean {
+  return true;
 }
 
-/** True when pdf.js is available — lets callers reject PDF uploads with a clear message. */
-export function isPdfRenderingAvailable(): boolean {
-  try {
-    getPdfJs();
-    return true;
-  } catch {
-    return false;
+/** A pdf.js build the host put on the window; takes precedence over the bundled one. */
+function getHostPdfJs(): PdfJsLib | undefined {
+  const global = typeof window !== 'undefined' ? (window as unknown as Record<string, unknown>) : undefined;
+  const lib = global?.['pdfjsLib'] as PdfJsLib | undefined;
+  return lib?.getDocument != null ? lib : undefined;
+}
+
+/**
+ * pdf.js refuses to parse anything without a worker script, and the worker must be the
+ * exact same release as the API. A host that brings its own pdf.js but no worker gets
+ * the matching unpkg build; a worker the host configured itself is never overwritten.
+ */
+export function ensurePdfWorker(lib: PdfJsLib): void {
+  const options = lib.GlobalWorkerOptions;
+  if (options === undefined || lib.version === undefined) return;
+  if (options.workerSrc !== '' && options.workerSrc != null) return;
+
+  options.workerSrc = `https://unpkg.com/pdfjs-dist@${lib.version}/build/pdf.worker.min.mjs`;
+}
+
+/**
+ * Resolves pdf.js. The library ships its own copy as lazily loaded chunks, so hosts need
+ * no script tag and nothing is fetched from a CDN; the chunks are only requested on the
+ * first PDF/AI upload. The worker code is loaded as a module too and runs on the main
+ * thread — pdf.js picks it up from `globalThis.pdfjsWorker` — because a real Worker needs
+ * a standalone script URL the bundle cannot provide. Rasterizing one logo page is cheap
+ * enough for that.
+ *
+ * A host that wants a real worker (or another pdf.js release) sets `window.pdfjsLib`.
+ */
+export async function loadPdfJs(): Promise<PdfJsLib> {
+  const hostLib = getHostPdfJs();
+  if (hostLib !== undefined) {
+    ensurePdfWorker(hostLib);
+    return hostLib;
   }
+
+  const [lib] = await Promise.all([import('pdfjs-dist/build/pdf.min.mjs'), import('pdfjs-dist/build/pdf.worker.min.mjs')]);
+  return lib as unknown as PdfJsLib;
 }
 
 export async function renderPdfFirstPage(file: File, maxSize: number = DEFAULT_MAX_SIZE): Promise<RenderedPdfPage> {
-  const pdfjs = getPdfJs();
+  const pdfjs = await loadPdfJs();
   const data = await file.arrayBuffer();
 
   let document_: PdfDocument;
