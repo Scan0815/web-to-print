@@ -3,6 +3,7 @@ import { LogoData, LogoMetadata, Article, PrintArea, ArticleEditorState, Decorat
 import { printAreaToPixelCorners, upscaleSvgDataUrl } from './canvas-helpers';
 import { decorationMetaOf } from './decoration-meta';
 import { computeContainFit } from './html-render-helpers';
+import { drawVectorLogos, preparePdfLogo, prepareSvgLogo, VectorLogo, VectorLogoPlacement } from './pdf-vector';
 import { loadImageDimensions, resolveViewPrintArea } from './print-area';
 
 export interface PdfExportConfig {
@@ -321,7 +322,12 @@ function renderProofNotice(doc: JsPDFType, config: PdfExportConfig): void {
   doc.setTextColor(0, 0, 0);
 }
 
-/** One page per distinct logo: the source file at full quality, plus where it is used. */
+/**
+ * One page per distinct logo: the source file at full quality, plus where it is used.
+ *
+ * For a `vector` logo the image box is left empty and its position returned, so the
+ * artwork of the original can be drawn into it afterwards (see pdf-vector.ts).
+ */
 function renderLogoSourcePage(
   doc: JsPDFType,
   source: LogoSourcePage,
@@ -329,7 +335,8 @@ function renderLogoSourcePage(
   aspectRatio: number | null,
   index: number,
   config: PdfExportConfig,
-): void {
+  vector?: VectorLogo,
+): VectorLogoPlacement | null {
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const margin = config.marginMm;
@@ -343,9 +350,13 @@ function renderLogoSourcePage(
   const boxH = pageH * 0.5;
   // The print shop pulls the logo off this page — stretching it to fill a fixed box
   // would misrepresent the artwork. Without measurable dimensions, fall back to the box.
-  const { width: imgW, height: imgH } = aspectRatio !== null ? fitImage(contentW, boxH, aspectRatio) : { width: contentW, height: boxH };
+  const ratio = vector?.aspectRatio ?? aspectRatio;
+  const { width: imgW, height: imgH } = ratio !== null ? fitImage(contentW, boxH, ratio) : { width: contentW, height: boxH };
+  const imgX = (pageW - imgW) / 2;
 
-  doc.addImage(rasterDataUrl, dataUrlToImageFormat(rasterDataUrl), (pageW - imgW) / 2, imgY, imgW, imgH, undefined, 'FAST');
+  if (vector === undefined) {
+    doc.addImage(rasterDataUrl, dataUrlToImageFormat(rasterDataUrl), imgX, imgY, imgW, imgH, undefined, 'FAST');
+  }
 
   const meta = source.metadata;
   const rows: [string, string][] = [['Used on', source.usedBy.join(', ')]];
@@ -358,8 +369,12 @@ function renderLogoSourcePage(
     rows.push(['DPI', meta.dpiX !== null ? `${meta.dpiX} x ${meta.dpiY ?? meta.dpiX}` : 'Not available']);
     rows.push(['Transparency', meta.hasTransparency ? 'Yes' : 'No']);
   }
-  if (isSvgDataUrl(source.key)) {
+  if (vector?.kind === 'svg') {
+    rows.push(['Note', 'Source is SVG; its shapes are drawn here as vector paths converted from the file. The original travels with the order.']);
+  } else if (isSvgDataUrl(source.key)) {
     rows.push(['Note', 'Source is SVG; rasterized here. Request the vector file from the customer.']);
+  } else if (vector !== undefined) {
+    rows.push(['Note', 'Source is a print file (e.g. PDF/AI); the artwork of its first page is embedded here as it is in the file, cropped to the logo. The original travels with the order.']);
   } else if (source.rasterizedFromOriginal === true) {
     rows.push(['Note', 'Source is a print file (e.g. PDF/AI); a rasterized preview is shown here. The original travels with the order — the print shop extracts the artwork from it.']);
   }
@@ -369,6 +384,19 @@ function renderLogoSourcePage(
   renderRows(doc, rows, margin, imgY + boxH + 10, { rowHeight: 7, labelWidth: 30, fontSize: 10, maxWidth: contentW - 30 });
 
   renderProofNotice(doc, config);
+
+  return vector !== undefined ? { logo: vector, pageIndex: index, xMm: imgX, yMm: imgY, widthMm: imgW, heightMm: imgH } : null;
+}
+
+/** Hands a generated PDF to the browser as a download. */
+function downloadPdf(bytes: Uint8Array, fileName: string): void {
+  const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'application/pdf' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  // The browser reads the blob after the click returns, so the URL has to outlive it.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 /** One page per decoration: mockup, print-area guide, decoration data and warnings. */
@@ -437,6 +465,10 @@ function renderDecorationPage(
  * Distinct logo sources come first (deduplicated), then one page per decoration with
  * its mockup, print-area guide, decoration data and validation warnings.
  *
+ * The logo of a PDF/AI original is embedded as the vector artwork of the file, and a flat
+ * SVG is redrawn as vector paths; every other logo, and one that cannot be embedded
+ * faithfully, is shown as a raster.
+ *
  * This document is a proof, not print data — see PdfExportConfig.proofNotice.
  * Requires jsPDF to be loaded globally via script tag before calling this function.
  */
@@ -476,41 +508,71 @@ export async function exportArticlePdf(
     ),
   );
 
-  const doc = new JsPDF({ orientation: cfg.orientation, unit: 'mm', format: cfg.pageFormat });
+  const build = (vectors: Map<string, VectorLogo>): { doc: JsPDFType; placements: VectorLogoPlacement[] } => {
+    const doc = new JsPDF({ orientation: cfg.orientation, unit: 'mm', format: cfg.pageFormat });
 
-  // A fresh jsPDF document already has one page, so the first render uses it as is.
-  let pagesRendered = 0;
-  const startPage = () => {
-    if (pagesRendered > 0) doc.addPage();
-    pagesRendered++;
+    // A fresh jsPDF document already has one page, so the first render uses it as is.
+    let pagesRendered = 0;
+    const startPage = () => {
+      if (pagesRendered > 0) doc.addPage();
+      pagesRendered++;
+    };
+
+    const placements: VectorLogoPlacement[] = [];
+    sources.forEach((source, i) => {
+      startPage();
+      const placement = renderLogoSourcePage(doc, source, rasterSources[i], rasterRatios[i], i, cfg, vectors.get(source.key));
+      if (placement !== null) placements.push(placement);
+    });
+
+    const pageOfSource = new Map(sources.map((source, i) => [source.key, i + 1]));
+
+    for (const decoration of decorations) {
+      const mockup = mockups[decoration.viewId];
+      startPage();
+
+      const logoPages = decoration.state.logos
+        .map(logo => pageOfSource.get(logo.source?.dataUrl ?? logo.dataUrl))
+        .filter((n): n is number => n !== undefined);
+
+      renderDecorationPage(
+        doc,
+        article,
+        decoration,
+        article.views.find(v => v.id === decoration.viewId),
+        printAreas.get(decoration.viewId) ?? null,
+        mockup,
+        [...new Set(logoPages)],
+        cfg,
+      );
+    }
+
+    return { doc, placements };
   };
 
-  sources.forEach((source, i) => {
-    startPage();
-    renderLogoSourcePage(doc, source, rasterSources[i], rasterRatios[i], i, cfg);
-  });
+  const fileName = `${article.id}.pdf`;
 
-  const pageOfSource = new Map(sources.map((source, i) => [source.key, i + 1]));
-
-  for (const decoration of decorations) {
-    const mockup = mockups[decoration.viewId];
-    startPage();
-
-    const logoPages = decoration.state.logos
-      .map(logo => pageOfSource.get(logo.source?.dataUrl ?? logo.dataUrl))
-      .filter((n): n is number => n !== undefined);
-
-    renderDecorationPage(
-      doc,
-      article,
-      decoration,
-      article.views.find(v => v.id === decoration.viewId),
-      printAreas.get(decoration.viewId) ?? null,
-      mockup,
-      [...new Set(logoPages)],
-      cfg,
-    );
+  const vectors = new Map<string, VectorLogo>();
+  for (const source of sources) {
+    const original = { dataUrl: source.key, ...(source.fileName !== undefined ? { fileName: source.fileName } : {}) };
+    let vector: VectorLogo | null = null;
+    if (isSvgDataUrl(source.key)) vector = await prepareSvgLogo(original);
+    // TIFF/AVIF originals are rasterized stand-ins too, but they have no vector to offer.
+    else if (source.rasterizedFromOriginal === true && !source.key.startsWith('data:image/')) vector = await preparePdfLogo(original);
+    if (vector !== null) vectors.set(source.key, vector);
   }
 
-  doc.save(`${article.id}.pdf`);
+  if (vectors.size > 0) {
+    try {
+      const { doc, placements } = build(vectors);
+      downloadPdf(await drawVectorLogos(doc.output('arraybuffer'), placements), fileName);
+      return;
+    } catch (e) {
+      // The vector logo is an upgrade, never a reason to lose the proof: an original
+      // pdf-lib cannot copy falls back to the all-raster document below.
+      console.warn('web-to-print: embedding the vector logo failed, exporting the raster instead.', e);
+    }
+  }
+
+  build(new Map()).doc.save(fileName);
 }
