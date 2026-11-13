@@ -12,16 +12,18 @@ its §9 and §13 are the source of most items below.
 ### Server-side print PDF — the real print output
 _Spec §9. The current proof PDF is a placement reference, not print data._
 
-The proof PDF is browser-generated RGB with no bleed, crop marks, or spot colours, and
-it rasterizes SVG/PDF/AI. Real print output needs a server step:
+The proof PDF is browser-generated with no bleed, crop marks, or real-size print page,
+and its mockup pages are rasters. Real print output needs a server step:
 
 - Headless Chromium `print-to-PDF` renders SVG natively as vector and embeds fonts —
   the two things `svg2pdf.js` fails at. Combined with Fabric's `canvas.toSVG()` the
   mockup pages become vector too.
 - This is the only path that can reach CMYK, spot colours, bleed, and crop marks —
   which is why `maxColours` already lives in the data.
-- `pdf-lib` is the intermediate option if 1:1 embedding of an uploaded PDF/AI page or
-  file attachments become required before a backend exists (jsPDF cannot embed either).
+- `pdf-lib` already post-processes the proof so the logo source page of a PDF/AI or flat
+  SVG original is vector (jsPDF can do neither). The layout is still jsPDF, mockups are
+  still rasters, SVGs with gradients, text or clipping fall back to a raster, and file
+  attachments are not built.
 
 Sequencing note from the spec: swapping the PDF library and rebuilding the editor at the
 same time means two suspects per bug — hence this was kept out of 0.2.0.

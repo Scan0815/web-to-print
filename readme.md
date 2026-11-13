@@ -300,6 +300,22 @@ print-area guide, decoration data and warnings. It is RGB, without bleed or crop
 a placement reference. The print-ready file is the customer's original upload, which
 travels through `LogoData.source` → `PlacedLogo.source` into the export envelope.
 
+The logo page of a vector original stays vector. `pdf-lib` does this in a lazily loaded
+chunk that is only requested when a proof contains such a logo:
+
+- **PDF/AI** — the artwork of the file's first page is embedded, cropped to the logo. Its
+  drawing operators and colour spaces are copied from the original, not redrawn. A page
+  background the file paints itself stays part of the vector.
+- **SVG** — the shapes are redrawn as PDF paths, with the colours the browser computes
+  (stylesheets, classes and inheritance included). This is a conversion and covers flat
+  artwork only.
+
+A logo that cannot be embedded faithfully is shown as a raster instead, and a
+`console.warn` names the reason: an unreadable, encrypted or rotated PDF, or an SVG using
+gradients, patterns, masks, clip paths, filters, text, embedded images, `<use>`, group
+opacity, dashed strokes or CSS transforms. Image logos and every mockup page are always
+rasters.
+
 ## Migrating from 0.1.x
 
 - `wtp-editor` now takes `views`. `productImage` and `printArea` still work for a single
