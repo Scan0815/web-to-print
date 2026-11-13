@@ -33,7 +33,8 @@
   },
   "files": [
     "dist/",
-    "loader/"
+    "loader/",
+    "THIRD-PARTY-NOTICES.md"
   ],
   "repository": {
     "type": "git",
