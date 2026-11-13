@@ -33,6 +33,12 @@ export interface LogoValidationConfig {
    * placed raster logo falls below it at its printed size.
    */
   minDpi: number;
+  /**
+   * Size of the print area the logo is meant for, in millimetres. When set, the upload
+   * adds a `LOW_PRINT_RESOLUTION` warning to a raster logo that would fall below
+   * `minDpi` if it filled that area. Never a reason to reject the file.
+   */
+  printSizeMm?: { width: number; height: number };
   maxFileSize: number;
   minWidth: number;
   minHeight: number;
@@ -53,6 +59,8 @@ export interface LogoData {
   /** The uploaded original; differs from dataUrl for PDF/AI (and rasterized SVG). */
   source?: LogoSource;
   metadata: LogoMetadata;
+  /** Warnings about an accepted upload, e.g. `LOW_PRINT_RESOLUTION`. Absent when there are none. */
+  issues?: LogoValidationIssue[];
 }
 
 export const DEFAULT_VALIDATION_CONFIG: LogoValidationConfig = {

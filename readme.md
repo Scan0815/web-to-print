@@ -106,11 +106,27 @@ The upload does not reject or flag a file by its DPI tag (`DPI_TOO_LOW` and `DPI
 are gone): the tag says nothing about print quality. `minDpi` is the resolution the editor
 checks at the printed size — see the `lowDpi` finding.
 
+**Print size hint.** Without an editor, nothing else checks the resolution, so the upload
+can do a forecast: pass the print area in `config.printSizeMm` and a raster logo that would
+fall below `minDpi` when filling that area is still accepted, but carries a warning:
+
+```js
+uploader.config = { ...defaults, printSizeMm: { width: 45, height: 50 } };
+
+uploader.addEventListener('wtpLogoValidated', e => {
+  // e.detail.issues → [{ code: 'LOW_PRINT_RESOLUTION', severity: 'warning', message: '…' }]
+});
+```
+
+The warning is also listed under the previews. It is measured on the pixels of the logo as
+selected (after a background removal the cropped ones), never on the DPI tag, and not at
+all for SVG, PDF and AI. The text comes from the `lowPrintResolution` label.
+
 #### Events
 
 | Event | Detail | Description |
 |---|---|---|
-| `wtpLogoValidated` | `LogoData` | Fires when a logo passes validation |
+| `wtpLogoValidated` | `LogoData` | Fires when a logo passes validation. `issues` carries warnings about the accepted file, if any |
 | `wtpLogoSelected` | `LogoData` | Fires when the customer picks a logo: after a fresh upload and on **every** gallery click, including the already-selected logo — wire this to `addLogo()` for click-to-place. Not fired by the auto-reselection after a removal |
 | `wtpLogoRejected` | `{ file: File; issues: LogoValidationIssue[] }` | Fires when a logo fails validation |
 | `wtpLogoProcessing` | `boolean` | Fires when processing state changes (`true` = busy) |
@@ -511,7 +527,7 @@ const myLabels: LogoUploadLabels = {
 
 #### `LogoUploadLabels` keys
 
-`urlPlaceholder`, `urlSubmit`, `dividerText`, `dropPromptText`, `dropPromptHint`, `uploadAriaLabel`, `removeAriaLabel(fileName)`, `urlErrorEmpty`, `urlErrorInvalid`, `urlErrorProtocol`, `urlErrorHttp(status, statusText)`, `urlErrorNetwork`, `urlErrorFetch`, `bgRemovalProcessing`, `bgRemovalUseOriginal`, `bgRemovalUseRemoved`, `bgRemovalFailed`, `rejectionDpiUnit`.
+`urlPlaceholder`, `urlSubmit`, `dividerText`, `dropPromptText`, `dropPromptHint`, `uploadAriaLabel`, `removeAriaLabel(fileName)`, `urlErrorEmpty`, `urlErrorInvalid`, `urlErrorProtocol`, `urlErrorHttp(status, statusText)`, `urlErrorNetwork`, `urlErrorFetch`, `bgRemovalProcessing`, `bgRemovalUseOriginal`, `bgRemovalUseRemoved`, `bgRemovalFailed`, `rejectionDpiUnit`, `lowPrintResolution(dpi, minDpi, sharpWidthMm, sharpHeightMm)`.
 
 #### `EditorLabels` keys
 

@@ -142,6 +142,61 @@ describe('wtp-logo-upload browser', () => {
     expect(logo.metadata.width).toBe(1200);
   });
 
+  describe('print size hint', () => {
+    const CONFIG = { minDpi: 300, maxFileSize: 50 * 1024 * 1024, minWidth: 100, minHeight: 100, allowedFormats: ['png', 'svg'], printSizeMm: { width: 45, height: 50 } };
+
+    async function upload(file: File, labels?: Record<string, unknown>) {
+      const { root, spyOnEvent, waitForChanges } = await render(<wtp-logo-upload></wtp-logo-upload>);
+      const element = root as HTMLElement & { config: typeof CONFIG; labels: Record<string, unknown> };
+      element.config = CONFIG;
+      if (labels !== undefined) element.labels = labels;
+      await waitForChanges();
+
+      const validatedSpy = spyOnEvent('wtpLogoValidated');
+      const rejectedSpy = spyOnEvent('wtpLogoRejected');
+      selectFile(root, file);
+      await expect.poll(() => validatedSpy.length + rejectedSpy.length, { timeout: 5000 }).toBeGreaterThan(0);
+      await waitForChanges();
+
+      expect(rejectedSpy.length).toBe(0);
+      return { logo: validatedSpy.events[0].detail as LogoData, warnings: Array.from(root.shadowRoot?.querySelectorAll('.preview-warnings li') ?? []).map(li => li.textContent ?? '') };
+    }
+
+    it('accepts a logo that is too small for the print area, with a warning', async () => {
+      // 240 px across a 45 mm wide area is 135 DPI.
+      const { logo, warnings } = await upload(await pngTaggedWithDpi(240, 300));
+
+      expect(logo.issues?.map(i => [i.code, i.severity])).toEqual([['LOW_PRINT_RESOLUTION', 'warning']]);
+      expect(logo.issues?.[0].message).toContain('135 DPI');
+      expect(warnings.length).toBe(1);
+      expect(warnings[0]).toContain('web-logo.png');
+      expect(warnings[0]).toContain('135 DPI');
+      expect(warnings[0]).toContain('20 × 20 mm');
+    });
+
+    it('says nothing about a logo with enough pixels', async () => {
+      const { logo, warnings } = await upload(await pngTaggedWithDpi(1200, 72));
+
+      expect(logo.issues).toBeUndefined();
+      expect(warnings).toEqual([]);
+    });
+
+    it('does not judge an SVG', async () => {
+      const { logo, warnings } = await upload(new File([VALID_SVG], 'test.svg', { type: 'image/svg+xml' }));
+
+      expect(logo.issues).toBeUndefined();
+      expect(warnings).toEqual([]);
+    });
+
+    it('uses the host translation for the warning', async () => {
+      const { logo } = await upload(await pngTaggedWithDpi(240, 300), {
+        lowPrintResolution: (dpi: number, minDpi: number, w: number, h: number) => `Nur ${dpi} von ${minDpi} dpi, scharf bis ${w} x ${h} mm`,
+      });
+
+      expect(logo.issues?.[0].message).toBe('Nur 135 von 300 dpi, scharf bis 20 x 20 mm');
+    });
+  });
+
   it('rasterizes a PDF for the canvas and keeps the original as source', async () => {
     installFakePdfJs('ok');
     const { root, spyOnEvent, waitForChanges } = await render(<wtp-logo-upload></wtp-logo-upload>);
