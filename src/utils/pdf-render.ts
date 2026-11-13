@@ -7,7 +7,7 @@
  * the first PDF/AI upload.
  */
 
-import { findOpaqueBoundingBox } from './background-removal';
+import { colorDistance, findOpaqueBoundingBox } from './background-removal';
 
 interface PdfPageViewport {
   width: number;
@@ -46,9 +46,9 @@ export interface RenderedPdfPage {
   trimBox: PdfTrimBox;
   /**
    * True when the page is painted edge to edge — typically a file that draws its own
-   * white page background, which leaves nothing to trim and nothing transparent.
+   * white page background. The raster is still trimmed to the artwork, but it is opaque.
    */
-  fillsPage: boolean;
+  hasPageBackground: boolean;
 }
 
 /** Longest side of the rasterized artwork, in pixels. */
@@ -62,6 +62,12 @@ const TRIM_MIN_GAIN = 0.98;
 
 /** Upper bound for the zoom of the trimmed render, so a speck cannot request a huge scale. */
 const MAX_TRIM_ZOOM = 8;
+
+/** Page background kept around the artwork of a painted page, in measuring-pass pixels. */
+const PAGE_BACKGROUND_PADDING = 12;
+
+/** RGB distance up to which a pixel still counts as the page colour. */
+const PAGE_COLOUR_TOLERANCE = 12;
 
 const FULL_PAGE: PdfTrimBox = { x: 0, y: 0, width: 1, height: 1 };
 
@@ -136,17 +142,33 @@ export async function renderPdfFirstPage(file: File, maxSize: number = DEFAULT_M
 
   // Pass 1: the whole page, to find where the artwork sits.
   const pageCanvas = await renderRegion(page, scale, 0, 0, Math.round(baseViewport.width * scale), Math.round(baseViewport.height * scale));
-  const fullPage: RenderedPdfPage = { dataUrl: pageCanvas.toDataURL('image/png'), width: pageCanvas.width, height: pageCanvas.height, trimBox: FULL_PAGE, fillsPage: false };
+  const fullPage: RenderedPdfPage = { dataUrl: pageCanvas.toDataURL('image/png'), width: pageCanvas.width, height: pageCanvas.height, trimBox: FULL_PAGE, hasPageBackground: false };
 
   const pixels = pageCanvas.getContext('2d')?.getImageData(0, 0, pageCanvas.width, pageCanvas.height);
-  const box = pixels !== undefined ? findOpaqueBoundingBox(pixels) : null;
-  if (box === null) return fullPage;
+  let box = pixels !== undefined ? findOpaqueBoundingBox(pixels) : null;
+  if (pixels === undefined || box === null) return fullPage;
 
-  const left = Math.max(0, box[0] - TRIM_PADDING);
-  const top = Math.max(0, box[1] - TRIM_PADDING);
-  const boxW = Math.min(pageCanvas.width, box[2] + 1 + TRIM_PADDING) - left;
-  const boxH = Math.min(pageCanvas.height, box[3] + 1 + TRIM_PADDING) - top;
-  if (boxW >= pageCanvas.width * TRIM_MIN_GAIN && boxH >= pageCanvas.height * TRIM_MIN_GAIN) return { ...fullPage, fillsPage: true };
+  const coversPage = (b: [number, number, number, number]) =>
+    b[2] - b[0] + 1 >= pageCanvas.width * TRIM_MIN_GAIN && b[3] - b[1] + 1 >= pageCanvas.height * TRIM_MIN_GAIN;
+
+  // A page painted edge to edge has no transparent margin to measure. The artwork is
+  // then whatever differs from the page colour; the background itself stays in the
+  // raster, so more of it is kept around the artwork for the remover to sample.
+  let hasPageBackground = false;
+  let padding = TRIM_PADDING;
+  if (coversPage(box)) {
+    hasPageBackground = true;
+    padding = PAGE_BACKGROUND_PADDING;
+    const pageColour = uniformCornerColour(pixels);
+    const artwork = pageColour !== null ? findBoundingBoxDifferingFrom(pixels, pageColour) : null;
+    if (artwork === null || coversPage(artwork)) return { ...fullPage, hasPageBackground };
+    box = artwork;
+  }
+
+  const left = Math.max(0, box[0] - padding);
+  const top = Math.max(0, box[1] - padding);
+  const boxW = Math.min(pageCanvas.width, box[2] + 1 + padding) - left;
+  const boxH = Math.min(pageCanvas.height, box[3] + 1 + padding) - top;
 
   // Pass 2: only the artwork, zoomed so it — not the page — gets the full resolution.
   // Cropping pass 1 instead would leave a small logo on a large page badly pixelated.
@@ -158,8 +180,44 @@ export async function renderPdfFirstPage(file: File, maxSize: number = DEFAULT_M
     width: trimmed.width,
     height: trimmed.height,
     trimBox: { x: left / pageCanvas.width, y: top / pageCanvas.height, width: boxW / pageCanvas.width, height: boxH / pageCanvas.height },
-    fillsPage: false,
+    hasPageBackground,
   };
+}
+
+/** The colour shared by all four page corners, or null when they differ. */
+function uniformCornerColour(pixels: ImageData): [number, number, number] | null {
+  const { data, width, height } = pixels;
+  const at = (x: number, y: number): [number, number, number] => {
+    const i = (y * width + x) * 4;
+    return [data[i], data[i + 1], data[i + 2]];
+  };
+
+  const first = at(0, 0);
+  const others = [at(width - 1, 0), at(0, height - 1), at(width - 1, height - 1)];
+  return others.every(c => colorDistance(c[0], c[1], c[2], first[0], first[1], first[2]) <= PAGE_COLOUR_TOLERANCE) ? first : null;
+}
+
+/** Bounding box [minX, minY, maxX, maxY] of all pixels that are not the given colour. */
+function findBoundingBoxDifferingFrom(pixels: ImageData, colour: [number, number, number]): [number, number, number, number] | null {
+  const { data, width, height } = pixels;
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      if (colorDistance(data[i], data[i + 1], data[i + 2], colour[0], colour[1], colour[2]) > PAGE_COLOUR_TOLERANCE) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+
+  return maxX === -1 ? null : [minX, minY, maxX, maxY];
 }
 
 /**

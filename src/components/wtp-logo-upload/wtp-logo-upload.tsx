@@ -147,7 +147,7 @@ export class WtpLogoUpload {
         // The file paints its own page background, so the logo would sit on a white
         // sheet. Offer the same choice as for a raster upload. The cleaned version is a
         // raster of the page — the vector original in `source` keeps its background.
-        if (rendered.fillsPage) {
+        if (rendered.hasPageBackground) {
           removalInput = await (await fetch(rendered.dataUrl)).blob();
         }
       } catch (e) {

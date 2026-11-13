@@ -186,37 +186,37 @@ describe('wtp-logo-upload browser', () => {
       expect(pixel(3, 3)[3]).toBe(0);
     });
 
-    // Without background removal enabled, a PDF that paints its own white page background
-    // stays opaque edge to edge: nothing is trimmed or cleared.
-    it('leaves a PDF with a painted page background untrimmed', async () => {
+    /** A4 with a painted white page and a small 30 mm red circle — a typical export. */
+    function smallLogoOnWhitePage(): jsPDF {
       const doc = new jsPDF({ unit: 'mm', format: 'a4' });
       doc.setFillColor(255, 255, 255);
       doc.rect(0, 0, 210, 297, 'F');
       doc.setFillColor(255, 0, 0);
-      doc.circle(105, 148, 40, 'F');
+      doc.circle(60, 60, 15, 'F');
+      return doc;
+    }
 
-      const { logo, pixel } = await uploadPdf(doc);
+    // Without background removal the page colour stays, but the raster is still the
+    // artwork at full resolution rather than the whole sheet.
+    it('trims a PDF with a painted page background to the artwork', async () => {
+      const { logo, pixel } = await uploadPdf(smallLogoOnWhitePage());
 
-      expect(logo.metadata.width).toBe(1414);
-      expect(logo.metadata.height).toBe(2000);
+      expect(logo.metadata.width / logo.metadata.height).toBeCloseTo(1, 1);
+      expect(logo.metadata.width).toBeGreaterThan(1500);
       expect(pixel(3, 3)).toEqual([255, 255, 255, 255]);
+      expect(pixel(logo.metadata.width >> 1, logo.metadata.height >> 1)).toEqual([255, 0, 0, 255]);
     });
 
     it('offers background removal for a PDF with a painted page background', async () => {
-      const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-      doc.setFillColor(255, 255, 255);
-      doc.rect(0, 0, 210, 297, 'F');
-      doc.setFillColor(255, 0, 0);
-      doc.circle(105, 148, 40, 'F');
+      const { logo, pixel } = await uploadPdf(smallLogoOnWhitePage(), 'pick-removed');
 
-      const { logo, pixel } = await uploadPdf(doc, 'pick-removed');
-
-      // The white sheet is gone and the raster is cropped to the circle …
+      // The white sheet is gone …
       expect(pixel(1, 1)[3]).toBe(0);
       expect(pixel(logo.metadata.width >> 1, logo.metadata.height >> 1)).toEqual([255, 0, 0, 255]);
       expect(logo.metadata.width / logo.metadata.height).toBeCloseTo(1, 1);
-      expect(logo.metadata.width).toBeLessThan(1414);
-      // … while the print shop still gets the untouched vector original.
+      // … and the 30 mm logo is sharp: a crop of the page render would be ~200 px wide.
+      expect(logo.metadata.width).toBeGreaterThan(1500);
+      // The print shop still gets the untouched vector original.
       expect(logo.source?.dataUrl.startsWith('data:application/pdf')).toBe(true);
     });
 

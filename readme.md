@@ -280,7 +280,9 @@ It throws a message naming the missing script when it is used without it.
 PDF/AI logo upload needs nothing from the host: pdf.js ships with the library as lazily
 loaded chunks that are only requested on the first PDF/AI upload. Its worker code runs on
 the main thread, which is fine for rasterizing one logo page. To use a real worker or
-another pdf.js release, put your own build on `window.pdfjsLib` — it takes precedence:
+another pdf.js release, put your own build on `window.pdfjsLib` — it takes precedence.
+Note that the bundled worker code registers itself on `globalThis.pdfjsWorker`, which another
+pdf.js copy on the same page would pick up:
 
 ```html
 <script type="module">
