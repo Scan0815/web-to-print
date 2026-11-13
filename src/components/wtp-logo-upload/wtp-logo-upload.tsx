@@ -133,6 +133,9 @@ export class WtpLogoUpload {
     const source: LogoSource = { dataUrl: rawDataUrl, mimeType: file.type, fileName: file.name, fileSize: file.size };
 
     let dataUrl: string;
+    // What the background remover works on — the file itself, except for a PDF/AI, where
+    // it is the page raster.
+    let removalInput: Blob | null = this.isRasterFormat(metadata.format) ? file : null;
     if (metadata.format === 'pdf' || metadata.format === 'ai') {
       // The canvas cannot draw a PDF: rasterize page 1 and keep the original for print.
       // Caught here rather than by the caller so the finding names the actual cause.
@@ -141,6 +144,12 @@ export class WtpLogoUpload {
         dataUrl = rendered.dataUrl;
         metadata.width = rendered.width;
         metadata.height = rendered.height;
+        // The file paints its own page background, so the logo would sit on a white
+        // sheet. Offer the same choice as for a raster upload. The cleaned version is a
+        // raster of the page — the vector original in `source` keeps its background.
+        if (rendered.fillsPage) {
+          removalInput = await (await fetch(rendered.dataUrl)).blob();
+        }
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Could not read the file.';
         this.reject(file, [{ code: 'PDF_RENDER_FAILED', severity: 'error', message }]);
@@ -157,8 +166,8 @@ export class WtpLogoUpload {
       dataUrl = rawDataUrl;
     }
 
-    if (this.enableBackgroundRemoval && this.isRasterFormat(metadata.format)) {
-      this.addPendingChoice(dataUrl, metadata, file, source);
+    if (this.enableBackgroundRemoval && removalInput !== null) {
+      this.addPendingChoice(dataUrl, metadata, removalInput, source);
       return;
     }
 
@@ -174,7 +183,7 @@ export class WtpLogoUpload {
     this.wtpLogoRejected.emit({ file, issues });
   }
 
-  private addPendingChoice(originalDataUrl: string, metadata: LogoMetadata, file: File, source: LogoSource) {
+  private addPendingChoice(originalDataUrl: string, metadata: LogoMetadata, removalInput: Blob, source: LogoSource) {
     const id = generateObjectId();
     const choice: BgRemovalChoice = {
       id,
@@ -188,12 +197,12 @@ export class WtpLogoUpload {
       errorMessage: null,
     };
     this.pendingChoices = [...this.pendingChoices, choice];
-    this.performBackgroundRemoval(file, id);
+    this.performBackgroundRemoval(removalInput, id);
   }
 
-  private async performBackgroundRemoval(file: File, id: string) {
+  private async performBackgroundRemoval(input: Blob, id: string) {
     try {
-      const result = await removeBackground(file, this.bgRemovalConfig);
+      const result = await removeBackground(input, this.bgRemovalConfig);
       this.pendingChoices = this.pendingChoices.map(c =>
         c.id === id ? { ...c, removedBgDataUrl: result.dataUrl, removedBgWidth: result.width, removedBgHeight: result.height, status: 'ready' as const } : c,
       );

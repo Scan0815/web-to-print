@@ -44,6 +44,11 @@ export interface RenderedPdfPage {
   height: number;
   /** The part of the page the raster shows; the full page when nothing was trimmed. */
   trimBox: PdfTrimBox;
+  /**
+   * True when the page is painted edge to edge — typically a file that draws its own
+   * white page background, which leaves nothing to trim and nothing transparent.
+   */
+  fillsPage: boolean;
 }
 
 /** Longest side of the rasterized artwork, in pixels. */
@@ -131,7 +136,7 @@ export async function renderPdfFirstPage(file: File, maxSize: number = DEFAULT_M
 
   // Pass 1: the whole page, to find where the artwork sits.
   const pageCanvas = await renderRegion(page, scale, 0, 0, Math.round(baseViewport.width * scale), Math.round(baseViewport.height * scale));
-  const fullPage: RenderedPdfPage = { dataUrl: pageCanvas.toDataURL('image/png'), width: pageCanvas.width, height: pageCanvas.height, trimBox: FULL_PAGE };
+  const fullPage: RenderedPdfPage = { dataUrl: pageCanvas.toDataURL('image/png'), width: pageCanvas.width, height: pageCanvas.height, trimBox: FULL_PAGE, fillsPage: false };
 
   const pixels = pageCanvas.getContext('2d')?.getImageData(0, 0, pageCanvas.width, pageCanvas.height);
   const box = pixels !== undefined ? findOpaqueBoundingBox(pixels) : null;
@@ -141,7 +146,7 @@ export async function renderPdfFirstPage(file: File, maxSize: number = DEFAULT_M
   const top = Math.max(0, box[1] - TRIM_PADDING);
   const boxW = Math.min(pageCanvas.width, box[2] + 1 + TRIM_PADDING) - left;
   const boxH = Math.min(pageCanvas.height, box[3] + 1 + TRIM_PADDING) - top;
-  if (boxW >= pageCanvas.width * TRIM_MIN_GAIN && boxH >= pageCanvas.height * TRIM_MIN_GAIN) return fullPage;
+  if (boxW >= pageCanvas.width * TRIM_MIN_GAIN && boxH >= pageCanvas.height * TRIM_MIN_GAIN) return { ...fullPage, fillsPage: true };
 
   // Pass 2: only the artwork, zoomed so it — not the page — gets the full resolution.
   // Cropping pass 1 instead would leave a small logo on a large page badly pixelated.
@@ -153,6 +158,7 @@ export async function renderPdfFirstPage(file: File, maxSize: number = DEFAULT_M
     width: trimmed.width,
     height: trimmed.height,
     trimBox: { x: left / pageCanvas.width, y: top / pageCanvas.height, width: boxW / pageCanvas.width, height: boxH / pageCanvas.height },
+    fillsPage: false,
   };
 }
 

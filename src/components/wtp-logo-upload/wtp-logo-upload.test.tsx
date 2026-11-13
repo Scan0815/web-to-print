@@ -118,15 +118,26 @@ describe('wtp-logo-upload browser', () => {
   // pdf.js bundled with the library against real vector PDFs, with no host setup at all.
   describe('with the bundled pdf.js', () => {
     /** Uploads a jsPDF document and returns the logo plus a pixel reader for its raster. */
-    async function uploadPdf(doc: jsPDF): Promise<{ logo: LogoData; pixel: (x: number, y: number) => number[] }> {
+    async function uploadPdf(doc: jsPDF, backgroundRemoval: 'off' | 'expect-no-choice' | 'pick-removed' = 'off'): Promise<{ logo: LogoData; pixel: (x: number, y: number) => number[] }> {
       expect((window as unknown as Record<string, unknown>)['pdfjsLib']).toBeUndefined();
       const file = new File([doc.output('arraybuffer')], 'vector.pdf', { type: 'application/pdf' });
 
-      const { root, spyOnEvent, waitForChanges } = await render(<wtp-logo-upload></wtp-logo-upload>);
+      const { root, spyOnEvent, waitForChanges } = await render(
+        backgroundRemoval === 'off' ? <wtp-logo-upload></wtp-logo-upload> : <wtp-logo-upload enable-background-removal></wtp-logo-upload>,
+      );
       const validatedSpy = spyOnEvent('wtpLogoValidated');
       const rejectedSpy = spyOnEvent('wtpLogoRejected');
 
       selectFile(root, file);
+
+      if (backgroundRemoval === 'pick-removed') {
+        // The second option is the cleaned version; it is enabled once the removal is done.
+        const removedOption = () => root.shadowRoot?.querySelectorAll('.choice-option')[1] as HTMLButtonElement | undefined;
+        await expect.poll(() => removedOption() !== undefined && !removedOption()?.classList.contains('choice-option--disabled'), { timeout: 10000 }).toBe(true);
+        expect(validatedSpy).not.toHaveReceivedEvent();
+        removedOption()?.click();
+      }
+
       await expect.poll(() => validatedSpy.length + rejectedSpy.length, { timeout: 10000 }).toBeGreaterThan(0);
       await waitForChanges();
 
@@ -175,8 +186,8 @@ describe('wtp-logo-upload browser', () => {
       expect(pixel(3, 3)[3]).toBe(0);
     });
 
-    // Known limitation, pinned so it is not mistaken for working: a PDF that paints its
-    // own white page background is opaque edge to edge, so nothing is trimmed or cleared.
+    // Without background removal enabled, a PDF that paints its own white page background
+    // stays opaque edge to edge: nothing is trimmed or cleared.
     it('leaves a PDF with a painted page background untrimmed', async () => {
       const doc = new jsPDF({ unit: 'mm', format: 'a4' });
       doc.setFillColor(255, 255, 255);
@@ -189,6 +200,34 @@ describe('wtp-logo-upload browser', () => {
       expect(logo.metadata.width).toBe(1414);
       expect(logo.metadata.height).toBe(2000);
       expect(pixel(3, 3)).toEqual([255, 255, 255, 255]);
+    });
+
+    it('offers background removal for a PDF with a painted page background', async () => {
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+      doc.setFillColor(255, 255, 255);
+      doc.rect(0, 0, 210, 297, 'F');
+      doc.setFillColor(255, 0, 0);
+      doc.circle(105, 148, 40, 'F');
+
+      const { logo, pixel } = await uploadPdf(doc, 'pick-removed');
+
+      // The white sheet is gone and the raster is cropped to the circle …
+      expect(pixel(1, 1)[3]).toBe(0);
+      expect(pixel(logo.metadata.width >> 1, logo.metadata.height >> 1)).toEqual([255, 0, 0, 255]);
+      expect(logo.metadata.width / logo.metadata.height).toBeCloseTo(1, 1);
+      expect(logo.metadata.width).toBeLessThan(1414);
+      // … while the print shop still gets the untouched vector original.
+      expect(logo.source?.dataUrl.startsWith('data:application/pdf')).toBe(true);
+    });
+
+    it('skips the background-removal choice for a PDF that is already transparent', async () => {
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+      doc.setFillColor(255, 0, 0);
+      doc.circle(105, 148, 40, 'F');
+
+      const { pixel } = await uploadPdf(doc, 'expect-no-choice');
+
+      expect(pixel(3, 3)[3]).toBe(0);
     });
   });
 

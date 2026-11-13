@@ -113,7 +113,7 @@ Validates uploaded files against configurable print-quality rules (format, DPI, 
 
 #### Background Removal
 
-When `enable-background-removal` is set and a raster image (PNG, JPEG, TIFF, AVIF) is uploaded, the user is presented with a choice between the original image and a version with the background removed. SVG and PDF files skip this step entirely.
+When `enable-background-removal` is set and a raster image (PNG, JPEG, TIFF, AVIF) is uploaded, the user is presented with a choice between the original image and a version with the background removed. SVG files skip this step entirely. A PDF/AI file is rendered with a transparent background and trimmed to its artwork; only when it paints its own page background does it get the same choice — the cleaned version is then a raster of the page, while the uploaded vector original (`source`) keeps its background.
 
 The background removal runs entirely client-side using a color-based flood-fill algorithm with zero external dependencies:
 
@@ -440,7 +440,7 @@ wtp-logo-upload::part(preview-item selected) {
 <script>
   document.getElementById('uploader').labels = {
     dropPromptText: 'Logo hierher ziehen oder klicken',
-    dropPromptHint: 'PNG, JPEG, SVG, TIFF oder AVIF',
+    dropPromptHint: 'PNG, JPEG, SVG, PDF, AI, TIFF oder AVIF',
     dividerText: 'oder',
     urlSubmit: 'Laden',
     urlPlaceholder: 'https://beispiel.de/logo.png',
