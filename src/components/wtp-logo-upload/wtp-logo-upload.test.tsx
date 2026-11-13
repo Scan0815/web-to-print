@@ -1,4 +1,5 @@
 import { render, h, describe, it, expect, afterEach } from '@stencil/vitest';
+import { jsPDF } from 'jspdf';
 import type { LogoData } from '../../types/logo';
 
 /** Feeds a file into the component's hidden file input, as a real upload would. */
@@ -113,6 +114,123 @@ describe('wtp-logo-upload browser', () => {
     expect(logo.metadata.width).toBeGreaterThan(0);
   });
 
+  // The fake above cannot prove that a PDF is actually parsed and drawn — these run the
+  // pdf.js bundled with the library against real vector PDFs, with no host setup at all.
+  describe('with the bundled pdf.js', () => {
+    /** Uploads a jsPDF document and returns the logo plus a pixel reader for its raster. */
+    async function uploadPdf(doc: jsPDF, backgroundRemoval: 'off' | 'expect-no-choice' | 'pick-removed' = 'off'): Promise<{ logo: LogoData; pixel: (x: number, y: number) => number[] }> {
+      expect((window as unknown as Record<string, unknown>)['pdfjsLib']).toBeUndefined();
+      const file = new File([doc.output('arraybuffer')], 'vector.pdf', { type: 'application/pdf' });
+
+      const { root, spyOnEvent, waitForChanges } = await render(
+        backgroundRemoval === 'off' ? <wtp-logo-upload></wtp-logo-upload> : <wtp-logo-upload enable-background-removal></wtp-logo-upload>,
+      );
+      const validatedSpy = spyOnEvent('wtpLogoValidated');
+      const rejectedSpy = spyOnEvent('wtpLogoRejected');
+
+      selectFile(root, file);
+
+      if (backgroundRemoval === 'pick-removed') {
+        // The second option is the cleaned version; it is enabled once the removal is done.
+        const removedOption = () => root.shadowRoot?.querySelectorAll('.choice-option')[1] as HTMLButtonElement | undefined;
+        await expect.poll(() => removedOption() !== undefined && !removedOption()?.classList.contains('choice-option--disabled'), { timeout: 10000 }).toBe(true);
+        expect(validatedSpy).not.toHaveReceivedEvent();
+        removedOption()?.click();
+      }
+
+      await expect.poll(() => validatedSpy.length + rejectedSpy.length, { timeout: 10000 }).toBeGreaterThan(0);
+      await waitForChanges();
+
+      expect(rejectedSpy).not.toHaveReceivedEvent();
+      const logo = validatedSpy.lastEvent?.detail as LogoData;
+
+      const img = new Image();
+      img.src = logo.dataUrl;
+      await img.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+      ctx.drawImage(img, 0, 0);
+
+      return { logo, pixel: (x, y) => Array.from(ctx.getImageData(x, y, 1, 1).data) };
+    }
+
+    it('trims the page to the artwork and renders it at full resolution', async () => {
+      // A small red square on an A4 page: 20x20 mm of 210x297 mm.
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+      doc.setFillColor(255, 0, 0);
+      doc.rect(60, 100, 20, 20, 'F');
+
+      const { logo, pixel } = await uploadPdf(doc);
+
+      expect(logo.metadata.format).toBe('pdf');
+      expect(logo.source?.dataUrl.startsWith('data:application/pdf')).toBe(true);
+      // The square, not the page, fills the raster — and at far more than the ~135 px a
+      // crop of the 2000 px page render would have left.
+      expect(logo.metadata.width / logo.metadata.height).toBeCloseTo(1, 1);
+      expect(logo.metadata.width).toBeGreaterThan(1000);
+      expect(pixel(logo.metadata.width >> 1, logo.metadata.height >> 1)).toEqual([255, 0, 0, 255]);
+      expect(pixel(40, 40)).toEqual([255, 0, 0, 255]);
+      expect(pixel(logo.metadata.width - 40, logo.metadata.height - 40)).toEqual([255, 0, 0, 255]);
+    });
+
+    it('keeps the area around the artwork transparent', async () => {
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+      doc.setFillColor(255, 0, 0);
+      doc.circle(105, 148, 40, 'F');
+
+      const { logo, pixel } = await uploadPdf(doc);
+
+      expect(pixel(logo.metadata.width >> 1, logo.metadata.height >> 1)).toEqual([255, 0, 0, 255]);
+      expect(pixel(3, 3)[3]).toBe(0);
+    });
+
+    /** A4 with a painted white page and a small 30 mm red circle — a typical export. */
+    function smallLogoOnWhitePage(): jsPDF {
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+      doc.setFillColor(255, 255, 255);
+      doc.rect(0, 0, 210, 297, 'F');
+      doc.setFillColor(255, 0, 0);
+      doc.circle(60, 60, 15, 'F');
+      return doc;
+    }
+
+    // Without background removal the page colour stays, but the raster is still the
+    // artwork at full resolution rather than the whole sheet.
+    it('trims a PDF with a painted page background to the artwork', async () => {
+      const { logo, pixel } = await uploadPdf(smallLogoOnWhitePage());
+
+      expect(logo.metadata.width / logo.metadata.height).toBeCloseTo(1, 1);
+      expect(logo.metadata.width).toBeGreaterThan(1500);
+      expect(pixel(3, 3)).toEqual([255, 255, 255, 255]);
+      expect(pixel(logo.metadata.width >> 1, logo.metadata.height >> 1)).toEqual([255, 0, 0, 255]);
+    });
+
+    it('offers background removal for a PDF with a painted page background', async () => {
+      const { logo, pixel } = await uploadPdf(smallLogoOnWhitePage(), 'pick-removed');
+
+      // The white sheet is gone …
+      expect(pixel(1, 1)[3]).toBe(0);
+      expect(pixel(logo.metadata.width >> 1, logo.metadata.height >> 1)).toEqual([255, 0, 0, 255]);
+      expect(logo.metadata.width / logo.metadata.height).toBeCloseTo(1, 1);
+      // … and the 30 mm logo is sharp: a crop of the page render would be ~200 px wide.
+      expect(logo.metadata.width).toBeGreaterThan(1500);
+      // The print shop still gets the untouched vector original.
+      expect(logo.source?.dataUrl.startsWith('data:application/pdf')).toBe(true);
+    });
+
+    it('skips the background-removal choice for a PDF that is already transparent', async () => {
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+      doc.setFillColor(255, 0, 0);
+      doc.circle(105, 148, 40, 'F');
+
+      const { pixel } = await uploadPdf(doc, 'expect-no-choice');
+
+      expect(pixel(3, 3)[3]).toBe(0);
+    });
+  });
+
   it('explains an AI file saved without PDF compatibility', async () => {
     installFakePdfJs('unreadable');
     const { root, spyOnEvent, waitForChanges } = await render(<wtp-logo-upload></wtp-logo-upload>);
@@ -126,19 +244,6 @@ describe('wtp-logo-upload browser', () => {
     const detail = rejectedSpy.lastEvent?.detail as { issues: { code: string; message: string }[] };
     expect(detail.issues[0].code).toBe('PDF_RENDER_FAILED');
     expect(detail.issues[0].message).toContain('PDF compatibility');
-  });
-
-  it('rejects a PDF when pdf.js is not loaded, naming the script', async () => {
-    const { root, spyOnEvent, waitForChanges } = await render(<wtp-logo-upload></wtp-logo-upload>);
-    const rejectedSpy = spyOnEvent('wtpLogoRejected');
-
-    selectFile(root, new File([PDF_BYTES], 'logo.pdf', { type: 'application/pdf' }));
-    await waitForChanges();
-    await new Promise(r => setTimeout(r, 500));
-
-    expect(rejectedSpy).toHaveReceivedEvent();
-    const detail = rejectedSpy.lastEvent?.detail as { issues: { message: string }[] };
-    expect(detail.issues[0].message).toContain('pdf.js is required');
   });
 
   it('keeps the uploaded original for SVG uploads too', async () => {

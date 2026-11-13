@@ -27,7 +27,7 @@ export const DEFAULT_LOGO_UPLOAD_LABELS: LogoUploadLabels = {
   urlSubmit: 'Fetch',
   dividerText: 'or',
   dropPromptText: 'Drag & drop your logo here or click to browse',
-  dropPromptHint: 'PNG, JPEG, SVG, TIFF, or AVIF',
+  dropPromptHint: 'PNG, JPEG, SVG, PDF, AI, TIFF, or AVIF',
   uploadAriaLabel: 'Upload logo file',
   removeAriaLabel: (fileName) => `Remove ${fileName}`,
   urlErrorEmpty: 'Please enter a URL',

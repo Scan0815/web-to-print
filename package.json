@@ -72,6 +72,7 @@
     "eslint": "^9.20.0",
     "eslint-plugin-react": "^7.37.5",
     "jspdf": "^4.1.0",
+    "pdfjs-dist": "5.7.284",
     "playwright": "^1.62.1",
     "vitest": "^4.1.10"
   },

@@ -113,7 +113,7 @@ Validates uploaded files against configurable print-quality rules (format, DPI, 
 
 #### Background Removal
 
-When `enable-background-removal` is set and a raster image (PNG, JPEG, TIFF, AVIF) is uploaded, the user is presented with a choice between the original image and a version with the background removed. SVG and PDF files skip this step entirely.
+When `enable-background-removal` is set and a raster image (PNG, JPEG, TIFF, AVIF) is uploaded, the user is presented with a choice between the original image and a version with the background removed. SVG files skip this step entirely. A PDF/AI file is rendered with a transparent background and trimmed to its artwork; only when it paints its own page background does it get the same choice — the cleaned version is then a raster of the page, while the uploaded vector original (`source`) keeps its background.
 
 The background removal runs entirely client-side using a color-based flood-fill algorithm with zero external dependencies:
 
@@ -269,14 +269,28 @@ render your own text:
 
 ## External dependencies at runtime
 
-Two features expect a global, which keeps them out of the bundle:
+PDF export expects a global, which keeps jsPDF out of the bundle:
 
 | Feature | Global | Script |
 |---|---|---|
 | PDF export (`exportPdf`, `exportArticlePdf`, `exportProductPdf`) | `window.jspdf` | `https://unpkg.com/jspdf@4.1.0/dist/jspdf.umd.min.js` |
-| PDF/AI logo upload | `window.pdfjsLib` | `https://unpkg.com/pdfjs-dist@5/build/pdf.min.mjs` |
 
-Both throw a message naming the missing script when they are used without it.
+It throws a message naming the missing script when it is used without it.
+
+PDF/AI logo upload needs nothing from the host: pdf.js ships with the library as lazily
+loaded chunks that are only requested on the first PDF/AI upload. Its worker code runs on
+the main thread, which is fine for rasterizing one logo page. To use a real worker or
+another pdf.js release, put your own build on `window.pdfjsLib` — it takes precedence.
+Note that the bundled worker code registers itself on `globalThis.pdfjsWorker`, which another
+pdf.js copy on the same page would pick up:
+
+```html
+<script type="module">
+  import * as pdfjsLib from '/assets/pdf.min.mjs';
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '/assets/pdf.worker.min.mjs';
+  window.pdfjsLib = pdfjsLib;
+</script>
+```
 
 ### The PDF is a proof, not print data
 
@@ -428,7 +442,7 @@ wtp-logo-upload::part(preview-item selected) {
 <script>
   document.getElementById('uploader').labels = {
     dropPromptText: 'Logo hierher ziehen oder klicken',
-    dropPromptHint: 'PNG, JPEG, SVG, TIFF oder AVIF',
+    dropPromptHint: 'PNG, JPEG, SVG, PDF, AI, TIFF oder AVIF',
     dividerText: 'oder',
     urlSubmit: 'Laden',
     urlPlaceholder: 'https://beispiel.de/logo.png',
