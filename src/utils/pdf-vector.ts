@@ -15,6 +15,7 @@
 
 import type { PDFPage } from '@cantoo/pdf-lib';
 import { renderPdfFirstPage } from './pdf-render';
+import { sanitizeSvgForMount } from './svg-sanitize';
 
 const MM_TO_PT = 72 / 25.4;
 
@@ -127,7 +128,9 @@ export async function prepareSvgLogo(source: { dataUrl: string; fileName?: strin
     const unsupported = root.querySelector(SVG_UNSUPPORTED);
     if (unsupported !== null) throw new Error(`it uses <${unsupported.tagName}>`);
 
-    const svg = document.importNode(root, true) as unknown as SVGSVGElement;
+    // The file is a customer's upload: never mount it as it is.
+    const svg = sanitizeSvgForMount(root);
+    if (svg === null) throw new Error('it refers to external resources');
     host.attachShadow({ mode: 'open' }).appendChild(svg);
     document.body.appendChild(host);
 
