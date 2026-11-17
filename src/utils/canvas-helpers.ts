@@ -1,5 +1,6 @@
 import { StaticCanvas, FabricImage, FabricObject } from 'fabric';
 import { CanvasTransform, PrintArea, LegacyPrintArea, RelativePoint } from '../types';
+import { sanitizeSvgForMount } from './svg-sanitize';
 
 export function generateObjectId(): string {
   return crypto.randomUUID();
@@ -676,21 +677,25 @@ export async function trimSvgWhitespace(svgDataUrl: string, padding: number = 1)
     : doc.querySelector('svg');
   if (svgEl === null) return svgDataUrl;
 
-  // Insert SVG offscreen to enable getBBox()
-  const container = document.createElement('div');
-  container.style.cssText = 'visibility:hidden;position:absolute;left:-9999px;top:-9999px;width:0;height:0;overflow:hidden';
-  container.appendChild(svgEl);
-  document.body.appendChild(container);
+  // Measure a sanitized copy inside a shadow root: the upload is a customer's file, and
+  // mounted as it is, its markup would run in the host page (see sanitizeSvgForMount).
+  // The shadow root also keeps the file's stylesheets from leaking into that page.
+  const measured = sanitizeSvgForMount(svgEl);
+  if (measured === null) return svgDataUrl;
+
+  const host = document.createElement('div');
+  host.style.cssText = 'visibility:hidden;position:absolute;left:-9999px;top:-9999px;width:0;height:0;overflow:hidden';
 
   let bbox: { x: number; y: number; width: number; height: number };
   try {
-    bbox = (svgEl as unknown as SVGSVGElement).getBBox();
+    host.attachShadow({ mode: 'open' }).appendChild(measured);
+    document.body.appendChild(host);
+    bbox = measured.getBBox();
   } catch {
-    container.remove();
     return svgDataUrl;
+  } finally {
+    host.remove();
   }
-
-  container.remove();
 
   // Graceful fallback: if getBBox returned zeros (e.g. JSDOM), skip trimming
   if (bbox.width <= 0 || bbox.height <= 0) {
@@ -721,11 +726,6 @@ export async function trimSvgWhitespace(svgDataUrl: string, padding: number = 1)
   const newH = bbox.height + 2 * padding;
   svgEl.setAttribute('width', String(newW));
   svgEl.setAttribute('height', String(newH));
-
-  // Re-attach svgEl to doc for serialization (it was moved to container)
-  if (svgEl.parentNode !== doc) {
-    doc.appendChild(svgEl);
-  }
 
   // Serialize and re-encode as base64 data URL
   const newSvgText = new XMLSerializer().serializeToString(doc);
