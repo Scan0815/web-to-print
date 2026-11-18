@@ -70,13 +70,13 @@
     "@types/node": "^22.13.5",
     "@typescript-eslint/eslint-plugin": "^8.65.0",
     "@typescript-eslint/parser": "^8.65.0",
-    "@vitest/browser-playwright": "^4.1.10",
+    "@vitest/browser-playwright": "^4.1.12",
     "eslint": "^9.20.0",
     "eslint-plugin-react": "^7.37.5",
     "jspdf": "^4.1.0",
-    "pdfjs-dist": "5.7.284",
+    "pdfjs-dist": "6.5.438",
     "playwright": "^1.62.1",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.12"
   },
   "license": "MIT"
 }
