@@ -107,6 +107,10 @@ export function ensurePdfWorker(lib: PdfJsLib): void {
  * a standalone script URL the bundle cannot provide. Rasterizing one logo page is cheap
  * enough for that.
  *
+ * The legacy build is used on purpose: the modern one calls recent built-ins such as
+ * `Promise.try` without a fallback, and in a runtime lacking them a broken PDF leaves
+ * `getDocument` pending forever instead of rejecting. The legacy build polyfills them.
+ *
  * A host that wants a real worker (or another pdf.js release) sets `window.pdfjsLib`.
  */
 export async function loadPdfJs(): Promise<PdfJsLib> {
@@ -116,7 +120,7 @@ export async function loadPdfJs(): Promise<PdfJsLib> {
     return hostLib;
   }
 
-  const [lib] = await Promise.all([import('pdfjs-dist/build/pdf.min.mjs'), import('pdfjs-dist/build/pdf.worker.min.mjs')]);
+  const [lib] = await Promise.all([import('pdfjs-dist/legacy/build/pdf.min.mjs'), import('pdfjs-dist/legacy/build/pdf.worker.min.mjs')]);
   return lib as unknown as PdfJsLib;
 }
 
